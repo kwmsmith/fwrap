@@ -12,7 +12,7 @@ from Code import CodeWriter, CompositeBlock, \
         SubroutineCode, ProgramCode, \
         UtilityCode, FunctionCode, InterfaceCode, \
         CySuiteCode
-from Cython.StringIOTree import StringIOTree
+from StringIOTree import StringIOTree
 from fparser.block_statements import Function, SubProgramStatement, \
         Module, Program, Subroutine, \
         EndFunction, EndSubroutine, Interface

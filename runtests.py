@@ -205,7 +205,7 @@ class FwrapCompileTestCase(unittest.TestCase):
 
     def runCompileTest_distutils(self):
         import sys
-        CYTHON_DIR = os.path.abspath(os.path.join(os.path.pardir, os.path.pardir))
+        CYTHON_DIR = os.path.abspath(os.path.curdir)
         FILENAME = self.filename
         WRAPPED_FILENAME = self.wrapped_filename
         PROJNAME = self.projname

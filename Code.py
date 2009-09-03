@@ -1,5 +1,4 @@
-from Cython.StringIOTree import StringIOTree
-from cStringIO import StringIO
+from StringIOTree import StringIOTree
 
 INDENT = "  "
 LINE_LENGTH = 79
