@@ -1,16 +1,32 @@
 from StringIOTree import StringIOTree
+from math import ceil, floor
 
 INDENT = "  "
 LINE_LENGTH = 79
 BREAK_CHARS = (' ', '\t', ',', '!')
 COMMENT_CHAR = '!'
 
-def break_line(line, level, max_len):
+def reflow(text, level, max_len):
+    i = 0
+    broken_text = []
+    
+    lim = int(ceil(len(text)/float(max_len)))
+    for i in range(lim):
+        broken_text.append('&'+text[i*max_len:(i+1)*max_len]+'&')
+
+    # strip off the beginning & ending continuations.
+    broken_text[0] = broken_text[0][1:]
+    broken_text[-1] = broken_text[-1][:-1]
+
+    return broken_text
+
+def _break_line(line, level, max_len):
 
     line = INDENT*level+line
 
     if len(line) <= max_len:
-        return [line, '']
+        # return line
+        return [line]
 
     # break up line.
     in_comment = False
