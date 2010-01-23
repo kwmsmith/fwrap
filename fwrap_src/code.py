@@ -6,17 +6,19 @@ LINE_LENGTH = 79
 BREAK_CHARS = (' ', '\t', ',', '!')
 COMMENT_CHAR = '!'
 
-def reflow(text, level, max_len):
-    i = 0
+def reflow(text, level=0, max_len=LINE_LENGTH):
+    line_len = max_len - len(INDENT)*level
     broken_text = []
-    
-    lim = int(ceil(len(text)/float(max_len)))
+    lim = int(ceil(len(text)/float(line_len)))
     for i in range(lim):
-        broken_text.append('&'+text[i*max_len:(i+1)*max_len]+'&')
+        broken_text.append('&'+text[i*line_len:(i+1)*line_len]+'&')
 
     # strip off the beginning & ending continuations.
     broken_text[0] = broken_text[0][1:]
     broken_text[-1] = broken_text[-1][:-1]
+
+    # prepend the indent
+    broken_text = [INDENT*level + txt for txt in broken_text]
 
     return broken_text
 

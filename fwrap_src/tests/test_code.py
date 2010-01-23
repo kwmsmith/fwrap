@@ -48,3 +48,11 @@ def test_nobreak():
     line = """aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"""
     ret = code.reflow(line, 0, 100)
     eq_(ret, [line])
+
+def test_indent():
+    line = "12345678901234567890"
+    ret = code.reflow(line, 1, 100)
+    eq_(ret, [code.INDENT+line])
+    ret = code.reflow(line, 1, 10)
+    eq_(ret, [code.INDENT+line[:8]+'&', code.INDENT+'&'+line[8:16]+'&', code.INDENT+'&'+line[16:]])
+    set_trace()
