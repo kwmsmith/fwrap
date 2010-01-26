@@ -55,4 +55,4 @@ def test_indent():
     eq_(ret, [code.INDENT+line])
     ret = code.reflow(line, 1, 10)
     eq_(ret, [code.INDENT+line[:8]+'&', code.INDENT+'&'+line[8:16]+'&', code.INDENT+'&'+line[16:]])
-    set_trace()
+    # set_trace()

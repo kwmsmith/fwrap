@@ -796,7 +796,7 @@ if __name__ == '__main__':
             sys.stderr.write("Running tests without Cython.\n")
     #if 0
 
-    from fwrap.Main import wrap
+    from fwrap_src.Main import wrap
 
     sys.stderr.write("Python %s\n" % sys.version)
     sys.stderr.write("\n")
