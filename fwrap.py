@@ -1,4 +1,4 @@
 #! /usr/bin/env python
-from fwrap.Main import main
+from fwrap_src.main import main
 
 main()
