@@ -16,6 +16,11 @@ class function(object):
         self.args = args
         self.return_type = return_type
 
+    def __eq__(self, other):
+        return self.name == other.name and \
+               self.args == other.args and \
+               self.return_type == other.return_type
+
 class subroutine(object):
 
     def __init__(self, name, args):
