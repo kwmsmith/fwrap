@@ -11,7 +11,7 @@ function empty_func()
     integer :: empty_func
 end function empty_func
 ''')
-    ast = main.generate_ast(fsrc)
+    ast = main.generate_ast()
     empty_func = pyf.function(name='empty_func',
                     args=(),
                     return_type=pyf.default_integer)
