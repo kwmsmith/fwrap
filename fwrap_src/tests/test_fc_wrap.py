@@ -1,4 +1,3 @@
-
 from fwrap_src import pyf_iface as pyf
 from fwrap_src import fc_wrap
 from cStringIO import StringIO
@@ -18,7 +17,8 @@ class test_empty_func(object):
         del self.buf
 
     def test_generate_fortran_empty_func(self):
-        fc_wrap.generate_fortran([self.empty_func], self.buf)
+        pname = "DP"
+        fc_wrap.FCWrapFortran(pname).generate([self.empty_func], self.buf)
         fort_file = '''
 function fw_empty_func() bind(c, name="empty_func_c")
     use iso_c_binding
@@ -36,7 +36,8 @@ end function fw_empty_func
         eq_(fort_file, self.buf.getvalue().splitlines())
 
     def test_generate_header_empty_func(self):
-        fc_wrap.generate_h([self.empty_func], self.buf)
+        pname = "DP"
+        fc_wrap.FCWrapCHeader(pname).generate([self.empty_func], self.buf)
         header_file = '''
 #include "config.h"
 fwrap_default_int empty_func_c();
@@ -44,7 +45,8 @@ fwrap_default_int empty_func_c();
         eq_(header_file, self.buf.getvalue().splitlines())
 
     def test_generate_pxd_empty_func(self):
-        fc_wrap.generate_pxd([self.empty_func], self.buf)
+        pname = "DP"
+        fc_wrap.FCWrapPxd(pname).generate([self.empty_func], self.buf)
         pxd_file = '''
 cdef extern from "config.h":
     ctypedef int fwrap_default_int
@@ -54,3 +56,10 @@ cdef extern:
 '''.splitlines()
         eq_(pxd_file, self.buf.getvalue().splitlines())
 
+def test_get_filenames():
+    projname = "DP"
+    ofs = [(fc_wrap.FCWrapFortran(projname), "DP_c.f90"),
+           (fc_wrap.FCWrapCHeader(projname), "DP_c.h"),
+           (fc_wrap.FCWrapPxd(projname), "DP_c.pxd")]
+    for obj, fname in ofs:
+        eq_(obj.filename, fname)
