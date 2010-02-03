@@ -56,6 +56,37 @@ cdef extern:
 '''.splitlines()
         eq_(pxd_file, self.buf.getvalue().splitlines())
 
+class Mock(object):
+    def __init__(self, **kwargs):
+        self.__dict__.update(**kwargs)
+
+def _test_gen_fortran_one_arg_func():
+    pname = "FB"
+    one_arg = Mock(name='one_arg',
+                   args=[Mock(name='a',
+                              dtype=Mock(type='integer', ktp='fwrap_default_int'),
+                              intent="in")],
+                   return_type=Mock(type='integer', ktp='fwrap_default_int'))
+    buf = StringIO()
+    fc_wrap.FCWrapFortran(pname).generate([one_arg], buf)
+    fort_file = '''
+function fw_one_arg(a) bind(c, name="one_arg_c")
+    use config
+    implicit none
+    integer(fwrap_default_int), intent(in) :: a
+    integer(fwrap_default_int) :: fw_one_arg
+    interface
+        function one_arg(a)
+            implicit none
+            integer, intent(in) :: a
+            integer :: empty_func
+        end function one_arg
+    end interface
+    fw_one_arg = one_arg(a)
+end function fw_one_arg
+'''.splitlines()
+    eq_(fort_file, buf.getvalue().splitlines())
+
 def test_get_filenames():
     projname = "DP"
     ofs = [(fc_wrap.FCWrapFortran(projname), "DP_c.f90"),
