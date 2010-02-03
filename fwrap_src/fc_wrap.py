@@ -53,3 +53,29 @@ function fw_empty_func() bind(c, name="empty_func_c")
 end function fw_empty_func
 '''
     )
+
+    def generate_interface(self, procedure, buf):
+        template = '''
+interface
+    %(proc_type)s %(proc_name)s(%(proc_arglst)s)
+        use config
+        implicit none%(arg_specs)s
+        %(return_spec)s
+    end %(proc_type)s %(proc_name)s
+end interface
+'''
+        subst_dict = {}
+        subst_dict['proc_type'] = 'function'
+        subst_dict['proc_name'] = procedure.name
+        subst_dict['proc_arglst'] = ', '.join([arg.name for arg in procedure.args])
+        subst_dict['arg_specs'] = self.get_arg_specs(procedure.args)
+        subst_dict['return_spec'] = self.get_return_spec(procedure)
+
+        iface = template % subst_dict
+        buf.write(iface)
+
+    def get_arg_specs(self, procedure):
+        return ''
+
+    def get_return_spec(self, procedure):
+        return 'integer(fwrap_default_int) :: empty_func'

@@ -94,3 +94,40 @@ def test_get_filenames():
            (fc_wrap.FCWrapPxd(projname), "DP_c.pxd")]
     for obj, fname in ofs:
         eq_(obj.filename, fname)
+
+def test_generate_empty_func_interface():
+    empty_func = Mock(name='empty_func',
+                      args=(),
+                      return_type=Mock(type='integer', ktp='fwrap_default_int'))
+    buf = StringIO()
+    fc_wrap.FCWrapFortran("DP").generate_interface(empty_func, buf)
+    iface = '''
+interface
+    function empty_func()
+        use config
+        implicit none
+        integer(fwrap_default_int) :: empty_func
+    end function empty_func
+end interface
+'''.splitlines()
+    eq_(iface, buf.getvalue().splitlines())
+
+def test_generate_one_arg_func_iface():
+    one_arg_func = Mock(name='one_arg_func',
+                      args=[Mock(name='arg1',
+                                dtype=Mock(type='real', ktp='fwrap_default_real'),
+                                intent='inout')],
+                      return_type=Mock(type='integer', ktp='fwrap_default_int'))
+    buf = StringIO()
+    fc_wrap.FCWrapFortran("DP").generate_interface(one_arg_func, buf)
+    iface = '''
+interface
+    function one_arg_func(a)
+        use config
+        implicit none
+        real(fwrap_default_real), intent(inout) :: a
+        integer(fwrap_default_int) :: one_arg_func
+    end function one_arg_func
+end interface
+'''.splitlines()
+    eq_(iface, buf.getvalue().splitlines())
