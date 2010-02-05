@@ -18,7 +18,7 @@ class test_empty_func(object):
 
     def test_generate_fortran_empty_func(self):
         pname = "DP"
-        fc_wrap.FCWrapFortran(pname).generate([self.empty_func], self.buf)
+        fc_wrap.GenFortran(pname).generate([self.empty_func], self.buf)
         fort_file = '''
 function fw_empty_func() bind(c, name="empty_func_c")
     use iso_c_binding
@@ -37,7 +37,7 @@ end function fw_empty_func
 
     def test_generate_header_empty_func(self):
         pname = "DP"
-        fc_wrap.FCWrapCHeader(pname).generate([self.empty_func], self.buf)
+        fc_wrap.GenCHeader(pname).generate([self.empty_func], self.buf)
         header_file = '''
 #include "config.h"
 fwrap_default_int empty_func_c();
@@ -46,7 +46,7 @@ fwrap_default_int empty_func_c();
 
     def test_generate_pxd_empty_func(self):
         pname = "DP"
-        fc_wrap.FCWrapPxd(pname).generate([self.empty_func], self.buf)
+        fc_wrap.GenPxd(pname).generate([self.empty_func], self.buf)
         pxd_file = '''
 cdef extern from "config.h":
     ctypedef int fwrap_default_int
@@ -68,7 +68,7 @@ def _test_gen_fortran_one_arg_func():
                               intent="in")],
                    return_type=Mock(type='integer', ktp='fwrap_default_int'))
     buf = StringIO()
-    fc_wrap.FCWrapFortran(pname).generate([one_arg], buf)
+    fc_wrap.GenFortran(pname).generate([one_arg], buf)
     fort_file = '''
 function fw_one_arg(a) bind(c, name="one_arg_c")
     use config
@@ -89,9 +89,9 @@ end function fw_one_arg
 
 def test_get_filenames():
     projname = "DP"
-    ofs = [(fc_wrap.FCWrapFortran(projname), "DP_c.f90"),
-           (fc_wrap.FCWrapCHeader(projname), "DP_c.h"),
-           (fc_wrap.FCWrapPxd(projname), "DP_c.pxd")]
+    ofs = [(fc_wrap.GenFortran(projname), "DP_c.f90"),
+           (fc_wrap.GenCHeader(projname), "DP_c.h"),
+           (fc_wrap.GenPxd(projname), "DP_c.pxd")]
     for obj, fname in ofs:
         eq_(obj.filename, fname)
 
@@ -100,7 +100,7 @@ def test_generate_empty_func_interface():
                       args=(),
                       return_type=Mock(type='integer', ktp='fwrap_default_int'))
     buf = StringIO()
-    fc_wrap.FCWrapFortran("DP").generate_interface(empty_func, buf)
+    fc_wrap.GenFortran("DP").generate_interface(empty_func, buf)
     iface = '''
 interface
     function empty_func()
@@ -119,7 +119,7 @@ def test_generate_one_arg_func_iface():
                                 intent='inout')],
                       return_type=Mock(type='integer', ktp='fwrap_default_int'))
     buf = StringIO()
-    fc_wrap.FCWrapFortran("DP").generate_interface(one_arg_func, buf)
+    fc_wrap.GenFortran("DP").generate_interface(one_arg_func, buf)
     iface = '''
 interface
     function one_arg_func(a)

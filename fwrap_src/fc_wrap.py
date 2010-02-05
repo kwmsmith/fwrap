@@ -7,7 +7,7 @@ class SourceGenerator(object):
     def generate(self, program_unit_list, buf):
         raise NotImplementedError()
 
-class FCWrapPxd(SourceGenerator):
+class GenPxd(SourceGenerator):
 
     _fname_template = "%s_c.pxd"
 
@@ -21,7 +21,7 @@ cdef extern:
 '''
     )
 
-class FCWrapCHeader(SourceGenerator):
+class GenCHeader(SourceGenerator):
 
     _fname_template = "%s_c.h"
 
@@ -33,7 +33,7 @@ fwrap_default_int empty_func_c();
     )
 
 
-class FCWrapFortran(SourceGenerator):
+class GenFortran(SourceGenerator):
 
     _fname_template = "%s_c.f90"
 
