@@ -102,27 +102,29 @@ def test_gen_iface():
         fc_wrap.GenFortran('DP').generate_interface(ast, buf)
         eq_(istr, buf.getvalue(), msg='%s != %s' % (istr, buf.getvalue()))
 
-    data = [(
-Mock(name='one_arg_subr',
-    args=[Mock(name='aa',
-               dtype=Mock(type='complex', ktp='fwrap_default_complex'),
-               intent='in')],
-    return_type=None
-            ),
-'''interface
+
+    one_arg_subr = Mock(name='one_arg_subr',
+                        args=[Mock(name='aa',
+                                   dtype=Mock(type='complex', ktp='fwrap_default_complex'),
+                                   intent='in')],
+                        return_type=None)
+    one_arg_subr_iface = '''\
+interface
     subroutine one_arg_subr(aa)
         use config
         implicit none
         complex(fwrap_default_complex), intent(in) :: aa
     end subroutine one_arg_subr
 end interface
-'''),
-(Mock(name='one_arg_func',
-      args=[Mock(name='arg1',
-                dtype=Mock(type='real', ktp='fwrap_default_real'),
-                intent='inout')],
-      return_type=Mock(type='integer', ktp='fwrap_default_int')),
-'''interface
+'''
+
+    one_arg_func = Mock(name='one_arg_func',
+                        args=[Mock(name='arg1',
+                                  dtype=Mock(type='real', ktp='fwrap_default_real'),
+                                  intent='inout')],
+                        return_type=Mock(type='integer', ktp='fwrap_default_int'))
+    one_arg_func_iface = '''\
+interface
     function one_arg_func(arg1)
         use config
         implicit none
@@ -130,19 +132,23 @@ end interface
         integer(fwrap_default_int) :: one_arg_func
     end function one_arg_func
 end interface
-'''),
-(Mock(name='empty_func',
-      args=(),
-      return_type=Mock(type='integer', ktp='fwrap_default_int')),
-'''interface
+'''
+
+    empty_func = Mock(name='empty_func',
+                      args=(),
+                      return_type=Mock(type='integer', ktp='fwrap_default_int'))
+    empty_func_iface = '''\
+interface
     function empty_func()
         use config
         implicit none
         integer(fwrap_default_int) :: empty_func
     end function empty_func
 end interface
-''')]
+'''
+    data = [(one_arg_subr, one_arg_subr_iface),
+            (one_arg_func, one_arg_func_iface),
+            (empty_func, empty_func_iface)]
 
     for ast, iface in data:
         yield gen_iface_gen, ast, iface
-

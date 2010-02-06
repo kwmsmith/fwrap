@@ -68,6 +68,7 @@ end function fw_empty_func
             procedure.kind = 'function'
         else:
             procedure.kind = 'subroutine'
+
         buf.putln('interface')
         buf.indent()
         buf.putln(self.procedure_decl(procedure))
