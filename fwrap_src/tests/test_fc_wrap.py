@@ -1,6 +1,6 @@
 from fwrap_src import pyf_iface as pyf
 from fwrap_src import fc_wrap
-from cStringIO import StringIO
+from fwrap_src.code import CodeBuffer
 
 from nose.tools import ok_, eq_, set_trace
 
@@ -10,7 +10,7 @@ class test_empty_func(object):
         self.empty_func = pyf.function(name='empty_func',
                         args=(),
                         return_type=pyf.default_integer)
-        self.buf = StringIO()
+        self.buf = CodeBuffer()
 
     def teardown(self):
         del self.empty_func
@@ -67,7 +67,7 @@ def _test_gen_fortran_one_arg_func():
                               dtype=Mock(type='integer', ktp='fwrap_default_int'),
                               intent="in")],
                    return_type=Mock(type='integer', ktp='fwrap_default_int'))
-    buf = StringIO()
+    buf = CodeBuffer()
     fc_wrap.GenFortran(pname).generate([one_arg], buf)
     fort_file = '''
 function fw_one_arg(a) bind(c, name="one_arg_c")
@@ -95,39 +95,54 @@ def test_get_filenames():
     for obj, fname in ofs:
         eq_(obj.filename, fname)
 
-def test_generate_empty_func_interface():
-    empty_func = Mock(name='empty_func',
-                      args=(),
-                      return_type=Mock(type='integer', ktp='fwrap_default_int'))
-    buf = StringIO()
-    fc_wrap.GenFortran("DP").generate_interface(empty_func, buf)
-    iface = '''
-interface
+def test_gen_iface():
+
+    def gen_iface_gen(ast, istr):
+        buf = CodeBuffer()
+        fc_wrap.GenFortran('DP').generate_interface(ast, buf)
+        eq_(istr, buf.getvalue(), msg='%s != %s' % (istr, buf.getvalue()))
+
+    data = [(
+Mock(name='one_arg_subr',
+    args=[Mock(name='aa',
+               dtype=Mock(type='complex', ktp='fwrap_default_complex'),
+               intent='in')],
+    return_type=None
+            ),
+'''interface
+    subroutine one_arg_subr(aa)
+        use config
+        implicit none
+        complex(fwrap_default_complex), intent(in) :: aa
+    end subroutine one_arg_subr
+end interface
+'''),
+(Mock(name='one_arg_func',
+      args=[Mock(name='arg1',
+                dtype=Mock(type='real', ktp='fwrap_default_real'),
+                intent='inout')],
+      return_type=Mock(type='integer', ktp='fwrap_default_int')),
+'''interface
+    function one_arg_func(arg1)
+        use config
+        implicit none
+        real(fwrap_default_real), intent(inout) :: arg1
+        integer(fwrap_default_int) :: one_arg_func
+    end function one_arg_func
+end interface
+'''),
+(Mock(name='empty_func',
+      args=(),
+      return_type=Mock(type='integer', ktp='fwrap_default_int')),
+'''interface
     function empty_func()
         use config
         implicit none
         integer(fwrap_default_int) :: empty_func
     end function empty_func
 end interface
-'''.splitlines()
-    eq_(iface, buf.getvalue().splitlines())
+''')]
 
-def test_generate_one_arg_func_iface():
-    one_arg_func = Mock(name='one_arg_func',
-                      args=[Mock(name='arg1',
-                                dtype=Mock(type='real', ktp='fwrap_default_real'),
-                                intent='inout')],
-                      return_type=Mock(type='integer', ktp='fwrap_default_int'))
-    buf = StringIO()
-    fc_wrap.GenFortran("DP").generate_interface(one_arg_func, buf)
-    iface = '''
-interface
-    function one_arg_func(a)
-        use config
-        implicit none
-        real(fwrap_default_real), intent(inout) :: a
-        integer(fwrap_default_int) :: one_arg_func
-    end function one_arg_func
-end interface
-'''.splitlines()
-    eq_(iface, buf.getvalue().splitlines())
+    for ast, iface in data:
+        yield gen_iface_gen, ast, iface
+

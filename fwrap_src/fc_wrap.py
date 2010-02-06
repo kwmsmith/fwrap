@@ -54,28 +54,46 @@ end function fw_empty_func
 '''
     )
 
+    def procedure_decl(self, pro):
+        return "%s %s(%s)" % (pro.kind, pro.name, 
+                    ', '.join([arg.name for arg in pro.args]))
+
+    def procedure_end(self, pro):
+        return "end %s %s" % (pro.kind, pro.name)
+
     def generate_interface(self, procedure, buf):
-        template = '''
-interface
-    %(proc_type)s %(proc_name)s(%(proc_arglst)s)
-        use config
-        implicit none%(arg_specs)s
-        %(return_spec)s
-    end %(proc_type)s %(proc_name)s
-end interface
-'''
-        subst_dict = {}
-        subst_dict['proc_type'] = 'function'
-        subst_dict['proc_name'] = procedure.name
-        subst_dict['proc_arglst'] = ', '.join([arg.name for arg in procedure.args])
-        subst_dict['arg_specs'] = self.get_arg_specs(procedure.args)
-        subst_dict['return_spec'] = self.get_return_spec(procedure)
+        # XXX: this belongs in a visitor or as part of a separate
+        # ProcedureGenerator object.
+        if procedure.return_type:
+            procedure.kind = 'function'
+        else:
+            procedure.kind = 'subroutine'
+        buf.putln('interface')
+        buf.indent()
+        buf.putln(self.procedure_decl(procedure))
+        buf.indent()
+        buf.putln('use config')
+        buf.putln('implicit none')
+        for arg_spec in self.get_arg_specs(procedure.args):
+            buf.putln(arg_spec)
+        if procedure.return_type:
+            buf.putln(self.get_return_spec(procedure))
+        buf.dedent()
+        buf.putln(self.procedure_end(procedure))
+        buf.dedent()
+        buf.putln('end interface')
 
-        iface = template % subst_dict
-        buf.write(iface)
+    def get_arg_specs(self, args):
+        return [self.gen_arg_spec(arg.dtype.type,
+                        arg.dtype.ktp, arg.name,
+                        arg.intent) for arg in args]
 
-    def get_arg_specs(self, procedure):
-        return ''
+    def get_return_spec(self, pro):
+        return self.gen_arg_spec(pro.return_type.type,
+                            pro.return_type.ktp, pro.name)
 
-    def get_return_spec(self, procedure):
-        return 'integer(fwrap_default_int) :: empty_func'
+    def gen_arg_spec(self, type, ktp, name, intent=None):
+        spec = ['%s(%s)' % (type, ktp)]
+        if intent:
+            spec.append('intent(%s)' % intent)
+        return '%s :: %s' % (', '.join(spec), name)

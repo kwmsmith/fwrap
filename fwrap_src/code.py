@@ -1,3 +1,4 @@
+from cStringIO import StringIO
 from StringIOTree import StringIOTree
 from math import ceil, floor
 
@@ -55,6 +56,27 @@ def _break_line(line, level, max_len):
             in_escape = True
         elif in_escape:
             in_escape = False
+
+class CodeBuffer(object):
+    def __init__(self, level=0, indent="    "):
+        self.sio = StringIO()
+        self._level = level
+        self.indent_tok = indent
+
+    def putln(self, line):
+        self.sio.write(self.indent_tok * self._level + line + '\n')
+
+    def indent(self):
+        self._level += 1
+
+    def dedent(self):
+        self._level -= 1
+
+    def getvalue(self):
+        return self.sio.getvalue()
+
+    def write(self, s):
+        self.sio.write(s)
 
 class CodeWriter(object):
 
