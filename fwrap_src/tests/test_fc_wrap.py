@@ -16,11 +16,6 @@ class test_empty_func(object):
         del self.empty_func
         del self.buf
 
-    # def test_generate_fortran_empty_func(self):
-        # pname = "DP"
-        # fc_wrap.GenFortran(pname).generate([self.empty_func], self.buf)
-        # eq_(fort_file, self.buf.getvalue().splitlines())
-
     def test_generate_header_empty_func(self):
         pname = "DP"
         fc_wrap.GenCHeader(pname).generate([self.empty_func], self.buf)

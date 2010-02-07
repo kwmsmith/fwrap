@@ -48,6 +48,7 @@ class GenFortranProcedure(object):
         return "end %s %s" % (self.kind, self.name)
 
     def generate_interface(self, buf):
+        #XXX: extract method(s)...
         buf.putln('interface')
         buf.indent()
         buf.putln(self.procedure_decl())
@@ -63,6 +64,7 @@ class GenFortranProcedure(object):
         buf.putln('end interface')
 
     def gen_arg_specs(self, buf):
+        #XXX: replace 'conditional' with polymorphism...
         for arg in self.args:
             try:
                 buf.putln(self.gen_arg_spec(arg.dtype.type,
