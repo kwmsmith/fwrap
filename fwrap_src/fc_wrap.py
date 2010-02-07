@@ -55,20 +55,13 @@ end function fw_empty_func
     )
 
     def procedure_decl(self, pro):
-        return "%s %s(%s)" % (pro.kind, pro.name, 
+        return "%s %s(%s)" % (pro.kind, pro.name,
                     ', '.join([arg.name for arg in pro.args]))
 
     def procedure_end(self, pro):
         return "end %s %s" % (pro.kind, pro.name)
 
     def generate_interface(self, procedure, buf):
-        # XXX: this belongs in a visitor or as part of a separate
-        # ProcedureGenerator object.
-        if procedure.return_type:
-            procedure.kind = 'function'
-        else:
-            procedure.kind = 'subroutine'
-
         buf.putln('interface')
         buf.indent()
         buf.putln(self.procedure_decl(procedure))

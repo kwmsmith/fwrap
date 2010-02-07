@@ -62,7 +62,7 @@ class Mock(object):
 
 def _test_gen_fortran_one_arg_func():
     pname = "FB"
-    one_arg = Mock(name='one_arg',
+    one_arg = Mock(kind='function', name='one_arg',
                    args=[Mock(name='a',
                               dtype=Mock(type='integer', ktp='fwrap_default_int'),
                               intent="in")],
@@ -103,7 +103,7 @@ def test_gen_iface():
         eq_(istr, buf.getvalue(), msg='%s != %s' % (istr, buf.getvalue()))
 
 
-    one_arg_subr = Mock(name='one_arg_subr',
+    one_arg_subr = Mock(kind='subroutine', name='one_arg_subr',
                         args=[Mock(name='aa',
                                    dtype=Mock(type='complex', ktp='fwrap_default_complex'),
                                    intent='in')],
@@ -118,7 +118,7 @@ interface
 end interface
 '''
 
-    one_arg_func = Mock(name='one_arg_func',
+    one_arg_func = Mock(kind='function', name='one_arg_func',
                         args=[Mock(name='arg1',
                                   dtype=Mock(type='real', ktp='fwrap_default_real'),
                                   intent='inout')],
@@ -134,7 +134,7 @@ interface
 end interface
 '''
 
-    empty_func = Mock(name='empty_func',
+    empty_func = Mock(kind='function', name='empty_func',
                       args=(),
                       return_type=Mock(type='integer', ktp='fwrap_default_int'))
     empty_func_iface = '''\
