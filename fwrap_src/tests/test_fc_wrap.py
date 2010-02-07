@@ -97,6 +97,39 @@ end function fw_empty_func
     eq_(empty_func_wrapped, buf.getvalue(),
             msg='%s != %s' % (empty_func_wrapped, buf.getvalue()))
 
+def test_procedure_argument_iface():
+    passed_subr = Mock(kind='subroutine', name='passed_subr',
+                       args=[Mock(name='arg1',
+                                  dtype=Mock(type='integer', ktp='fwrap_default_int'),
+                                  intent='inout')],
+                       return_type=None)
+
+    proc_arg_func = Mock(kind='function', name='proc_arg_func',
+                         args=[Mock(name='passed_subr',
+                                    dtype=passed_subr,
+                                    intent=None)],
+                         return_type=Mock(type='integer', ktp='fwrap_default_int'))
+
+    proc_arg_iface = '''\
+interface
+    function proc_arg_func(passed_subr)
+        use config
+        implicit none
+        interface
+            subroutine passed_subr(arg1)
+                use config
+                implicit none
+                integer(fwrap_default_int), intent(inout) :: arg1
+            end subroutine passed_subr
+        end interface
+        integer(fwrap_default_int) :: proc_arg_func
+    end function proc_arg_func
+end interface
+'''
+    buf = CodeBuffer()
+    fc_wrap.GenFortranProcedure(proc_arg_func).generate_interface(buf)
+    eq_(proc_arg_iface, buf.getvalue(), msg='%s != %s' % (proc_arg_iface, buf.getvalue()))
+
 def test_gen_iface():
 
     def gen_iface_gen(ast, istr):
