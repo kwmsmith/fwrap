@@ -16,24 +16,10 @@ class test_empty_func(object):
         del self.empty_func
         del self.buf
 
-    def test_generate_fortran_empty_func(self):
-        pname = "DP"
-        fc_wrap.GenFortran(pname).generate([self.empty_func], self.buf)
-        fort_file = '''
-function fw_empty_func() bind(c, name="empty_func_c")
-    use iso_c_binding
-    implicit none
-    integer(c_int) :: fw_empty_func
-    interface
-        function empty_func()
-            implicit none
-            integer :: empty_func
-        end function empty_func
-    end interface
-    fw_empty_func = empty_func()
-end function fw_empty_func
-'''.splitlines()
-        eq_(fort_file, self.buf.getvalue().splitlines())
+    # def test_generate_fortran_empty_func(self):
+        # pname = "DP"
+        # fc_wrap.GenFortran(pname).generate([self.empty_func], self.buf)
+        # eq_(fort_file, self.buf.getvalue().splitlines())
 
     def test_generate_header_empty_func(self):
         pname = "DP"
@@ -87,34 +73,58 @@ end function fw_one_arg
 '''.splitlines()
     eq_(fort_file, buf.getvalue().splitlines())
 
-def test_get_filenames():
-    projname = "DP"
-    ofs = [(fc_wrap.GenFortran(projname), "DP_c.f90"),
-           (fc_wrap.GenCHeader(projname), "DP_c.h"),
-           (fc_wrap.GenPxd(projname), "DP_c.pxd")]
-    for obj, fname in ofs:
-        eq_(obj.filename, fname)
+def _test_gen_empty_func_wrapper():
+    empty_func = Mock(kind='function', name='empty_func',
+                      args=(),
+                      return_type=Mock(type='integer', ktp='fwrap_default_int'))
+    empty_func_wrapped = '''\
+function fw_empty_func() bind(c, name="empty_func_c")
+    use config
+    implicit none
+    integer(fwrap_default_int) :: fw_empty_func
+    interface
+        function empty_func()
+            use config
+            implicit none
+            integer :: empty_func
+        end function empty_func
+    end interface
+    fw_empty_func = empty_func()
+end function fw_empty_func
+'''
+    buf = CodeBuffer()
+    fc_wrap.GenFortranProcedure(empty_func).generate_wrapper(buf)
+    eq_(empty_func_wrapped, buf.getvalue(),
+            msg='%s != %s' % (empty_func_wrapped, buf.getvalue()))
 
 def test_gen_iface():
 
     def gen_iface_gen(ast, istr):
         buf = CodeBuffer()
-        fc_wrap.GenFortran('DP').generate_interface(ast, buf)
+        fc_wrap.GenFortranProcedure(ast).generate_interface(buf)
         eq_(istr, buf.getvalue(), msg='%s != %s' % (istr, buf.getvalue()))
 
 
-    one_arg_subr = Mock(kind='subroutine', name='one_arg_subr',
-                        args=[Mock(name='aa',
-                                   dtype=Mock(type='complex', ktp='fwrap_default_complex'),
-                                   intent='in')],
-                        return_type=None)
-    one_arg_subr_iface = '''\
+    many_arg_subr = Mock(kind='subroutine', name='many_arg_subr',
+                         args=[Mock(name='arg1',
+                                    dtype=Mock(type='complex', ktp='fwrap_sik_10_20'),
+                                    intent='in'),
+                               Mock(name='arg2',
+                                    dtype=Mock(type='real', ktp='fwrap_double_precision'),
+                                    intent='inout'),
+                               Mock(name='arg3',
+                                    dtype=Mock(type='integer', ktp='fwrap_int_x_8'),
+                                    intent='out')],
+                         return_type=None)
+    many_arg_subr_iface = '''\
 interface
-    subroutine one_arg_subr(aa)
+    subroutine many_arg_subr(arg1, arg2, arg3)
         use config
         implicit none
-        complex(fwrap_default_complex), intent(in) :: aa
-    end subroutine one_arg_subr
+        complex(fwrap_sik_10_20), intent(in) :: arg1
+        real(fwrap_double_precision), intent(inout) :: arg2
+        integer(fwrap_int_x_8), intent(out) :: arg3
+    end subroutine many_arg_subr
 end interface
 '''
 
@@ -146,7 +156,7 @@ interface
     end function empty_func
 end interface
 '''
-    data = [(one_arg_subr, one_arg_subr_iface),
+    data = [(many_arg_subr, many_arg_subr_iface),
             (one_arg_func, one_arg_func_iface),
             (empty_func, empty_func_iface)]
 
