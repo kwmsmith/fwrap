@@ -9,12 +9,24 @@ class var(object):
     def __init__(self, name, dtype):
         pass
 
+class argument(object):
+    def __init__(self, name, dtype, intent):
+        self.name = name
+        self.dtype = dtype
+        self.intent = intent
+
+class dtype(object):
+    def __init__(self, type, ktp):
+        self.type = type
+        self.ktp = ktp
+
 class function(object):
     
     def __init__(self, name, args, return_type):
         self.name = name
         self.args = args
         self.return_type = return_type
+        self.kind = self.__class__.__name__
 
     def __eq__(self, other):
         return self.name == other.name and \
@@ -24,7 +36,9 @@ class function(object):
 class subroutine(object):
 
     def __init__(self, name, args):
-        pass
+        self.name = name
+        self.args = args
+        self.kind = self.__class__.__name__
 
 class module(object):
 

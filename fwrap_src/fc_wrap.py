@@ -32,13 +32,24 @@ fwrap_default_int empty_func_c();
 '''
     )
 
+class FortranInterfaceGen(object):
+
+    def __init__(self, proc):
+        pass
+
+    def visit_Procedure(self, node):
+        pass
+
 class GenFortranProcedure(object):
 
     def __init__(self, proc):
         self.kind = proc.kind
         self.name = proc.name
         self.args = proc.args
-        self.return_type = proc.return_type
+        try:
+            self.return_type = proc.return_type
+        except AttributeError:
+            self.return_type = None
 
     def procedure_decl(self):
         return "%s %s(%s)" % (self.kind, self.name,
@@ -64,7 +75,7 @@ class GenFortranProcedure(object):
         buf.putln('end interface')
 
     def gen_arg_specs(self, buf):
-        #XXX: replace 'conditional' with polymorphism...
+        #XXX: replace conditional with polymorphism...
         for arg in self.args:
             try:
                 buf.putln(self.gen_arg_spec(arg.dtype.type,

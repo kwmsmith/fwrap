@@ -37,17 +37,13 @@ cdef extern:
 '''.splitlines()
         eq_(pxd_file, self.buf.getvalue().splitlines())
 
-class Mock(object):
-    def __init__(self, **kwargs):
-        self.__dict__.update(**kwargs)
-
 def _test_gen_fortran_one_arg_func():
     pname = "FB"
-    one_arg = Mock(kind='function', name='one_arg',
-                   args=[Mock(name='a',
-                              dtype=Mock(type='integer', ktp='fwrap_default_int'),
-                              intent="in")],
-                   return_type=Mock(type='integer', ktp='fwrap_default_int'))
+    one_arg = pyf.function(name='one_arg',
+                           args=[pyf.argument(name='a',
+                                      dtype=pyf.dtype(type='integer', ktp='fwrap_default_int'),
+                                      intent="in")],
+                           return_type=dtype(type='integer', ktp='fwrap_default_int'))
     buf = CodeBuffer()
     fc_wrap.GenFortran(pname).generate([one_arg], buf)
     fort_file = '''
@@ -69,9 +65,9 @@ end function fw_one_arg
     eq_(fort_file, buf.getvalue().splitlines())
 
 def _test_gen_empty_func_wrapper():
-    empty_func = Mock(kind='function', name='empty_func',
+    empty_func = pyf.function(name='empty_func',
                       args=(),
-                      return_type=Mock(type='integer', ktp='fwrap_default_int'))
+                      return_type=dtype(type='integer', ktp='fwrap_default_int'))
     empty_func_wrapped = '''\
 function fw_empty_func() bind(c, name="empty_func_c")
     use config
@@ -93,17 +89,16 @@ end function fw_empty_func
             msg='%s != %s' % (empty_func_wrapped, buf.getvalue()))
 
 def test_procedure_argument_iface():
-    passed_subr = Mock(kind='subroutine', name='passed_subr',
-                       args=[Mock(name='arg1',
-                                  dtype=Mock(type='integer', ktp='fwrap_default_int'),
-                                  intent='inout')],
-                       return_type=None)
+    passed_subr = pyf.subroutine(name='passed_subr',
+                       args=[pyf.argument(name='arg1',
+                                  dtype=pyf.dtype(type='integer', ktp='fwrap_default_int'),
+                                  intent='inout')])
 
-    proc_arg_func = Mock(kind='function', name='proc_arg_func',
-                         args=[Mock(name='passed_subr',
+    proc_arg_func = pyf.function(name='proc_arg_func',
+                         args=[pyf.argument(name='passed_subr',
                                     dtype=passed_subr,
                                     intent=None)],
-                         return_type=Mock(type='integer', ktp='fwrap_default_int'))
+                         return_type=pyf.dtype(type='integer', ktp='fwrap_default_int'))
 
     proc_arg_iface = '''\
 interface
@@ -133,17 +128,16 @@ def test_gen_iface():
         eq_(istr, buf.getvalue(), msg='%s != %s' % (istr, buf.getvalue()))
 
 
-    many_arg_subr = Mock(kind='subroutine', name='many_arg_subr',
-                         args=[Mock(name='arg1',
-                                    dtype=Mock(type='complex', ktp='fwrap_sik_10_20'),
+    many_arg_subr = pyf.subroutine(name='many_arg_subr',
+                         args=[pyf.argument(name='arg1',
+                                    dtype=pyf.dtype(type='complex', ktp='fwrap_sik_10_20'),
                                     intent='in'),
-                               Mock(name='arg2',
-                                    dtype=Mock(type='real', ktp='fwrap_double_precision'),
+                               pyf.argument(name='arg2',
+                                    dtype=pyf.dtype(type='real', ktp='fwrap_double_precision'),
                                     intent='inout'),
-                               Mock(name='arg3',
-                                    dtype=Mock(type='integer', ktp='fwrap_int_x_8'),
-                                    intent='out')],
-                         return_type=None)
+                               pyf.argument(name='arg3',
+                                    dtype=pyf.dtype(type='integer', ktp='fwrap_int_x_8'),
+                                    intent='out')])
     many_arg_subr_iface = '''\
 interface
     subroutine many_arg_subr(arg1, arg2, arg3)
@@ -156,11 +150,11 @@ interface
 end interface
 '''
 
-    one_arg_func = Mock(kind='function', name='one_arg_func',
-                        args=[Mock(name='arg1',
-                                  dtype=Mock(type='real', ktp='fwrap_default_real'),
+    one_arg_func = pyf.function(name='one_arg_func',
+                        args=[pyf.argument(name='arg1',
+                                  dtype=pyf.dtype(type='real', ktp='fwrap_default_real'),
                                   intent='inout')],
-                        return_type=Mock(type='integer', ktp='fwrap_default_int'))
+                        return_type=pyf.dtype(type='integer', ktp='fwrap_default_int'))
     one_arg_func_iface = '''\
 interface
     function one_arg_func(arg1)
@@ -172,9 +166,9 @@ interface
 end interface
 '''
 
-    empty_func = Mock(kind='function', name='empty_func',
+    empty_func = pyf.function(name='empty_func',
                       args=(),
-                      return_type=Mock(type='integer', ktp='fwrap_default_int'))
+                      return_type=pyf.dtype(type='integer', ktp='fwrap_default_int'))
     empty_func_iface = '''\
 interface
     function empty_func()
