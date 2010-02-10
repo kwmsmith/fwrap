@@ -69,7 +69,7 @@ def parse_and_validate_args():
 
 def generate_ast():
     # this is a stub for now...
-    empty_func = pyf.function(name='empty_func',
+    empty_func = pyf.Function(name='empty_func',
                     args=(),
                     return_type=pyf.default_integer)
     return [empty_func]

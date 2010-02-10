@@ -7,7 +7,7 @@ from nose.tools import ok_, eq_, set_trace
 class test_empty_func(object):
 
     def setup(self):
-        self.empty_func = pyf.function(name='empty_func',
+        self.empty_func = pyf.Function(name='empty_func',
                         args=(),
                         return_type=pyf.default_integer)
         self.buf = CodeBuffer()
@@ -39,11 +39,11 @@ cdef extern:
 
 def _test_gen_fortran_one_arg_func():
     pname = "FB"
-    one_arg = pyf.function(name='one_arg',
-                           args=[pyf.argument(name='a',
-                                      dtype=pyf.dtype(type='integer', ktp='fwrap_default_int'),
+    one_arg = pyf.Function(name='one_arg',
+                           args=[pyf.Argument(name='a',
+                                      dtype=pyf.Dtype(type='integer', ktp='fwrap_default_int'),
                                       intent="in")],
-                           return_type=dtype(type='integer', ktp='fwrap_default_int'))
+                           return_type=Dtype(type='integer', ktp='fwrap_default_int'))
     buf = CodeBuffer()
     fc_wrap.GenFortran(pname).generate([one_arg], buf)
     fort_file = '''
@@ -65,9 +65,9 @@ end function fw_one_arg
     eq_(fort_file, buf.getvalue().splitlines())
 
 def _test_gen_empty_func_wrapper():
-    empty_func = pyf.function(name='empty_func',
+    empty_func = pyf.Function(name='empty_func',
                       args=(),
-                      return_type=dtype(type='integer', ktp='fwrap_default_int'))
+                      return_type=Dtype(type='integer', ktp='fwrap_default_int'))
     empty_func_wrapped = '''\
 function fw_empty_func() bind(c, name="empty_func_c")
     use config
@@ -84,21 +84,19 @@ function fw_empty_func() bind(c, name="empty_func_c")
 end function fw_empty_func
 '''
     buf = CodeBuffer()
-    fc_wrap.GenFortranProcedure(empty_func).generate_wrapper(buf)
+    fc_wrap.FortranInterfaceGen(buf).generate_interface(empty_func)
     eq_(empty_func_wrapped, buf.getvalue(),
             msg='%s != %s' % (empty_func_wrapped, buf.getvalue()))
 
 def test_procedure_argument_iface():
-    passed_subr = pyf.subroutine(name='passed_subr',
-                       args=[pyf.argument(name='arg1',
-                                  dtype=pyf.dtype(type='integer', ktp='fwrap_default_int'),
+    passed_subr = pyf.Subroutine(name='passed_subr',
+                       args=[pyf.Argument(name='arg1',
+                                  dtype=pyf.Dtype(type='integer', ktp='fwrap_default_int'),
                                   intent='inout')])
 
-    proc_arg_func = pyf.function(name='proc_arg_func',
-                         args=[pyf.argument(name='passed_subr',
-                                    dtype=passed_subr,
-                                    intent=None)],
-                         return_type=pyf.dtype(type='integer', ktp='fwrap_default_int'))
+    proc_arg_func = pyf.Function(name='proc_arg_func',
+                         args=[passed_subr],
+                         return_type=pyf.Dtype(type='integer', ktp='fwrap_default_int'))
 
     proc_arg_iface = '''\
 interface
@@ -117,26 +115,26 @@ interface
 end interface
 '''
     buf = CodeBuffer()
-    fc_wrap.GenFortranProcedure(proc_arg_func).generate_interface(buf)
+    fc_wrap.FortranInterfaceGen(buf).generate_interface(proc_arg_func)
     eq_(proc_arg_iface, buf.getvalue(), msg='%s != %s' % (proc_arg_iface, buf.getvalue()))
 
 def test_gen_iface():
 
     def gen_iface_gen(ast, istr):
         buf = CodeBuffer()
-        fc_wrap.GenFortranProcedure(ast).generate_interface(buf)
+        fc_wrap.FortranInterfaceGen(buf).generate_interface(ast)
         eq_(istr, buf.getvalue(), msg='%s != %s' % (istr, buf.getvalue()))
 
 
-    many_arg_subr = pyf.subroutine(name='many_arg_subr',
-                         args=[pyf.argument(name='arg1',
-                                    dtype=pyf.dtype(type='complex', ktp='fwrap_sik_10_20'),
+    many_arg_subr = pyf.Subroutine(name='many_arg_subr',
+                         args=[pyf.Argument(name='arg1',
+                                    dtype=pyf.Dtype(type='complex', ktp='fwrap_sik_10_20'),
                                     intent='in'),
-                               pyf.argument(name='arg2',
-                                    dtype=pyf.dtype(type='real', ktp='fwrap_double_precision'),
+                               pyf.Argument(name='arg2',
+                                    dtype=pyf.Dtype(type='real', ktp='fwrap_double_precision'),
                                     intent='inout'),
-                               pyf.argument(name='arg3',
-                                    dtype=pyf.dtype(type='integer', ktp='fwrap_int_x_8'),
+                               pyf.Argument(name='arg3',
+                                    dtype=pyf.Dtype(type='integer', ktp='fwrap_int_x_8'),
                                     intent='out')])
     many_arg_subr_iface = '''\
 interface
@@ -150,11 +148,11 @@ interface
 end interface
 '''
 
-    one_arg_func = pyf.function(name='one_arg_func',
-                        args=[pyf.argument(name='arg1',
-                                  dtype=pyf.dtype(type='real', ktp='fwrap_default_real'),
+    one_arg_func = pyf.Function(name='one_arg_func',
+                        args=[pyf.Argument(name='arg1',
+                                  dtype=pyf.Dtype(type='real', ktp='fwrap_default_real'),
                                   intent='inout')],
-                        return_type=pyf.dtype(type='integer', ktp='fwrap_default_int'))
+                        return_type=pyf.Dtype(type='integer', ktp='fwrap_default_int'))
     one_arg_func_iface = '''\
 interface
     function one_arg_func(arg1)
@@ -166,9 +164,9 @@ interface
 end interface
 '''
 
-    empty_func = pyf.function(name='empty_func',
+    empty_func = pyf.Function(name='empty_func',
                       args=(),
-                      return_type=pyf.dtype(type='integer', ktp='fwrap_default_int'))
+                      return_type=pyf.Dtype(type='integer', ktp='fwrap_default_int'))
     empty_func_iface = '''\
 interface
     function empty_func()

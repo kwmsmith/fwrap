@@ -12,7 +12,7 @@ function empty_func()
 end function empty_func
 ''')
     ast = main.generate_ast()
-    empty_func = pyf.function(name='empty_func',
+    empty_func = pyf.Function(name='empty_func',
                     args=(),
                     return_type=pyf.default_integer)
     eq_(ast, [empty_func])

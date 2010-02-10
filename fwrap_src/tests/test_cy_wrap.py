@@ -7,7 +7,7 @@ from nose.tools import ok_, eq_, set_trace
 class test_empty_func(object):
 
     def setup(self):
-        self.empty_func = pyf.function(name='empty_func',
+        self.empty_func = pyf.Function(name='empty_func',
                             args=(),
                             return_type=pyf.default_integer)
         self.buf = StringIO()
