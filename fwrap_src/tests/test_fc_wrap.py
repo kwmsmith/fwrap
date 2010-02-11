@@ -37,54 +37,61 @@ cdef extern:
 '''.splitlines()
         eq_(pxd_file, self.buf.getvalue().splitlines())
 
-def _test_gen_fortran_one_arg_func():
-    pname = "FB"
-    one_arg = pyf.Function(name='one_arg',
+def test_gen_fortran_one_arg_func():
+    one_arg = pyf.Subroutine(name='one_arg',
                            args=[pyf.Argument(name='a',
                                       dtype=pyf.Dtype(type='integer', ktp='fwrap_default_int'),
+                                      intent="in")])
+    one_arg_wrapped = pyf.WrappedSubroutine(name='one_arg_c',
+                            args=[pyf.Argument(name='a',
+                                      dtype=pyf.Dtype(type='integer', ktp='fwrap_default_int'),
                                       intent="in")],
-                           return_type=Dtype(type='integer', ktp='fwrap_default_int'))
+                            wrapped=one_arg)
     buf = CodeBuffer()
-    fc_wrap.GenFortran(pname).generate([one_arg], buf)
-    fort_file = '''
-function fw_one_arg(a) bind(c, name="one_arg_c")
+    fc_wrap.FortranWrapperGen(buf).generate(one_arg_wrapped)
+    fort_file = '''\
+subroutine one_arg_c(a) bind(c, name="one_arg_c")
     use config
     implicit none
     integer(fwrap_default_int), intent(in) :: a
-    integer(fwrap_default_int) :: fw_one_arg
     interface
-        function one_arg(a)
+        subroutine one_arg(a)
+            use config
             implicit none
-            integer, intent(in) :: a
-            integer :: empty_func
-        end function one_arg
+            integer(fwrap_default_int), intent(in) :: a
+        end subroutine one_arg
     end interface
-    fw_one_arg = one_arg(a)
-end function fw_one_arg
-'''.splitlines()
-    eq_(fort_file, buf.getvalue().splitlines())
+    call one_arg(a)
+end subroutine one_arg_c
+'''
+    eq_(fort_file, buf.getvalue(),
+            msg='%s != %s' % (fort_file, buf.getvalue()))
 
-def _test_gen_empty_func_wrapper():
+def test_gen_empty_func_wrapper():
     empty_func = pyf.Function(name='empty_func',
                       args=(),
-                      return_type=Dtype(type='integer', ktp='fwrap_default_int'))
+                      return_type=pyf.Dtype(type='integer', ktp='fwrap_default_int'))
+    empty_func_wrapper = pyf.WrappedFunction(name='empty_func_c',
+                      args=(),
+                      wrapped=empty_func,
+                      return_type=pyf.Dtype(type='integer', ktp='fwrap_default_int'))
     empty_func_wrapped = '''\
-function fw_empty_func() bind(c, name="empty_func_c")
+function empty_func_c() bind(c, name="empty_func_c")
     use config
     implicit none
-    integer(fwrap_default_int) :: fw_empty_func
+    integer(fwrap_default_int) :: empty_func_c
     interface
         function empty_func()
             use config
             implicit none
-            integer :: empty_func
+            integer(fwrap_default_int) :: empty_func
         end function empty_func
     end interface
-    fw_empty_func = empty_func()
-end function fw_empty_func
+    empty_func_c = empty_func()
+end function empty_func_c
 '''
     buf = CodeBuffer()
-    fc_wrap.FortranInterfaceGen(buf).generate_interface(empty_func)
+    fc_wrap.FortranWrapperGen(buf).generate(empty_func_wrapper)
     eq_(empty_func_wrapped, buf.getvalue(),
             msg='%s != %s' % (empty_func_wrapped, buf.getvalue()))
 
@@ -115,14 +122,14 @@ interface
 end interface
 '''
     buf = CodeBuffer()
-    fc_wrap.FortranInterfaceGen(buf).generate_interface(proc_arg_func)
+    fc_wrap.FortranInterfaceGen(buf).generate(proc_arg_func)
     eq_(proc_arg_iface, buf.getvalue(), msg='%s != %s' % (proc_arg_iface, buf.getvalue()))
 
 def test_gen_iface():
 
     def gen_iface_gen(ast, istr):
         buf = CodeBuffer()
-        fc_wrap.FortranInterfaceGen(buf).generate_interface(ast)
+        fc_wrap.FortranInterfaceGen(buf).generate(ast)
         eq_(istr, buf.getvalue(), msg='%s != %s' % (istr, buf.getvalue()))
 
 

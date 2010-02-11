@@ -144,21 +144,21 @@ class TreeVisitor(BasicVisitor):
                 enumerate(content)]
         return result
 
-class FortranInterfaceGen(TreeVisitor):
+class FortranGen(TreeVisitor):
 
     def __init__(self, buf):
-        super(FortranInterfaceGen, self).__init__()
+        super(FortranGen, self).__init__()
         self.buf = buf
 
-    def procedure_decl(self, node):
-        return "%s %s(%s)" % (node.kind, node.name,
-                    ', '.join([arg.name for arg in node.args]))
+    def generate(self, node):
+        self.visit(node)
 
     def procedure_end(self, node):
         return "end %s %s" % (node.kind, node.name)
 
     def return_spec(self, node):
-        ret_decl = pyf.Argument(name=node.name, dtype=node.return_type, intent=None)
+        ret_decl = pyf.Argument(name=node.name,
+                        dtype=node.return_type, intent=None)
         return self.arg_spec(ret_decl)
 
     def arg_spec(self, arg):
@@ -170,22 +170,58 @@ class FortranInterfaceGen(TreeVisitor):
     def visit_Argument(self, node):
         self.buf.putln(self.arg_spec(node))
 
-    def visit_Procedure(self, node):
+    def proc_preamble(self, node):
         buf = self.buf
-        buf.putln('interface')
-        buf.indent()
-        buf.putln(self.procedure_decl(node))
-        buf.indent()
         buf.putln('use config')
         buf.putln('implicit none')
         for arg in node.args:
             self.visit(arg)
         if isinstance(node, pyf.Function):
             buf.putln(self.return_spec(node))
+
+class FortranWrapperGen(FortranGen):
+
+    def arg_list(self, args):
+        return ', '.join([arg.name for arg in args])
+
+    def procedure_decl(self, node):
+        return '%s %s(%s) bind(c, name="%s")' % \
+                (node.kind, node.name,
+                        self.arg_list(node.args),
+                        node.name)
+
+    def proc_body(self, node):
+        proc_call = "%s(%s)" % (node.wrapped.name,
+                        self.arg_list(node.wrapped.args))
+        if isinstance(node, pyf.WrappedSubroutine):
+            return "call %s" % proc_call
+        elif isinstance(node, pyf.WrappedFunction):
+            return "%s = %s" % (node.name, proc_call)
+
+    def visit_Procedure(self, node):
+        buf = self.buf
+        buf.putln(self.procedure_decl(node))
+        buf.indent()
+        self.proc_preamble(node)
+        FortranInterfaceGen(buf).generate(node.wrapped)
+        buf.putln(self.proc_body(node))
+        buf.dedent()
+        buf.putln(self.procedure_end(node))
+
+class FortranInterfaceGen(FortranGen):
+
+    def procedure_decl(self, node):
+        return "%s %s(%s)" % (node.kind, node.name,
+                    ', '.join([arg.name for arg in node.args]))
+
+    def visit_Procedure(self, node):
+        buf = self.buf
+        buf.putln('interface')
+        buf.indent()
+        buf.putln(self.procedure_decl(node))
+        buf.indent()
+        self.proc_preamble(node)
         buf.dedent()
         buf.putln(self.procedure_end(node))
         buf.dedent()
         buf.putln('end interface')
-
-    def generate_interface(self, node):
-        self.visit(node)
