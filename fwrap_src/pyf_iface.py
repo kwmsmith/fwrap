@@ -1,4 +1,11 @@
-
+# Specification statements:
+# A variable must have a type:
+# Base types are integer, real, complex, character, logical.
+# Derived types...
+# The base type may have a kind type parameter.
+# A variable may have these attributes:
+# dimension -- list of dimension specs
+# 
 
 default_integer = object()
 default_real = object()
@@ -7,16 +14,30 @@ default_complex = object()
 
 class Var(object):
     def __init__(self, name, dtype):
-        pass
-
-class Argument(object):
-    def __init__(self, name, dtype, intent=None):
         self.name = name
         self.dtype = dtype
+
+class Argument(object):
+    def __init__(self, var, intent=None):
+        self._var = var
         self.intent = intent
 
+    def _get_name(self):
+        return self._var.name
+
+    def _get_dtype(self):
+        return self._var.dtype
+
+    name = property(_get_name)
+    dtype = property(_get_dtype)
+
+class ProcArgument(object):
+    def __init__(self, proc):
+        self.proc = proc
+        self.name = proc.name
+
 class Dtype(object):
-    def __init__(self, type, ktp):
+    def __init__(self, type, ktp, dimension=None):
         self.type = type
         self.ktp = ktp
 

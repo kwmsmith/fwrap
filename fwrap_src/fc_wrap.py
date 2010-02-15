@@ -157,8 +157,9 @@ class FortranGen(TreeVisitor):
         return "end %s %s" % (node.kind, node.name)
 
     def return_spec(self, node):
-        ret_decl = pyf.Argument(name=node.name,
-                        dtype=node.return_type, intent=None)
+        ret_decl = pyf.Argument(pyf.Var(name=node.name,
+                                        dtype=node.return_type),
+                                intent=None)
         return self.arg_spec(ret_decl)
 
     def arg_spec(self, arg):
@@ -166,6 +167,9 @@ class FortranGen(TreeVisitor):
         if arg.intent:
             spec.append('intent(%s)' % arg.intent)
         return '%s :: %s' % (', '.join(spec), arg.name)
+
+    def visit_ProcArgument(self, node):
+        self.visit(node.proc)
 
     def visit_Argument(self, node):
         self.buf.putln(self.arg_spec(node))
