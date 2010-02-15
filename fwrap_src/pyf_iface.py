@@ -41,12 +41,18 @@ class Dtype(object):
         self.type = type
         self.ktp = ktp
 
+class ArgManager(object):
+    
+    def __init__(self, args):
+        self.args = args
+
 class Procedure(object):
 
     def __init__(self, name, args):
         super(Procedure, self).__init__()
         self.name = name
         self.args = args
+        # self.amgr = ArgManager(args)
 
 class Function(Procedure):
     
@@ -60,10 +66,15 @@ class Function(Procedure):
                self.args == other.args and \
                self.return_type == other.return_type
 
-class WrappedFunction(Function):
-    def __init__(self, name, args, wrapped, return_type):
-        super(WrappedFunction, self).__init__(name, args, return_type)
+class FunctionWrapper(Function):
+    @classmethod
+    def from_proc(cls, name, wrapped):
+        self = cls(name, wrapped.args, wrapped.return_type)
         self.wrapped = wrapped
+        return self
+
+    def __init__(self, name, args, return_type):
+        super(FunctionWrapper, self).__init__(name, args, return_type)
 
 class Subroutine(Procedure):
 
@@ -71,10 +82,16 @@ class Subroutine(Procedure):
         super(Subroutine, self).__init__(name, args)
         self.kind = 'subroutine'
 
-class WrappedSubroutine(Subroutine):
-    def __init__(self, name, args, wrapped):
-        super(WrappedSubroutine, self).__init__(name, args)
+class SubroutineWrapper(Subroutine):
+
+    @classmethod
+    def from_proc(cls, name, wrapped):
+        self = cls(name, wrapped.args)
         self.wrapped = wrapped
+        return self
+
+    def __init__(self, name, args):
+        super(SubroutineWrapper, self).__init__(name, args)
 
 class Module(object):
 

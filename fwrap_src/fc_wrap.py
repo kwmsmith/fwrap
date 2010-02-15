@@ -194,13 +194,22 @@ class FortranWrapperGen(FortranGen):
                         self.arg_list(node.args),
                         node.name)
 
-    def proc_body(self, node):
+    def declare_temps(self, node):
+        pass
+
+    def pre_call(self, node):
+        pass
+
+    def proc_call(self, node):
         proc_call = "%s(%s)" % (node.wrapped.name,
                         self.arg_list(node.wrapped.args))
-        if isinstance(node, pyf.WrappedSubroutine):
-            return "call %s" % proc_call
-        elif isinstance(node, pyf.WrappedFunction):
-            return "%s = %s" % (node.name, proc_call)
+        if isinstance(node, pyf.SubroutineWrapper):
+            self.buf.putln("call %s" % proc_call)
+        elif isinstance(node, pyf.FunctionWrapper):
+            self.buf.putln("%s = %s" % (node.name, proc_call))
+
+    def post_call(self, node):
+        pass
 
     def visit_Procedure(self, node):
         buf = self.buf
@@ -208,7 +217,10 @@ class FortranWrapperGen(FortranGen):
         buf.indent()
         self.proc_preamble(node)
         FortranInterfaceGen(buf).generate(node.wrapped)
-        buf.putln(self.proc_body(node))
+        self.declare_temps(node)
+        self.pre_call(node)
+        self.proc_call(node)
+        self.post_call(node)
         buf.dedent()
         buf.putln(self.procedure_end(node))
 

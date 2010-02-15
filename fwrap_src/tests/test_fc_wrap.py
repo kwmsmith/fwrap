@@ -67,11 +67,7 @@ def test_gen_fortran_one_arg_func():
                            args=[pyf.Argument(var=pyf.Var(name='a',
                                                           dtype=pyf.Dtype(type='integer', ktp='fwrap_default_int')),
                                       intent="in")])
-    one_arg_wrapped = pyf.WrappedSubroutine(name='one_arg_c',
-                            args=[pyf.Argument(var=pyf.Var(name='a',
-                                                           dtype=pyf.Dtype(type='integer', ktp='fwrap_default_int')),
-                                      intent="in")],
-                            wrapped=one_arg)
+    one_arg_wrapped = pyf.SubroutineWrapper.from_proc(name='one_arg_c', wrapped=one_arg)
     buf = CodeBuffer()
     fc_wrap.FortranWrapperGen(buf).generate(one_arg_wrapped)
     fort_file = '''\
@@ -95,10 +91,8 @@ def test_gen_empty_func_wrapper():
     empty_func = pyf.Function(name='empty_func',
                       args=(),
                       return_type=pyf.Dtype(type='integer', ktp='fwrap_default_int'))
-    empty_func_wrapper = pyf.WrappedFunction(name='empty_func_c',
-                      args=(),
-                      wrapped=empty_func,
-                      return_type=pyf.Dtype(type='integer', ktp='fwrap_default_int'))
+    empty_func_wrapper = pyf.FunctionWrapper.from_proc(name='empty_func_c', wrapped=empty_func)
+                      
     empty_func_wrapped = '''\
     function empty_func_c() bind(c, name="empty_func_c")
         use config
@@ -218,11 +212,7 @@ def test_logical_wrapper():
                            args=[pyf.Argument(pyf.Var(name='lgcl',
                                                       dtype=pyf.Dtype(type='logical', ktp='fwrap_lgcl_ktp')),
                                               intent="inout")])
-    lgcl_arg_wrapped = pyf.WrappedSubroutine(name='lgcl_arg_c',
-                            args=[pyf.Argument(pyf.Var(name='lgcl',
-                                                       dtype=pyf.Dtype(type='logical', ktp='fwrap_lgcl_ktp')),
-                                              intent="inout")],
-                            wrapped=lgcl_arg)
+    lgcl_arg_wrapped = pyf.SubroutineWrapper.from_proc(name='lgcl_arg_c', wrapped=lgcl_arg)
     buf = CodeBuffer()
     fc_wrap.FortranWrapperGen(buf).generate(lgcl_arg_wrapped)
     fort_file = '''\
@@ -262,11 +252,7 @@ def _test_assumed_size_int_array():
                                                       dtype=pyf.Dtype(type='integer', ktp='fwrap_int',
                                                               dimension=[':',':'])),
                                               intent="inout")])
-    arr_arg_wrapped = pyf.WrappedSubroutine(name='lgcl_arg_c',
-                            args=[pyf.Argument(name='lgcl',
-                                      dtype=pyf.Dtype(type='logical', ktp='fwrap_lgcl_ktp'),
-                                      intent="inout")],
-                            wrapped=lgcl_arg)
+    arr_arg_wrapped = pyf.SubroutineWrapper(name='lgcl_arg_c', wrapped=lgcl_arg)
     buf = CodeBuffer()
     fc_wrap.FortranWrapperGen(buf).generate(lgcl_arg_wrapped)
     fort_file = '''\
