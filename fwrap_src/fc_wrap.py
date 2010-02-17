@@ -160,19 +160,13 @@ class FortranGen(TreeVisitor):
         ret_decl = pyf.Argument(pyf.Var(name=node.name,
                                         dtype=node.return_type),
                                 intent=None)
-        return self.arg_spec(ret_decl)
-
-    def arg_spec(self, arg):
-        spec = ['%s(%s)' % (arg.dtype.type, arg.dtype.ktp)]
-        if arg.intent:
-            spec.append('intent(%s)' % arg.intent)
-        return '%s :: %s' % (', '.join(spec), arg.name)
+        return ret_decl.declaration()
 
     def visit_ProcArgument(self, node):
         self.visit(node.proc)
 
     def visit_Argument(self, node):
-        self.buf.putln(self.arg_spec(node))
+        self.buf.putln(node.declaration())
 
     def proc_preamble(self, node):
         buf = self.buf
@@ -198,7 +192,8 @@ class FortranWrapperGen(FortranGen):
         pass
 
     def pre_call(self, node):
-        pass
+        for line in node.gen_pre_call():
+            self.buf.putln(line)
 
     def proc_call(self, node):
         proc_call = "%s(%s)" % (node.wrapped.name,
@@ -209,7 +204,8 @@ class FortranWrapperGen(FortranGen):
             self.buf.putln("%s = %s" % (node.name, proc_call))
 
     def post_call(self, node):
-        pass
+        for line in node.gen_post_call():
+            self.buf.putln(line)
 
     def visit_Procedure(self, node):
         buf = self.buf

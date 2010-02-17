@@ -207,7 +207,7 @@ def test_gen_iface():
     for ast, iface in data:
         yield gen_iface_gen, ast, iface
 
-def test_logical_wrapper():
+def _test_logical_wrapper():
     lgcl_arg = pyf.Subroutine(name='lgcl_arg',
                            args=[pyf.Argument(pyf.Var(name='lgcl',
                                                       dtype=pyf.Dtype(type='logical', ktp='fwrap_lgcl_ktp')),
@@ -228,7 +228,7 @@ def test_logical_wrapper():
             end subroutine lgcl_arg
         end interface
         logical(fwrap_lgcl_ktp) :: lgcl_tmp
-        if(lgcl .ne. 1) then
+        if(lgcl .ne. 0) then
             lgcl_tmp = .true.
         else
             lgcl_tmp = .false.
@@ -243,10 +243,8 @@ def test_logical_wrapper():
 '''
     compare(fort_file, buf.getvalue())
 
-def test_character_iface():
-    pass
 
-def _test_assumed_size_int_array():
+def _test_assumed_shape_int_array():
     arr_arg = pyf.Subroutine(name='arr_arg',
                            args=[pyf.Argument(pyf.Var(name='arr',
                                                       dtype=pyf.Dtype(type='integer', ktp='fwrap_int',
@@ -259,7 +257,8 @@ def _test_assumed_size_int_array():
     subroutine arr_arg_c(arr, arr_d1, arr_d2) bind(c, name="arr_arg_c")
         use config
         implicit none
-        integer(fwrap_int), intent(in) :: arr_d1, arr_d2
+        integer(fwrap_int), intent(in) :: arr_d1
+        integer(fwrap_int), intent(in) :: arr_d2
         integer(fwrap_int), intent(inout), dimension(arr_d1, arr_d2) :: arr
         interface
             subroutine arr_arg(arr)
@@ -272,16 +271,164 @@ def _test_assumed_size_int_array():
     end subroutine arr_arg_c
 '''
     compare(fort_file, buf.getvalue())
-    yield fcompile, fort_file
 
-def test_assumed_size_real_array():
+def _test_explicit_shape_int_array():
+    arr_arg = pyf.Subroutine(name='arr_arg',
+                           args=[pyf.Argument(pyf.Var(name='arr',
+                                                      dtype=pyf.Dtype(type='integer', ktp='fwrap_int',
+                                                              dimension=['10','20'])),
+                                              intent="inout")])
+    arr_arg_wrapped = pyf.SubroutineWrapper(name='arr_arg_c', wrapped=arr_arg)
+    buf = CodeBuffer()
+    fc_wrap.FortranWrapperGen(buf).generate(lgcl_arg_wrapped)
+    fort_file = '''\
+    subroutine arr_arg_c(arr, arr_d1, arr_d2) bind(c, name="arr_arg_c")
+        use config
+        implicit none
+        integer(fwrap_int), intent(in) :: arr_d1, arr_d2
+        integer(fwrap_int), intent(inout), dimension(arr_d1, arr_d2) :: arr
+        interface
+            subroutine arr_arg(d1, d2, arr)
+                use config
+                implicit none
+                integer(fwrap_int), intent(in) :: d1
+                integer(fwrap_int), intent(in) :: d2
+                logical(fwrap_int), intent(inout), dimension(d1, d2) :: arr
+            end subroutine arr_arg
+        end interface
+        call arr_arg(arr_d1, arr_d2, arr)
+    end subroutine arr_arg_c
+'''
+    compare(fort_file, buf.getvalue())
+
+def _test_assumed_size_real_array():
     pass
 
-def test_assumed_size_complex_array():
+def _test_assumed_size_complex_array():
     pass
 
-def test_assumed_size_logical_array():
+def _test_assumed_size_logical_array():
     pass
 
-def test_assumed_size_character_array():
+def _test_assumed_size_character_array():
     pass
+
+
+def _test_character_iface():
+    pass
+
+class test_arg_wrapper(object):
+
+    def setup(self):
+        dint = pyf.Dtype(type='integer', ktp='fwrap_int')
+        dlgcl = pyf.Dtype(type='logical', ktp='fwrap_default_logical')
+
+        self.int_arg = pyf.Argument(pyf.Var(name='int', dtype=dint),
+                                    intent='inout')
+        self.int_arg_wrap = pyf.ArgWrapper(self.int_arg)
+
+        self.lgcl_arg = pyf.Argument(var=pyf.Var(name='lgcl', dtype=dlgcl),
+                                     intent='inout')
+        self.lgcl_arg_wrap = pyf.LogicalWrapper(self.lgcl_arg)
+
+        self.lgcl_arg_in = pyf.Argument(var=pyf.Var(name='lgcl_in', dtype=dlgcl),
+                                        intent='in')
+        self.lgcl_arg_in_wrap = pyf.LogicalWrapper(self.lgcl_arg_in)
+
+    def test_extern_int_arg(self):
+        eq_(self.int_arg_wrap.extern_arg.declaration(), self.int_arg.declaration())
+
+    def test_intern_int_var(self):
+        eq_(self.int_arg_wrap.intern_var, None)
+
+    def test_pre_call_code_int(self):
+        eq_(self.int_arg_wrap.pre_call_code(), None)
+
+    def test_post_call_code_int(self):
+        eq_(self.int_arg_wrap.post_call_code(), None)
+
+    def test_extern_lgcl_arg(self):
+        eq_(self.lgcl_arg_wrap.extern_arg.declaration(),
+                'integer(fwrap_default_int), intent(inout) :: lgcl')
+        eq_(self.lgcl_arg_in_wrap.extern_arg.declaration(),
+                'integer(fwrap_default_int), intent(in) :: lgcl_in')
+
+    def test_intern_lgcl_var(self):
+        eq_(self.lgcl_arg_wrap.intern_var.declaration(),
+                'logical(fwrap_default_logical) :: lgcl_tmp')
+        eq_(self.lgcl_arg_in_wrap.intern_var.declaration(),
+                'logical(fwrap_default_logical) :: lgcl_in_tmp')
+
+    def test_pre_call_code(self):
+        for argw in (self.lgcl_arg_wrap, self.lgcl_arg_in_wrap):
+            pcc = '''\
+if(%(extern_arg)s .ne. 0) then
+    %(intern_var)s = .true.
+else
+    %(intern_var)s = .false.
+end if
+''' % {'extern_arg' : argw.extern_arg.name,
+       'intern_var' : argw.intern_var.name}
+            eq_(argw.pre_call_code(), pcc.splitlines())
+
+    def test_post_call_code(self):
+        for argw in (self.lgcl_arg_wrap, self.lgcl_arg_in_wrap):
+            pcc = '''\
+if(%s) then
+    lgcl = 1
+else
+    lgcl = 0
+end if
+''' % (argw.intern_var.name)
+            eq_(argw.post_call_code(), pcc.splitlines())
+
+class test_arg_manager(object):
+    
+    def setup(self):
+        dlgcl = pyf.Dtype(type='logical', ktp='fwrap_default_logical')
+        dint = pyf.Dtype(type='integer', ktp='fwrap_int')
+        self.lgcl1 = pyf.Argument(pyf.Var(name='lgcl1', dtype=dlgcl), intent='inout')
+        self.lgcl2 = pyf.Argument(pyf.Var(name='lgcl2', dtype=dlgcl), intent='inout')
+        self.intarg = pyf.Argument(pyf.Var(name='int', dtype=dint), intent='inout')
+        self.args = [self.lgcl1, self.lgcl2, self.intarg]
+        self.l1wrap = pyf.LogicalWrapper(self.lgcl1)
+        self.l2wrap = pyf.LogicalWrapper(self.lgcl2)
+        self.am = pyf.ArgManager(self.args)
+
+    def test_arg_declarations(self):
+        decls = '''\
+integer(fwrap_default_int), intent(inout) :: lgcl1
+integer(fwrap_default_int), intent(inout) :: lgcl2
+integer(fwrap_int), intent(inout) :: int
+'''.splitlines()
+        eq_(self.am.arg_declarations(), decls)
+
+    def test_temp_declarations(self):
+        decls = '''\
+logical(fwrap_default_logical) :: lgcl1_tmp
+logical(fwrap_default_logical) :: lgcl2_tmp
+'''.splitlines()
+        eq_(self.am.temp_declarations(), decls)
+
+    def test_pre_call_code(self):
+        pcc = self.l1wrap.pre_call_code() + self.l2wrap.pre_call_code()
+        eq_(self.am.pre_call_code(), pcc)
+
+    def test_post_call_code(self):
+        pcc = self.l1wrap.post_call_code() + self.l2wrap.post_call_code()
+        eq_(self.am.post_call_code(), pcc)
+
+    def test_extern_arg_list(self):
+        al = 'lgcl1 lgcl2 int'.split()
+        eq_(self.am.extern_arg_list(), al)
+
+    def test_call_arg_list(self):
+        cl = 'lgcl1_tmp lgcl2_tmp int'.split()
+        eq_(self.am.call_arg_list(), cl)
+
+    #TODO
+    def _test_arg_mangle_collision(self):
+        # when two passed logical arguments have the name 'lgcl' and 'lgcl_tmp'
+        # the intern_var for lgcl can't be named 'lgcl_tmp'
+        # this needs to be detected and resolved.
+        pass
