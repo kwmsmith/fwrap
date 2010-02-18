@@ -157,10 +157,10 @@ class FortranGen(TreeVisitor):
         return "end %s %s" % (node.kind, node.name)
 
     def return_spec(self, node):
-        ret_decl = pyf.Argument(pyf.Var(name=node.name,
-                                        dtype=node.return_type),
-                                intent=None)
-        return ret_decl.declaration()
+        # ret_decl = pyf.Argument(pyf.Var(name=node.name,
+                                        # dtype=node.return_type),
+                                # intent=None)
+        return node.return_arg.declaration()
 
     def visit_ProcArgument(self, node):
         self.visit(node.proc)
@@ -185,11 +185,12 @@ class FortranWrapperGen(FortranGen):
     def procedure_decl(self, node):
         return '%s %s(%s) bind(c, name="%s")' % \
                 (node.kind, node.name,
-                        self.arg_list(node.args),
+                        ', '.join(node.extern_arg_list()),
                         node.name)
 
     def declare_temps(self, node):
-        pass
+        for decl in node.temp_declarations():
+            self.buf.putln(decl)
 
     def pre_call(self, node):
         for line in node.gen_pre_call():
@@ -197,7 +198,7 @@ class FortranWrapperGen(FortranGen):
 
     def proc_call(self, node):
         proc_call = "%s(%s)" % (node.wrapped.name,
-                        self.arg_list(node.wrapped.args))
+                                ', '.join(node.gen_proc_call_arg_list()))
         if isinstance(node, pyf.SubroutineWrapper):
             self.buf.putln("call %s" % proc_call)
         elif isinstance(node, pyf.FunctionWrapper):
@@ -207,7 +208,7 @@ class FortranWrapperGen(FortranGen):
         for line in node.gen_post_call():
             self.buf.putln(line)
 
-    def visit_Procedure(self, node):
+    def visit_ProcWrapper(self, node):
         buf = self.buf
         buf.putln(self.procedure_decl(node))
         buf.indent()
@@ -219,6 +220,15 @@ class FortranWrapperGen(FortranGen):
         self.post_call(node)
         buf.dedent()
         buf.putln(self.procedure_end(node))
+
+    def proc_preamble(self, node):
+        buf = self.buf
+        buf.putln('use config')
+        buf.putln('implicit none')
+        for decl in node.arg_declarations():
+            buf.putln(decl)
+        if isinstance(node, pyf.FunctionWrapper):
+            buf.putln(node.return_spec_declaration())
 
 class FortranInterfaceGen(FortranGen):
 

@@ -96,14 +96,20 @@ end if
 ''' % (self.intern_var.name)
         return pcc.splitlines()
 
+def ArgWrapperFac(arg):
+    if arg.dtype.type == 'logical':
+        return LogicalWrapper(arg)
+    else:
+        return ArgWrapper(arg)
+
 class ArgManager(object):
     
-    def __init__(self, args, return_type=None):
+    def __init__(self, args, return_arg=None):
         self._orig_args = args
-        self._orig_return_type = return_type
-        self.arg_wrappers = self.gen_arg_wrappers()
-        self.args = self.gen_extern_args()
-        self.return_type = self.gen_extern_return_type()
+        self._orig_return_arg = return_arg
+        self.arg_wrappers = None
+        self.return_arg_wrapper = None
+        self.gen_wrappers()
 
     def call_arg_list(self):
         cl = []
@@ -122,6 +128,9 @@ class ArgManager(object):
         for argw in self.arg_wrappers:
             decls.append(argw.extern_arg.declaration())
         return decls
+
+    def return_spec_declaration(self):
+        return self.return_arg_wrapper.extern_arg.declaration()
 
     def temp_declarations(self):
         decls = []
@@ -145,29 +154,20 @@ class ArgManager(object):
             if pcc:
                 all_pcc.extend(pcc)
         return all_pcc
-            
-    def gen_pre_call(self):
-        code = []
-        for warg in self._orig_args:
-            if warg.dtype.type == 'logical' and 'in' in warg.intent:
-                code.append('if(%s .ne. 0) then' % warg.name)
-                code.append('    %s = .true.' % (warg.name+'_tmp'))
-                code.append('else')
-                code.append('    %s = .false.' % (warg.name+'_tmp'))
-                code.append('end if')
-        return code
 
-
-    def gen_arg_wrappers(self):
+    def gen_wrappers(self):
         wargs = []
         for arg in self._orig_args:
-            if arg.dtype.type == 'logical':
-                wargs.append(LogicalWrapper(arg))
-            else:
-                wargs.append(ArgWrapper(arg))
-        return wargs
+            wargs.append(ArgWrapperFac(arg))
+        self.arg_wrappers = wargs
+        arg = self._orig_return_arg
+        if arg:
+            self.return_arg_wrapper = ArgWrapperFac(arg)
+            
+    def gen_pre_call(self):
+        return self.pre_call_code()
 
-    def gen_extern_args(self):
+    def _gen_extern_args(self):
         args = []
         for warg in self._orig_args:
             if warg.dtype.type == 'logical':
@@ -189,15 +189,7 @@ class ArgManager(object):
         return self._orig_return_type
 
     def gen_post_call(self):
-        code = []
-        for warg in self._orig_args:
-            if warg.dtype.type == 'logical' and 'out' in warg.intent:
-                code.append('if(%s) then' % warg.name+'_tmp')
-                code.append('    %s = 1' % warg.name)
-                code.append('else')
-                code.append('    %s = 0' % warg.name)
-                code.append('end if')
-        return code
+        return self.post_call_code()
 
 class Procedure(object):
 
@@ -210,36 +202,13 @@ class Function(Procedure):
     
     def __init__(self, name, args, return_type):
         super(Function, self).__init__(name, args)
-        self.return_type = return_type
+        self.return_arg = Argument(Var(name=name, dtype=return_type), intent=None)
         self.kind = 'function'
 
     def __eq__(self, other):
         return self.name == other.name and \
                self.args == other.args and \
-               self.return_type == other.return_type
-
-class FunctionWrapper(Function):
-    @classmethod
-    def from_proc(cls, name, wrapped):
-        self = cls(name, wrapped.args, wrapped.return_type)
-        self.wrapped = wrapped
-        return self
-
-    def __init__(self, name, args, return_type):
-        self.arg_man = ArgManager(args, return_type)
-        super(FunctionWrapper, self).__init__(name, self.arg_man.args, self.arg_man.return_type)
-
-    def extern_arg_list(self):
-        return self.arg_man.extern_arg_list()
-
-    def arg_declarations(self):
-        return self.arg_man.arg_declarations()
-
-    def gen_pre_call(self):
-        return self.arg_man.gen_pre_call()
-
-    def gen_post_call(self):
-        return self.arg_man.gen_post_call()
+               self.return_arg == other.return_arg
 
 class Subroutine(Procedure):
 
@@ -247,17 +216,16 @@ class Subroutine(Procedure):
         super(Subroutine, self).__init__(name, args)
         self.kind = 'subroutine'
 
-class SubroutineWrapper(Subroutine):
+class ProcWrapper(object):
 
-    @classmethod
-    def from_proc(cls, name, wrapped):
-        self = cls(name, wrapped.args)
-        self.wrapped = wrapped
-        return self
+    def extern_arg_list(self):
+        return self.arg_man.extern_arg_list()
 
-    def __init__(self, name, args):
-        self.arg_man = ArgManager(args)
-        super(SubroutineWrapper, self).__init__(name, self.arg_man.args)
+    def arg_declarations(self):
+        return self.arg_man.arg_declarations()
+
+    def temp_declarations(self):
+        return self.arg_man.temp_declarations()
 
     def gen_pre_call(self):
         return self.arg_man.gen_pre_call()
@@ -266,7 +234,33 @@ class SubroutineWrapper(Subroutine):
         return self.arg_man.gen_post_call()
 
     def gen_proc_call_arg_list(self):
-        return self.arg_man.gen_proc_call_arg_list()
+        return self.arg_man.call_arg_list()
+
+class FunctionWrapper(ProcWrapper):
+
+    def __init__(self, name, wrapped):
+        self.kind = 'function'
+        self.name = name
+        self.wrapped = wrapped
+        ra = Argument(Var(name=name, dtype=wrapped.return_arg.dtype), intent=None)
+        self.arg_man = ArgManager(wrapped.args, ra)
+
+    def return_spec_declaration(self):
+        return self.arg_man.return_spec_declaration()
+
+class SubroutineWrapper(ProcWrapper):
+
+    # @classmethod
+    # def from_proc(cls, name, wrapped):
+        # self = cls(name, wrapped.args)
+        # self.wrapped = wrapped
+        # return self
+
+    def __init__(self, name, wrapped):
+        self.kind = 'subroutine'
+        self.name = name
+        self.wrapped = wrapped
+        self.arg_man = ArgManager(wrapped.args)
 
 class Module(object):
 

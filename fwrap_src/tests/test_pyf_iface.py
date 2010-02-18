@@ -9,7 +9,7 @@ class test_program_units(object):
                 return_type=pyf.default_integer)
         ok_(ffun.args == ())
         ok_(ffun.name == 'fort_function')
-        ok_(ffun.return_type is pyf.default_integer)
+        ok_(ffun.return_arg.dtype is pyf.default_integer)
 
     def test_function_args(self):
         pyf.Function(name="ffun",

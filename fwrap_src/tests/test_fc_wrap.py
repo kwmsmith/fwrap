@@ -67,7 +67,7 @@ def test_gen_fortran_one_arg_func():
                            args=[pyf.Argument(var=pyf.Var(name='a',
                                                           dtype=pyf.Dtype(type='integer', ktp='fwrap_default_int')),
                                       intent="in")])
-    one_arg_wrapped = pyf.SubroutineWrapper.from_proc(name='one_arg_c', wrapped=one_arg)
+    one_arg_wrapped = pyf.SubroutineWrapper(name='one_arg_c', wrapped=one_arg)
     buf = CodeBuffer()
     fc_wrap.FortranWrapperGen(buf).generate(one_arg_wrapped)
     fort_file = '''\
@@ -91,7 +91,7 @@ def test_gen_empty_func_wrapper():
     empty_func = pyf.Function(name='empty_func',
                       args=(),
                       return_type=pyf.Dtype(type='integer', ktp='fwrap_default_int'))
-    empty_func_wrapper = pyf.FunctionWrapper.from_proc(name='empty_func_c', wrapped=empty_func)
+    empty_func_wrapper = pyf.FunctionWrapper(name='empty_func_c', wrapped=empty_func)
                       
     empty_func_wrapped = '''\
     function empty_func_c() bind(c, name="empty_func_c")
@@ -207,19 +207,19 @@ def test_gen_iface():
     for ast, iface in data:
         yield gen_iface_gen, ast, iface
 
-def _test_logical_wrapper():
+def test_logical_wrapper():
     lgcl_arg = pyf.Subroutine(name='lgcl_arg',
                            args=[pyf.Argument(pyf.Var(name='lgcl',
                                                       dtype=pyf.Dtype(type='logical', ktp='fwrap_lgcl_ktp')),
                                               intent="inout")])
-    lgcl_arg_wrapped = pyf.SubroutineWrapper.from_proc(name='lgcl_arg_c', wrapped=lgcl_arg)
+    lgcl_arg_wrapped = pyf.SubroutineWrapper(name='lgcl_arg_c', wrapped=lgcl_arg)
     buf = CodeBuffer()
     fc_wrap.FortranWrapperGen(buf).generate(lgcl_arg_wrapped)
     fort_file = '''\
     subroutine lgcl_arg_c(lgcl) bind(c, name="lgcl_arg_c")
         use config
         implicit none
-        integer(fwrap_int_ktp), intent(inout) :: lgcl
+        integer(fwrap_default_int), intent(inout) :: lgcl
         interface
             subroutine lgcl_arg(lgcl)
                 use config
@@ -238,7 +238,7 @@ def _test_logical_wrapper():
             lgcl = 1
         else
             lgcl = 0
-        endif
+        end if
     end subroutine lgcl_arg_c
 '''
     compare(fort_file, buf.getvalue())

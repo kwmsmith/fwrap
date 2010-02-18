@@ -4,7 +4,7 @@ from fwrap_src import pyf_iface as pyf
 
 from nose.tools import ok_, eq_, set_trace
 
-def test_generate_ast():
+def _test_generate_ast():
     fsrc = StringIO('''
 function empty_func()
     implicit none
