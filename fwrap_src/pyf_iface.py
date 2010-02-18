@@ -109,7 +109,16 @@ class ArgManager(object):
         self._orig_return_arg = return_arg
         self.arg_wrappers = None
         self.return_arg_wrapper = None
-        self.gen_wrappers()
+        self._gen_wrappers()
+
+    def _gen_wrappers(self):
+        wargs = []
+        for arg in self._orig_args:
+            wargs.append(ArgWrapperFac(arg))
+        self.arg_wrappers = wargs
+        arg = self._orig_return_arg
+        if arg:
+            self.return_arg_wrapper = ArgWrapperFac(arg)
 
     def call_arg_list(self):
         cl = []
@@ -155,42 +164,6 @@ class ArgManager(object):
                 all_pcc.extend(pcc)
         return all_pcc
 
-    def gen_wrappers(self):
-        wargs = []
-        for arg in self._orig_args:
-            wargs.append(ArgWrapperFac(arg))
-        self.arg_wrappers = wargs
-        arg = self._orig_return_arg
-        if arg:
-            self.return_arg_wrapper = ArgWrapperFac(arg)
-            
-    def gen_pre_call(self):
-        return self.pre_call_code()
-
-    def _gen_extern_args(self):
-        args = []
-        for warg in self._orig_args:
-            if warg.dtype.type == 'logical':
-                args.append(
-                        Argument(
-                            Var(
-                               name=warg.name,
-                               dtype=Dtype(
-                                        type='integer',
-                                        ktp='fwrap_int_ktp')
-                               ),
-                           intent=warg.intent)
-                        )
-            else:
-                args.append(warg)
-        return args
-
-    def gen_extern_return_type(self):
-        return self._orig_return_type
-
-    def gen_post_call(self):
-        return self.post_call_code()
-
 class Procedure(object):
 
     def __init__(self, name, args):
@@ -227,11 +200,11 @@ class ProcWrapper(object):
     def temp_declarations(self):
         return self.arg_man.temp_declarations()
 
-    def gen_pre_call(self):
-        return self.arg_man.gen_pre_call()
+    def pre_call_code(self):
+        return self.arg_man.pre_call_code()
 
-    def gen_post_call(self):
-        return self.arg_man.gen_post_call()
+    def post_call_code(self):
+        return self.arg_man.post_call_code()
 
     def gen_proc_call_arg_list(self):
         return self.arg_man.call_arg_list()
@@ -249,12 +222,6 @@ class FunctionWrapper(ProcWrapper):
         return self.arg_man.return_spec_declaration()
 
 class SubroutineWrapper(ProcWrapper):
-
-    # @classmethod
-    # def from_proc(cls, name, wrapped):
-        # self = cls(name, wrapped.args)
-        # self.wrapped = wrapped
-        # return self
 
     def __init__(self, name, wrapped):
         self.kind = 'subroutine'

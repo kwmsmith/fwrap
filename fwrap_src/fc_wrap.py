@@ -193,7 +193,7 @@ class FortranWrapperGen(FortranGen):
             self.buf.putln(decl)
 
     def pre_call(self, node):
-        for line in node.gen_pre_call():
+        for line in node.pre_call_code():
             self.buf.putln(line)
 
     def proc_call(self, node):
@@ -205,7 +205,7 @@ class FortranWrapperGen(FortranGen):
             self.buf.putln("%s = %s" % (node.name, proc_call))
 
     def post_call(self, node):
-        for line in node.gen_post_call():
+        for line in node.post_call_code():
             self.buf.putln(line)
 
     def visit_ProcWrapper(self, node):
