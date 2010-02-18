@@ -23,9 +23,10 @@ class Var(object):
         return '%s :: %s' % (self.type_spec(), self.name)
 
 class Argument(object):
-    def __init__(self, var, intent=None):
+    def __init__(self, var, intent=None, is_return_arg=False):
         self._var = var
         self.intent = intent
+        self.is_return_arg = is_return_arg
 
     def _get_name(self):
         return self._var.name
@@ -39,7 +40,7 @@ class Argument(object):
     def declaration(self):
         var = self._var
         spec = [var.type_spec()]
-        if self.intent:
+        if self.intent and not self.is_return_arg:
             spec.append('intent(%s)' % self.intent)
         return '%s :: %s' % (', '.join(spec), self.name)
 
@@ -66,12 +67,18 @@ class ArgWrapper(object):
     def post_call_code(self):
         return None
 
+    def intern_name(self):
+        if self.intern_var:
+            return self.intern_var.name
+        else:
+            return self.extern_arg.name
+
 class LogicalWrapper(ArgWrapper):
 
     def __init__(self, arg):
         super(LogicalWrapper, self).__init__(arg)
         var = Var(name=arg.name, dtype=Dtype(type='integer', ktp='fwrap_default_int'))
-        self.extern_arg = Argument(var=var, intent=arg.intent)
+        self.extern_arg = Argument(var=var, intent=arg.intent, is_return_arg=arg.is_return_arg)
         self.intern_var = Var(name=arg.name+'_tmp', dtype=arg.dtype)
 
     def pre_call_code(self):
@@ -88,12 +95,13 @@ end if
 
     def post_call_code(self):
         pcc = '''\
-if(%s) then
-    lgcl = 1
+if(%(intern_var)s) then
+    %(extern_arg)s = 1
 else
-    lgcl = 0
+    %(extern_arg)s = 0
 end if
-''' % (self.intern_var.name)
+''' % {'extern_arg' : self.extern_arg.name,
+       'intern_var' : self.intern_var.name}
         return pcc.splitlines()
 
 def ArgWrapperFac(arg):
@@ -132,13 +140,18 @@ class ArgManager(object):
     def extern_arg_list(self):
         return [argw.extern_arg.name for argw in self.arg_wrappers]
 
-    def arg_declarations(self):
+    def extern_declarations(self):
         decls = []
         for argw in self.arg_wrappers:
             decls.append(argw.extern_arg.declaration())
+        if self.return_arg_wrapper:
+            decls.append(self.return_arg_wrapper.extern_arg.declaration())
         return decls
 
-    def return_spec_declaration(self):
+    def arg_declarations(self):
+        return self.extern_declarations()
+
+    def __return_spec_declaration(self):
         return self.return_arg_wrapper.extern_arg.declaration()
 
     def temp_declarations(self):
@@ -146,6 +159,9 @@ class ArgManager(object):
         for argw in self.arg_wrappers:
             if argw.intern_var:
                 decls.append(argw.intern_var.declaration())
+        if self.return_arg_wrapper:
+            if self.return_arg_wrapper.intern_var:
+                decls.append(self.return_arg_wrapper.intern_var.declaration())
         return decls
 
     def pre_call_code(self):
@@ -158,11 +174,17 @@ class ArgManager(object):
 
     def post_call_code(self):
         all_pcc = []
-        for argw in self.arg_wrappers:
+        wpprs = self.arg_wrappers
+        if self.return_arg_wrapper:
+            wpprs.append(self.return_arg_wrapper)
+        for argw in wpprs:
             pcc = argw.post_call_code()
             if pcc:
                 all_pcc.extend(pcc)
         return all_pcc
+
+    def return_var_name(self):
+        return self.return_arg_wrapper.intern_name()
 
 class Procedure(object):
 
@@ -175,7 +197,7 @@ class Function(Procedure):
     
     def __init__(self, name, args, return_type):
         super(Function, self).__init__(name, args)
-        self.return_arg = Argument(Var(name=name, dtype=return_type), intent=None)
+        self.return_arg = Argument(Var(name=name, dtype=return_type), intent='out', is_return_arg=True)
         self.kind = 'function'
 
     def __eq__(self, other):
@@ -215,11 +237,14 @@ class FunctionWrapper(ProcWrapper):
         self.kind = 'function'
         self.name = name
         self.wrapped = wrapped
-        ra = Argument(Var(name=name, dtype=wrapped.return_arg.dtype), intent=None)
+        ra = Argument(Var(name=name, dtype=wrapped.return_arg.dtype), intent='out', is_return_arg=True)
         self.arg_man = ArgManager(wrapped.args, ra)
 
     def return_spec_declaration(self):
         return self.arg_man.return_spec_declaration()
+
+    def proc_result_name(self):
+        return self.arg_man.return_var_name()
 
 class SubroutineWrapper(ProcWrapper):
 

@@ -207,6 +207,35 @@ def test_gen_iface():
     for ast, iface in data:
         yield gen_iface_gen, ast, iface
 
+def test_logical_function():
+    lgcl_fun = pyf.Function(name='lgcl_fun', args=[],
+                            return_type=pyf.Dtype(type='logical', ktp='fwrap_lgcl'))
+    lgcl_fun_wrapped = pyf.FunctionWrapper(name='lgcl_fun_c', wrapped=lgcl_fun)
+    buf = CodeBuffer()
+    fc_wrap.FortranWrapperGen(buf).generate(lgcl_fun_wrapped)
+    fort_file = '''\
+    function lgcl_fun_c() bind(c, name="lgcl_fun_c")
+        use config
+        implicit none
+        integer(fwrap_default_int) :: lgcl_fun_c
+        interface
+            function lgcl_fun()
+                use config
+                implicit none
+                logical(fwrap_lgcl) :: lgcl_fun
+            end function lgcl_fun
+        end interface
+        logical(fwrap_lgcl) :: lgcl_fun_c_tmp
+        lgcl_fun_c_tmp = lgcl_fun()
+        if(lgcl_fun_c_tmp) then
+            lgcl_fun_c = 1
+        else
+            lgcl_fun_c = 0
+        end if
+    end function lgcl_fun_c
+'''
+    compare(fort_file, buf.getvalue())
+
 def test_logical_wrapper():
     lgcl_arg = pyf.Subroutine(name='lgcl_arg',
                            args=[pyf.Argument(pyf.Var(name='lgcl',
@@ -374,13 +403,36 @@ end if
     def test_post_call_code(self):
         for argw in (self.lgcl_arg_wrap, self.lgcl_arg_in_wrap):
             pcc = '''\
-if(%s) then
-    lgcl = 1
+if(%(intern_var)s) then
+    %(extern_arg)s = 1
 else
-    lgcl = 0
+    %(extern_arg)s = 0
 end if
-''' % (argw.intern_var.name)
+''' % {'extern_arg' : argw.extern_arg.name,
+       'intern_var' : argw.intern_var.name}
             eq_(argw.post_call_code(), pcc.splitlines())
+
+class test_arg_manager_return(object):
+
+    def setup(self):
+        dlgcl = pyf.Dtype(type='logical', ktp='fwrap_default_logical')
+        dint = pyf.Dtype(type='integer', ktp='fwrap_int')
+        self.lgcl = pyf.Argument(pyf.Var(name='ll', dtype=dlgcl), intent='out', is_return_arg=True)
+        self.int = pyf.Argument(pyf.Var(name='int', dtype=dint), intent='out', is_return_arg=True)
+        self.am_lgcl = pyf.ArgManager([], self.lgcl)
+        self.am_int = pyf.ArgManager([], self.int)
+
+    def test_declarations(self):
+        decl = '''\
+integer(fwrap_default_int) :: ll
+'''.splitlines()
+        eq_(self.am_lgcl.extern_declarations(), decl)
+
+    def test_temp_declarations(self):
+        decl = '''\
+logical(fwrap_default_logical) :: ll_tmp
+'''.splitlines()
+        eq_(self.am_lgcl.temp_declarations(), decl)
 
 class test_arg_manager(object):
     

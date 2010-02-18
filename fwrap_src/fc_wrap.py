@@ -202,7 +202,7 @@ class FortranWrapperGen(FortranGen):
         if isinstance(node, pyf.SubroutineWrapper):
             self.buf.putln("call %s" % proc_call)
         elif isinstance(node, pyf.FunctionWrapper):
-            self.buf.putln("%s = %s" % (node.name, proc_call))
+            self.buf.putln("%s = %s" % (node.proc_result_name(), proc_call))
 
     def post_call(self, node):
         for line in node.post_call_code():
@@ -227,8 +227,6 @@ class FortranWrapperGen(FortranGen):
         buf.putln('implicit none')
         for decl in node.arg_declarations():
             buf.putln(decl)
-        if isinstance(node, pyf.FunctionWrapper):
-            buf.putln(node.return_spec_declaration())
 
 class FortranInterfaceGen(FortranGen):
 
