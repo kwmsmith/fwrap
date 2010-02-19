@@ -157,9 +157,6 @@ class FortranGen(TreeVisitor):
         return "end %s %s" % (node.kind, node.name)
 
     def return_spec(self, node):
-        # ret_decl = pyf.Argument(pyf.Var(name=node.name,
-                                        # dtype=node.return_type),
-                                # intent=None)
         return node.return_arg.declaration()
 
     def visit_ProcArgument(self, node):
@@ -198,7 +195,7 @@ class FortranWrapperGen(FortranGen):
 
     def proc_call(self, node):
         proc_call = "%s(%s)" % (node.wrapped.name,
-                                ', '.join(node.gen_proc_call_arg_list()))
+                                ', '.join(node.call_arg_list()))
         if isinstance(node, pyf.SubroutineWrapper):
             self.buf.putln("call %s" % proc_call)
         elif isinstance(node, pyf.FunctionWrapper):

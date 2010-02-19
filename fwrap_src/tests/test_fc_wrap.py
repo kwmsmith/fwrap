@@ -63,10 +63,11 @@ cdef extern:
         eq_(pxd_file, self.buf.getvalue().splitlines())
 
 def test_gen_fortran_one_arg_func():
-    one_arg = pyf.Subroutine(name='one_arg',
-                           args=[pyf.Argument(var=pyf.Var(name='a',
-                                                          dtype=pyf.Dtype(type='integer', ktp='fwrap_default_int')),
-                                      intent="in")])
+    one_arg = pyf.Subroutine(
+            name='one_arg',
+            args=[pyf.Argument(name='a',
+                               dtype=pyf.Dtype(type='integer', ktp='fwrap_default_int'),
+                               intent="in")])
     one_arg_wrapped = pyf.SubroutineWrapper(name='one_arg_c', wrapped=one_arg)
     buf = CodeBuffer()
     fc_wrap.FortranWrapperGen(buf).generate(one_arg_wrapped)
@@ -114,9 +115,9 @@ def test_gen_empty_func_wrapper():
 
 def test_procedure_argument_iface():
     passed_subr = pyf.Subroutine(name='passed_subr',
-                       args=[pyf.Argument(pyf.Var(name='arg1',
-                                                  dtype=pyf.Dtype(type='integer', ktp='fwrap_default_int')),
-                                  intent='inout')])
+                       args=[pyf.Argument(name='arg1',
+                                          dtype=pyf.Dtype(type='integer', ktp='fwrap_default_int'),
+                                          intent='inout')])
 
     proc_arg_func = pyf.Function(name='proc_arg_func',
                          args=[pyf.ProcArgument(passed_subr)],
@@ -151,14 +152,14 @@ def test_gen_iface():
 
 
     many_arg_subr = pyf.Subroutine(name='many_arg_subr',
-                         args=[pyf.Argument(pyf.Var(name='arg1',
-                                                    dtype=pyf.Dtype(type='complex', ktp='fwrap_sik_10_20')),
+                         args=[pyf.Argument(name='arg1',
+                                            dtype=pyf.Dtype(type='complex', ktp='fwrap_sik_10_20'),
                                             intent='in'),
-                               pyf.Argument(pyf.Var(name='arg2',
-                                                    dtype=pyf.Dtype(type='real', ktp='fwrap_double_precision')),
+                               pyf.Argument(name='arg2',
+                                            dtype=pyf.Dtype(type='real', ktp='fwrap_double_precision'),
                                             intent='inout'),
-                               pyf.Argument(pyf.Var(name='arg3',
-                                                    dtype=pyf.Dtype(type='integer', ktp='fwrap_int_x_8')),
+                               pyf.Argument(name='arg3',
+                                            dtype=pyf.Dtype(type='integer', ktp='fwrap_int_x_8'),
                                             intent='out')])
     many_arg_subr_iface = '''\
     interface
@@ -173,8 +174,8 @@ def test_gen_iface():
 '''
 
     one_arg_func = pyf.Function(name='one_arg_func',
-                        args=[pyf.Argument(pyf.Var(name='arg1',
-                                                  dtype=pyf.Dtype(type='real', ktp='fwrap_default_real')),
+                        args=[pyf.Argument(name='arg1',
+                                           dtype=pyf.Dtype(type='real', ktp='fwrap_default_real'),
                                            intent='inout')],
                         return_type=pyf.Dtype(type='integer', ktp='fwrap_default_int'))
     one_arg_func_iface = '''\
@@ -238,8 +239,8 @@ def test_logical_function():
 
 def test_logical_wrapper():
     lgcl_arg = pyf.Subroutine(name='lgcl_arg',
-                           args=[pyf.Argument(pyf.Var(name='lgcl',
-                                                      dtype=pyf.Dtype(type='logical', ktp='fwrap_lgcl_ktp')),
+                           args=[pyf.Argument(name='lgcl',
+                                              dtype=pyf.Dtype(type='logical', ktp='fwrap_lgcl_ktp'),
                                               intent="inout")])
     lgcl_arg_wrapped = pyf.SubroutineWrapper(name='lgcl_arg_c', wrapped=lgcl_arg)
     buf = CodeBuffer()
@@ -275,9 +276,9 @@ def test_logical_wrapper():
 
 def _test_assumed_shape_int_array():
     arr_arg = pyf.Subroutine(name='arr_arg',
-                           args=[pyf.Argument(pyf.Var(name='arr',
-                                                      dtype=pyf.Dtype(type='integer', ktp='fwrap_int',
-                                                              dimension=[':',':'])),
+                           args=[pyf.Argument(name='arr',
+                                              dtype=pyf.Dtype(type='integer', ktp='fwrap_int',
+                                                              dimension=[':',':']),
                                               intent="inout")])
     arr_arg_wrapped = pyf.SubroutineWrapper(name='lgcl_arg_c', wrapped=lgcl_arg)
     buf = CodeBuffer()
@@ -303,9 +304,9 @@ def _test_assumed_shape_int_array():
 
 def _test_explicit_shape_int_array():
     arr_arg = pyf.Subroutine(name='arr_arg',
-                           args=[pyf.Argument(pyf.Var(name='arr',
-                                                      dtype=pyf.Dtype(type='integer', ktp='fwrap_int',
-                                                              dimension=['10','20'])),
+                           args=[pyf.Argument(name='arr',
+                                              dtype=pyf.Dtype(type='integer', ktp='fwrap_int',
+                                                      dimension=['10','20']),
                                               intent="inout")])
     arr_arg_wrapped = pyf.SubroutineWrapper(name='arr_arg_c', wrapped=arr_arg)
     buf = CodeBuffer()
@@ -352,16 +353,13 @@ class test_arg_wrapper(object):
         dint = pyf.Dtype(type='integer', ktp='fwrap_int')
         dlgcl = pyf.Dtype(type='logical', ktp='fwrap_default_logical')
 
-        self.int_arg = pyf.Argument(pyf.Var(name='int', dtype=dint),
-                                    intent='inout')
+        self.int_arg = pyf.Argument(name='int', dtype=dint, intent='inout')
         self.int_arg_wrap = pyf.ArgWrapper(self.int_arg)
 
-        self.lgcl_arg = pyf.Argument(var=pyf.Var(name='lgcl', dtype=dlgcl),
-                                     intent='inout')
+        self.lgcl_arg = pyf.Argument(name='lgcl', dtype=dlgcl, intent='inout')
         self.lgcl_arg_wrap = pyf.LogicalWrapper(self.lgcl_arg)
 
-        self.lgcl_arg_in = pyf.Argument(var=pyf.Var(name='lgcl_in', dtype=dlgcl),
-                                        intent='in')
+        self.lgcl_arg_in = pyf.Argument(name='lgcl_in', dtype=dlgcl, intent='in')
         self.lgcl_arg_in_wrap = pyf.LogicalWrapper(self.lgcl_arg_in)
 
     def test_extern_int_arg(self):
@@ -417,8 +415,8 @@ class test_arg_manager_return(object):
     def setup(self):
         dlgcl = pyf.Dtype(type='logical', ktp='fwrap_default_logical')
         dint = pyf.Dtype(type='integer', ktp='fwrap_int')
-        self.lgcl = pyf.Argument(pyf.Var(name='ll', dtype=dlgcl), intent='out', is_return_arg=True)
-        self.int = pyf.Argument(pyf.Var(name='int', dtype=dint), intent='out', is_return_arg=True)
+        self.lgcl = pyf.Argument(name='ll', dtype=dlgcl, intent='out', is_return_arg=True)
+        self.int = pyf.Argument(name='int', dtype=dint, intent='out', is_return_arg=True)
         self.am_lgcl = pyf.ArgManager([], self.lgcl)
         self.am_int = pyf.ArgManager([], self.int)
 
@@ -439,9 +437,9 @@ class test_arg_manager(object):
     def setup(self):
         dlgcl = pyf.Dtype(type='logical', ktp='fwrap_default_logical')
         dint = pyf.Dtype(type='integer', ktp='fwrap_int')
-        self.lgcl1 = pyf.Argument(pyf.Var(name='lgcl1', dtype=dlgcl), intent='inout')
-        self.lgcl2 = pyf.Argument(pyf.Var(name='lgcl2', dtype=dlgcl), intent='inout')
-        self.intarg = pyf.Argument(pyf.Var(name='int', dtype=dint), intent='inout')
+        self.lgcl1 = pyf.Argument(name='lgcl1', dtype=dlgcl, intent='inout')
+        self.lgcl2 = pyf.Argument(name='lgcl2', dtype=dlgcl, intent='inout')
+        self.intarg = pyf.Argument(name='int', dtype=dint, intent='inout')
         self.args = [self.lgcl1, self.lgcl2, self.intarg]
         self.l1wrap = pyf.LogicalWrapper(self.lgcl1)
         self.l2wrap = pyf.LogicalWrapper(self.lgcl2)
