@@ -66,7 +66,7 @@ def test_gen_fortran_one_arg_func():
     one_arg = pyf.Subroutine(
             name='one_arg',
             args=[pyf.Argument(name='a',
-                               dtype=pyf.Dtype(type='integer', ktp='fwrap_default_int'),
+                               dtype=pyf.default_integer,
                                intent="in")])
     one_arg_wrapped = pyf.SubroutineWrapper(name='one_arg_c', wrapped=one_arg)
     buf = CodeBuffer()
@@ -91,7 +91,7 @@ def test_gen_fortran_one_arg_func():
 def test_gen_empty_func_wrapper():
     empty_func = pyf.Function(name='empty_func',
                       args=(),
-                      return_type=pyf.Dtype(type='integer', ktp='fwrap_default_int'))
+                      return_type=pyf.default_integer)
     empty_func_wrapper = pyf.FunctionWrapper(name='empty_func_c', wrapped=empty_func)
                       
     empty_func_wrapped = '''\
@@ -116,12 +116,12 @@ def test_gen_empty_func_wrapper():
 def test_procedure_argument_iface():
     passed_subr = pyf.Subroutine(name='passed_subr',
                        args=[pyf.Argument(name='arg1',
-                                          dtype=pyf.Dtype(type='integer', ktp='fwrap_default_int'),
+                                          dtype=pyf.default_integer,
                                           intent='inout')])
 
     proc_arg_func = pyf.Function(name='proc_arg_func',
                          args=[pyf.ProcArgument(passed_subr)],
-                         return_type=pyf.Dtype(type='integer', ktp='fwrap_default_int'))
+                         return_type=pyf.default_integer)
 
     proc_arg_iface = '''\
     interface
@@ -153,13 +153,13 @@ def test_gen_iface():
 
     many_arg_subr = pyf.Subroutine(name='many_arg_subr',
                          args=[pyf.Argument(name='arg1',
-                                            dtype=pyf.Dtype(type='complex', ktp='fwrap_sik_10_20'),
+                                            dtype=pyf.ComplexType('fwrap_sik_10_20'),
                                             intent='in'),
                                pyf.Argument(name='arg2',
-                                            dtype=pyf.Dtype(type='real', ktp='fwrap_double_precision'),
+                                            dtype=pyf.RealType('fwrap_double_precision'),
                                             intent='inout'),
                                pyf.Argument(name='arg3',
-                                            dtype=pyf.Dtype(type='integer', ktp='fwrap_int_x_8'),
+                                            dtype=pyf.IntegerType('fwrap_int_x_8'),
                                             intent='out')])
     many_arg_subr_iface = '''\
     interface
@@ -175,9 +175,9 @@ def test_gen_iface():
 
     one_arg_func = pyf.Function(name='one_arg_func',
                         args=[pyf.Argument(name='arg1',
-                                           dtype=pyf.Dtype(type='real', ktp='fwrap_default_real'),
+                                           dtype=pyf.default_real,
                                            intent='inout')],
-                        return_type=pyf.Dtype(type='integer', ktp='fwrap_default_int'))
+                        return_type=pyf.default_integer)
     one_arg_func_iface = '''\
     interface
         function one_arg_func(arg1)
@@ -191,7 +191,7 @@ def test_gen_iface():
 
     empty_func = pyf.Function(name='empty_func',
                       args=(),
-                      return_type=pyf.Dtype(type='integer', ktp='fwrap_default_int'))
+                      return_type=pyf.default_integer)
     empty_func_iface = '''\
     interface
         function empty_func()
@@ -210,7 +210,7 @@ def test_gen_iface():
 
 def test_logical_function():
     lgcl_fun = pyf.Function(name='lgcl_fun', args=[],
-                            return_type=pyf.Dtype(type='logical', ktp='fwrap_lgcl'))
+                            return_type=pyf.LogicalType(ktp='fwrap_lgcl'))
     lgcl_fun_wrapped = pyf.FunctionWrapper(name='lgcl_fun_c', wrapped=lgcl_fun)
     buf = CodeBuffer()
     fc_wrap.FortranWrapperGen(buf).generate(lgcl_fun_wrapped)
@@ -240,7 +240,7 @@ def test_logical_function():
 def test_logical_wrapper():
     lgcl_arg = pyf.Subroutine(name='lgcl_arg',
                            args=[pyf.Argument(name='lgcl',
-                                              dtype=pyf.Dtype(type='logical', ktp='fwrap_lgcl_ktp'),
+                                              dtype=pyf.LogicalType(ktp='fwrap_lgcl_ktp'),
                                               intent="inout")])
     lgcl_arg_wrapped = pyf.SubroutineWrapper(name='lgcl_arg_c', wrapped=lgcl_arg)
     buf = CodeBuffer()
@@ -277,6 +277,7 @@ def test_logical_wrapper():
 def _test_assumed_shape_int_array():
     arr_arg = pyf.Subroutine(name='arr_arg',
                            args=[pyf.Argument(name='arr',
+                                              #XXX: this needs to be fixed...
                                               dtype=pyf.Dtype(type='integer', ktp='fwrap_int',
                                                               dimension=[':',':']),
                                               intent="inout")])
@@ -305,6 +306,7 @@ def _test_assumed_shape_int_array():
 def _test_explicit_shape_int_array():
     arr_arg = pyf.Subroutine(name='arr_arg',
                            args=[pyf.Argument(name='arr',
+                                              #XXX: this needs to be fixed...
                                               dtype=pyf.Dtype(type='integer', ktp='fwrap_int',
                                                       dimension=['10','20']),
                                               intent="inout")])
@@ -350,8 +352,8 @@ def _test_character_iface():
 class test_arg_wrapper(object):
 
     def setup(self):
-        dint = pyf.Dtype(type='integer', ktp='fwrap_int')
-        dlgcl = pyf.Dtype(type='logical', ktp='fwrap_default_logical')
+        dint = pyf.IntegerType('fwrap_int')
+        dlgcl = pyf.default_logical
 
         self.int_arg = pyf.Argument(name='int', dtype=dint, intent='inout')
         self.int_arg_wrap = pyf.ArgWrapper(self.int_arg)
@@ -413,8 +415,8 @@ end if
 class test_arg_manager_return(object):
 
     def setup(self):
-        dlgcl = pyf.Dtype(type='logical', ktp='fwrap_default_logical')
-        dint = pyf.Dtype(type='integer', ktp='fwrap_int')
+        dlgcl = pyf.default_logical
+        dint = pyf.IntegerType(ktp='fwrap_int')
         self.lgcl = pyf.Argument(name='ll', dtype=dlgcl, intent='out', is_return_arg=True)
         self.int = pyf.Argument(name='int', dtype=dint, intent='out', is_return_arg=True)
         self.am_lgcl = pyf.ArgManager([], self.lgcl)
@@ -435,8 +437,8 @@ logical(fwrap_default_logical) :: ll_tmp
 class test_arg_manager(object):
     
     def setup(self):
-        dlgcl = pyf.Dtype(type='logical', ktp='fwrap_default_logical')
-        dint = pyf.Dtype(type='integer', ktp='fwrap_int')
+        dlgcl = pyf.default_logical
+        dint = pyf.IntegerType(ktp='fwrap_int')
         self.lgcl1 = pyf.Argument(name='lgcl1', dtype=dlgcl, intent='inout')
         self.lgcl2 = pyf.Argument(name='lgcl2', dtype=dlgcl, intent='inout')
         self.intarg = pyf.Argument(name='int', dtype=dint, intent='inout')

@@ -1,20 +1,40 @@
-# Specification statements:
-# A variable must have a type:
-# Base types are integer, real, complex, character, logical.
-# Derived types...
-# The base type may have a kind type parameter.
-# A variable may have these attributes:
-# dimension -- list of dimension specs
-# 
-
-default_integer = object()
 default_real = object()
 default_complex = object()
 
 class Dtype(object):
-    def __init__(self, type, ktp, dimension=None):
-        self.type = type
+
+    def type_spec(self):
+        return '%s(%s)' % (self.type, self.ktp)
+
+class IntegerType(Dtype):
+    def __init__(self, ktp):
         self.ktp = ktp
+        self.type = 'integer'
+
+default_integer = IntegerType(ktp='fwrap_default_int')
+
+class LogicalType(Dtype):
+    def __init__(self, ktp):
+        self.ktp = ktp
+        self.type = 'logical'
+
+default_logical = LogicalType(ktp='fwrap_default_logical')
+
+class RealType(Dtype):
+    def __init__(self, ktp):
+        self.ktp = ktp
+        self.type = 'real'
+
+default_real = RealType(ktp='fwrap_default_real')
+default_dbl  = RealType(ktp='fwrap_default_double')
+
+class ComplexType(Dtype):
+    def __init__(self, ktp):
+        self.ktp = ktp
+        self.type = 'complex'
+
+default_cmplx = ComplexType(ktp='fwrap_default_complex')
+default_dbl_cmplx = ComplexType(ktp='fwrap_default_dbl_cmplx')
 
 class Var(object):
     def __init__(self, name, dtype):
@@ -22,8 +42,7 @@ class Var(object):
         self.dtype = dtype
 
     def type_spec(self):
-        #XXX: demeter
-        return '%s(%s)' % (self.dtype.type, self.dtype.ktp)
+        return self.dtype.type_spec()
 
     def declaration(self):
         return '%s :: %s' % (self.type_spec(), self.name)
@@ -86,7 +105,7 @@ class LogicalWrapper(ArgWrapper):
 
     def __init__(self, arg):
         super(LogicalWrapper, self).__init__(arg)
-        dt = Dtype(type='integer', ktp='fwrap_default_int')
+        dt = default_integer
         self.extern_arg = Argument(name=arg.name, dtype=dt, intent=arg.intent, is_return_arg=arg.is_return_arg)
         self.intern_var = Var(name=arg.name+'_tmp', dtype=arg.dtype)
 
