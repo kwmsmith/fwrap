@@ -37,9 +37,10 @@ default_cmplx = ComplexType(ktp='fwrap_default_complex')
 default_dbl_cmplx = ComplexType(ktp='fwrap_default_dbl_cmplx')
 
 class Var(object):
-    def __init__(self, name, dtype):
+    def __init__(self, name, dtype, dimension=None):
         self.name = name
         self.dtype = dtype
+        self.dimension = dimension
 
     def type_spec(self):
         return self.dtype.type_spec()
@@ -49,8 +50,8 @@ class Var(object):
 
 class Argument(object):
 
-    def __init__(self, name, dtype, intent=None, is_return_arg=False):
-        self._var = Var(name=name, dtype=dtype)
+    def __init__(self, name, dtype, intent=None, dimension=None, is_return_arg=False):
+        self._var = Var(name=name, dtype=dtype, dimension=dimension)
         self.intent = intent
         self.is_return_arg = is_return_arg
 
@@ -86,8 +87,8 @@ class ArgWrapper(object):
 
     def __init__(self, arg):
         self._orig_arg = arg
-        self.extern_arg = arg
-        self.intern_var = None
+        self._extern_arg = arg
+        self._intern_var = None
 
     def pre_call_code(self):
         return None
@@ -96,18 +97,30 @@ class ArgWrapper(object):
         return None
 
     def intern_name(self):
-        if self.intern_var:
-            return self.intern_var.name
+        if self._intern_var:
+            return self._intern_var.name
         else:
-            return self.extern_arg.name
+            return self._extern_arg.name
+
+    def extern_arg_list(self):
+        return [self._extern_arg.name]
+
+    def extern_declarations(self):
+        return [self._extern_arg.declaration()]
+
+    def intern_declarations(self):
+        if self._intern_var:
+            return [self._intern_var.declaration()]
+        else:
+            return []
 
 class LogicalWrapper(ArgWrapper):
 
     def __init__(self, arg):
         super(LogicalWrapper, self).__init__(arg)
         dt = default_integer
-        self.extern_arg = Argument(name=arg.name, dtype=dt, intent=arg.intent, is_return_arg=arg.is_return_arg)
-        self.intern_var = Var(name=arg.name+'_tmp', dtype=arg.dtype)
+        self._extern_arg = Argument(name=arg.name, dtype=dt, intent=arg.intent, is_return_arg=arg.is_return_arg)
+        self._intern_var = Var(name=arg.name+'_tmp', dtype=arg.dtype)
 
     def pre_call_code(self):
         pcc = '''\
@@ -116,8 +129,8 @@ if(%(extern_arg)s .ne. 0) then
 else
     %(intern_var)s = .false.
 end if
-''' % {'extern_arg' : self.extern_arg.name,
-       'intern_var' : self.intern_var.name}
+''' % {'extern_arg' : self._extern_arg.name,
+       'intern_var' : self._intern_var.name}
 
         return pcc.splitlines()
 
@@ -128,8 +141,8 @@ if(%(intern_var)s) then
 else
     %(extern_arg)s = 0
 end if
-''' % {'extern_arg' : self.extern_arg.name,
-       'intern_var' : self.intern_var.name}
+''' % {'extern_arg' : self._extern_arg.name,
+       'intern_var' : self._intern_var.name}
         return pcc.splitlines()
 
 class ArgManager(object):
@@ -153,22 +166,22 @@ class ArgManager(object):
     def call_arg_list(self):
         cl = []
         for argw in self.arg_wrappers:
-            if argw.intern_var:
-                cl.append(argw.intern_var.name)
-            else:
-                cl.append(argw.extern_arg.name)
+            cl.append(argw.intern_name())
         return cl
 
     def extern_arg_list(self):
-        return [argw.extern_arg.name for argw in self.arg_wrappers]
+        ret = []
+        for argw in self.arg_wrappers:
+            ret.extend(argw.extern_arg_list())
+        return ret
 
     def extern_declarations(self):
         #XXX: demeter ???
         decls = []
         for argw in self.arg_wrappers:
-            decls.append(argw.extern_arg.declaration())
+            decls.extend(argw.extern_declarations())
         if self.return_arg_wrapper:
-            decls.append(self.return_arg_wrapper.extern_arg.declaration())
+            decls.extend(self.return_arg_wrapper.extern_declarations())
         return decls
 
     def arg_declarations(self):
@@ -182,11 +195,9 @@ class ArgManager(object):
         #XXX: demeter ???
         decls = []
         for argw in self.arg_wrappers:
-            if argw.intern_var:
-                decls.append(argw.intern_var.declaration())
+            decls.extend(argw.intern_declarations())
         if self.return_arg_wrapper:
-            if self.return_arg_wrapper.intern_var:
-                decls.append(self.return_arg_wrapper.intern_var.declaration())
+            decls.extend(self.return_arg_wrapper.intern_declarations())
         return decls
 
     def pre_call_code(self):

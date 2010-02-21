@@ -278,12 +278,12 @@ def _test_assumed_shape_int_array():
     arr_arg = pyf.Subroutine(name='arr_arg',
                            args=[pyf.Argument(name='arr',
                                               #XXX: this needs to be fixed...
-                                              dtype=pyf.Dtype(type='integer', ktp='fwrap_int',
-                                                              dimension=[':',':']),
+                                              dtype=pyf.default_integer,
+                                              dimension=(':',':'),
                                               intent="inout")])
-    arr_arg_wrapped = pyf.SubroutineWrapper(name='lgcl_arg_c', wrapped=lgcl_arg)
+    arr_arg_wrapped = pyf.SubroutineWrapper(name='lgcl_arg_c', wrapped=arr_arg)
     buf = CodeBuffer()
-    fc_wrap.FortranWrapperGen(buf).generate(lgcl_arg_wrapped)
+    fc_wrap.FortranWrapperGen(buf).generate(arr_arg_wrapped)
     fort_file = '''\
     subroutine arr_arg_c(arr, arr_d1, arr_d2) bind(c, name="arr_arg_c")
         use config
@@ -349,6 +349,18 @@ def _test_assumed_size_character_array():
 def _test_character_iface():
     pass
 
+class test_array_arg_wrapper(object):
+
+    def _test_int_arr(self):
+        arr_arg = pyf.Argument(name='arr_arg', dtype=pyf.default_real, dimension=(':',':'), intent='inout')
+        arr_wrapper = pyf.ArgWrapper(arr_arg)
+        decls = '''\
+integer(fwrap_default_int), intent(in) :: arr_arg_d1
+integer(fwrap_default_int), intent(in) :: arr_arg_d2
+real(fwrap_default_real), dimension(arr_arg_d1, arr_arg_d2), intent(inout) :: arr_arg
+'''
+        eq_(arr_wrapper.extern_declarations(), decls.splitlines())
+
 class test_arg_wrapper(object):
 
     def setup(self):
@@ -365,10 +377,10 @@ class test_arg_wrapper(object):
         self.lgcl_arg_in_wrap = pyf.LogicalWrapper(self.lgcl_arg_in)
 
     def test_extern_int_arg(self):
-        eq_(self.int_arg_wrap.extern_arg.declaration(), self.int_arg.declaration())
+        eq_(self.int_arg_wrap.extern_declarations(), [self.int_arg.declaration()])
 
     def test_intern_int_var(self):
-        eq_(self.int_arg_wrap.intern_var, None)
+        eq_(self.int_arg_wrap.intern_declarations(), [])
 
     def test_pre_call_code_int(self):
         eq_(self.int_arg_wrap.pre_call_code(), None)
@@ -377,16 +389,16 @@ class test_arg_wrapper(object):
         eq_(self.int_arg_wrap.post_call_code(), None)
 
     def test_extern_lgcl_arg(self):
-        eq_(self.lgcl_arg_wrap.extern_arg.declaration(),
-                'integer(fwrap_default_int), intent(inout) :: lgcl')
-        eq_(self.lgcl_arg_in_wrap.extern_arg.declaration(),
-                'integer(fwrap_default_int), intent(in) :: lgcl_in')
+        eq_(self.lgcl_arg_wrap.extern_declarations(),
+                ['integer(fwrap_default_int), intent(inout) :: lgcl'])
+        eq_(self.lgcl_arg_in_wrap.extern_declarations(),
+                ['integer(fwrap_default_int), intent(in) :: lgcl_in'])
 
     def test_intern_lgcl_var(self):
-        eq_(self.lgcl_arg_wrap.intern_var.declaration(),
-                'logical(fwrap_default_logical) :: lgcl_tmp')
-        eq_(self.lgcl_arg_in_wrap.intern_var.declaration(),
-                'logical(fwrap_default_logical) :: lgcl_in_tmp')
+        eq_(self.lgcl_arg_wrap.intern_declarations(),
+                ['logical(fwrap_default_logical) :: lgcl_tmp'])
+        eq_(self.lgcl_arg_in_wrap.intern_declarations(),
+                ['logical(fwrap_default_logical) :: lgcl_in_tmp'])
 
     def test_pre_call_code(self):
         for argw in (self.lgcl_arg_wrap, self.lgcl_arg_in_wrap):
@@ -396,8 +408,8 @@ if(%(extern_arg)s .ne. 0) then
 else
     %(intern_var)s = .false.
 end if
-''' % {'extern_arg' : argw.extern_arg.name,
-       'intern_var' : argw.intern_var.name}
+''' % {'extern_arg' : argw._extern_arg.name,
+       'intern_var' : argw._intern_var.name}
             eq_(argw.pre_call_code(), pcc.splitlines())
 
     def test_post_call_code(self):
@@ -408,8 +420,8 @@ if(%(intern_var)s) then
 else
     %(extern_arg)s = 0
 end if
-''' % {'extern_arg' : argw.extern_arg.name,
-       'intern_var' : argw.intern_var.name}
+''' % {'extern_arg' : argw._extern_arg.name,
+       'intern_var' : argw._intern_var.name}
             eq_(argw.post_call_code(), pcc.splitlines())
 
 class test_arg_manager_return(object):
