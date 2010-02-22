@@ -42,11 +42,14 @@ class Var(object):
         self.dtype = dtype
         self.dimension = dimension
 
-    def type_spec(self):
-        return self.dtype.type_spec()
+    def var_specs(self):
+        specs = [self.dtype.type_spec()]
+        if self.dimension:
+            specs.append('dimension(%s)' % ', '.join(self.dimension))
+        return specs
 
     def declaration(self):
-        return '%s :: %s' % (self.type_spec(), self.name)
+        return '%s :: %s' % (', '.join(self.var_specs()), self.name)
 
 class Argument(object):
 
@@ -61,15 +64,19 @@ class Argument(object):
     def _get_dtype(self):
         return self._var.dtype
 
+    def _get_dimension(self):
+        return self._var.dimension
+
     name = property(_get_name)
     dtype = property(_get_dtype)
+    dimension = property(_get_dimension)
 
     def declaration(self):
         var = self._var
-        spec = [var.type_spec()]
+        specs = var.var_specs()
         if self.intent and not self.is_return_arg:
-            spec.append('intent(%s)' % self.intent)
-        return '%s :: %s' % (', '.join(spec), self.name)
+            specs.append('intent(%s)' % self.intent)
+        return '%s :: %s' % (', '.join(specs), self.name)
 
 class ProcArgument(object):
     def __init__(self, proc):
@@ -80,6 +87,8 @@ def ArgWrapperFactory(arg):
     #XXX: demeter
     if arg.dtype.type == 'logical':
         return LogicalWrapper(arg)
+    if getattr(arg, 'dimension', None):
+        return ArrayArgWrapper(arg)
     else:
         return ArgWrapper(arg)
 
@@ -113,6 +122,44 @@ class ArgWrapper(object):
             return [self._intern_var.declaration()]
         else:
             return []
+
+class ArrayArgWrapper(object):
+
+    def __init__(self, arg):
+        self._orig_arg = arg
+        self._extern_args = []
+        self._intern_vars = []
+        self._dims = arg.dimension
+        self._set_extern_args()
+
+    def _set_extern_args(self):
+        orig_name = self._orig_arg.name
+        for idx, dim in enumerate(self._dims):
+            self._extern_args.append(Argument(name='%s_d%d' % (orig_name, idx+1),
+                                              dtype=default_integer,
+                                              intent='in'))
+        dims = [dim.name for dim in self._extern_args]
+        self._extern_args.append(Argument(name=orig_name, dtype=self._orig_arg.dtype,
+                                          intent=self._orig_arg.intent,
+                                          dimension=dims))
+
+    def extern_declarations(self):
+        return [arg.declaration() for arg in self._extern_args]
+
+    def intern_declarations(self):
+        return []
+
+    def pre_call_code(self):
+        return []
+
+    def post_call_code(self):
+        return []
+
+    def intern_name(self):
+        return self._extern_args[-1].name
+
+    def extern_arg_list(self):
+        return [arg.name for arg in self._extern_args]
 
 class LogicalWrapper(ArgWrapper):
 

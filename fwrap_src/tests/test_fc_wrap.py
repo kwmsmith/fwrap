@@ -274,28 +274,27 @@ def test_logical_wrapper():
     compare(fort_file, buf.getvalue())
 
 
-def _test_assumed_shape_int_array():
+def test_assumed_shape_int_array():
     arr_arg = pyf.Subroutine(name='arr_arg',
                            args=[pyf.Argument(name='arr',
-                                              #XXX: this needs to be fixed...
                                               dtype=pyf.default_integer,
                                               dimension=(':',':'),
                                               intent="inout")])
-    arr_arg_wrapped = pyf.SubroutineWrapper(name='lgcl_arg_c', wrapped=arr_arg)
+    arr_arg_wrapped = pyf.SubroutineWrapper(name='arr_arg_c', wrapped=arr_arg)
     buf = CodeBuffer()
     fc_wrap.FortranWrapperGen(buf).generate(arr_arg_wrapped)
     fort_file = '''\
-    subroutine arr_arg_c(arr, arr_d1, arr_d2) bind(c, name="arr_arg_c")
+    subroutine arr_arg_c(arr_d1, arr_d2, arr) bind(c, name="arr_arg_c")
         use config
         implicit none
-        integer(fwrap_int), intent(in) :: arr_d1
-        integer(fwrap_int), intent(in) :: arr_d2
-        integer(fwrap_int), intent(inout), dimension(arr_d1, arr_d2) :: arr
+        integer(fwrap_default_int), intent(in) :: arr_d1
+        integer(fwrap_default_int), intent(in) :: arr_d2
+        integer(fwrap_default_int), dimension(arr_d1, arr_d2), intent(inout) :: arr
         interface
             subroutine arr_arg(arr)
                 use config
                 implicit none
-                logical(fwrap_int), intent(inout), dimension(:,:) :: arr
+                integer(fwrap_default_int), dimension(:, :), intent(inout) :: arr
             end subroutine arr_arg
         end interface
         call arr_arg(arr)
@@ -351,15 +350,30 @@ def _test_character_iface():
 
 class test_array_arg_wrapper(object):
 
-    def _test_int_arr(self):
-        arr_arg = pyf.Argument(name='arr_arg', dtype=pyf.default_real, dimension=(':',':'), intent='inout')
-        arr_wrapper = pyf.ArgWrapper(arr_arg)
-        decls = '''\
+    def setup(self):
+        self.real_arr_arg = pyf.Argument(name='real_arr_arg', dtype=pyf.default_real, dimension=(':',':',':'), intent='out')
+        self.int_arr_arg = pyf.Argument(name='arr_arg', dtype=pyf.default_integer, dimension=(':',':'), intent='inout')
+        self.int_arr_wrapper = pyf.ArrayArgWrapper(self.int_arr_arg)
+        self.real_arr_wrapper = pyf.ArrayArgWrapper(self.real_arr_arg)
+
+    def test_extern_decls(self):
+        int_decls = '''\
 integer(fwrap_default_int), intent(in) :: arr_arg_d1
 integer(fwrap_default_int), intent(in) :: arr_arg_d2
-real(fwrap_default_real), dimension(arr_arg_d1, arr_arg_d2), intent(inout) :: arr_arg
+integer(fwrap_default_int), dimension(arr_arg_d1, arr_arg_d2), intent(inout) :: arr_arg
 '''
-        eq_(arr_wrapper.extern_declarations(), decls.splitlines())
+        real_decls = '''\
+integer(fwrap_default_int), intent(in) :: real_arr_arg_d1
+integer(fwrap_default_int), intent(in) :: real_arr_arg_d2
+integer(fwrap_default_int), intent(in) :: real_arr_arg_d3
+real(fwrap_default_real), dimension(real_arr_arg_d1, real_arr_arg_d2, real_arr_arg_d3), intent(out) :: real_arr_arg
+'''
+        eq_(self.int_arr_wrapper.extern_declarations(), int_decls.splitlines())
+        eq_(self.real_arr_wrapper.extern_declarations(), real_decls.splitlines())
+
+    def test_extern_arg_list(self):
+        eq_(self.int_arr_wrapper.extern_arg_list(), ['arr_arg_d1', 'arr_arg_d2', 'arr_arg'])
+        eq_(self.real_arr_wrapper.extern_arg_list(), ['real_arr_arg_d1', 'real_arr_arg_d2', 'real_arr_arg_d3', 'real_arr_arg'])
 
 class test_arg_wrapper(object):
 
