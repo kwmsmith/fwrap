@@ -302,35 +302,60 @@ def test_assumed_shape_int_array():
 '''
     compare(fort_file, buf.getvalue())
 
-def _test_explicit_shape_int_array():
+def test_explicit_shape_int_array():
     arr_arg = pyf.Subroutine(name='arr_arg',
                            args=[pyf.Argument(name='arr',
-                                              #XXX: this needs to be fixed...
-                                              dtype=pyf.Dtype(type='integer', ktp='fwrap_int',
-                                                      dimension=['10','20']),
-                                              intent="inout")])
+                                              dtype=pyf.default_integer,
+                                              dimension=('d1', 'd2'),
+                                              intent="inout"),
+                                pyf.Argument(name='d1', dtype=pyf.default_integer,
+                                                intent='in'),
+                                pyf.Argument(name='d2', dtype=pyf.default_integer,
+                                                intent='in')
+                                ])
     arr_arg_wrapped = pyf.SubroutineWrapper(name='arr_arg_c', wrapped=arr_arg)
     buf = CodeBuffer()
-    fc_wrap.FortranWrapperGen(buf).generate(lgcl_arg_wrapped)
+    fc_wrap.FortranWrapperGen(buf).generate(arr_arg_wrapped)
     fort_file = '''\
-    subroutine arr_arg_c(arr, arr_d1, arr_d2) bind(c, name="arr_arg_c")
+    subroutine arr_arg_c(arr_d1, arr_d2, arr, d1, d2) bind(c, name="arr_arg_c")
         use config
         implicit none
-        integer(fwrap_int), intent(in) :: arr_d1, arr_d2
-        integer(fwrap_int), intent(inout), dimension(arr_d1, arr_d2) :: arr
+        integer(fwrap_default_int), intent(in) :: arr_d1
+        integer(fwrap_default_int), intent(in) :: arr_d2
+        integer(fwrap_default_int), dimension(arr_d1, arr_d2), intent(inout) :: arr
+        integer(fwrap_default_int), intent(in) :: d1
+        integer(fwrap_default_int), intent(in) :: d2
         interface
-            subroutine arr_arg(d1, d2, arr)
+            subroutine arr_arg(arr, d1, d2)
                 use config
                 implicit none
-                integer(fwrap_int), intent(in) :: d1
-                integer(fwrap_int), intent(in) :: d2
-                logical(fwrap_int), intent(inout), dimension(d1, d2) :: arr
+                integer(fwrap_default_int), dimension(d1, d2), intent(inout) :: arr
+                integer(fwrap_default_int), intent(in) :: d1
+                integer(fwrap_default_int), intent(in) :: d2
             end subroutine arr_arg
         end interface
-        call arr_arg(arr_d1, arr_d2, arr)
+        call arr_arg(arr, d1, d2)
     end subroutine arr_arg_c
 '''
     compare(fort_file, buf.getvalue())
+
+def _test_many_arrays():
+    arr_args = pyf.Subroutine(name='arr_args',
+                           args=[
+                                    pyf.Argument('assumed_size', pyf.default_integer, "inout", dimension=('d1','*')),
+                                    pyf.Argument('d1', pyf.default_integer, 'in'),
+                                    pyf.Argument('assumed_shape', pyf.default_logical, 'out', dimension=(':', ':')),
+                                    pyf.Argument('explicit_shape', pyf.default_complex, 'inout', ('c1', 'c2')),
+                                    pyf.Argument('c1', pyf.default_integer, 'inout'),
+                                    pyf.Argument('c2', pyf.default_integer)
+                                ])
+    arr_args_wrapped = pyf.SubroutineWrapper(name='arr_args_c', wrapped=arr_args)
+    buf = CodeBuffer()
+    fc_wrap.FortranWrapperGen(buf).generate(arr_args_wrapped)
+    wrapped_subr = '''\
+foobar
+'''
+    compare(wrapped_subr, buf.getvalue())
 
 def _test_assumed_size_real_array():
     pass
@@ -355,6 +380,8 @@ class test_array_arg_wrapper(object):
         self.int_arr_arg = pyf.Argument(name='arr_arg', dtype=pyf.default_integer, dimension=(':',':'), intent='inout')
         self.int_arr_wrapper = pyf.ArrayArgWrapper(self.int_arr_arg)
         self.real_arr_wrapper = pyf.ArrayArgWrapper(self.real_arr_arg)
+
+        self.real_explicit_arg = pyf.Argument(name='real_exp_arg', dtype=pyf.default_real, dimension=('d1', 'd2', 'd3'), intent='inout')
 
     def test_extern_decls(self):
         int_decls = '''\

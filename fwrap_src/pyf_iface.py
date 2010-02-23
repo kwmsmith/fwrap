@@ -1,6 +1,3 @@
-default_real = object()
-default_complex = object()
-
 class Dtype(object):
 
     def type_spec(self):
@@ -33,8 +30,8 @@ class ComplexType(Dtype):
         self.ktp = ktp
         self.type = 'complex'
 
-default_cmplx = ComplexType(ktp='fwrap_default_complex')
-default_dbl_cmplx = ComplexType(ktp='fwrap_default_dbl_cmplx')
+default_complex = ComplexType(ktp='fwrap_default_complex')
+default_double_complex = ComplexType(ktp='fwrap_default_dbl_cmplx')
 
 class Var(object):
     def __init__(self, name, dtype, dimension=None):
