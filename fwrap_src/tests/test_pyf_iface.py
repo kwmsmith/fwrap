@@ -76,13 +76,13 @@ class test_arg_wrapper(object):
         dlgcl = pyf.default_logical
 
         self.int_arg = pyf.Argument(name='int', dtype=dint, intent='inout')
-        self.int_arg_wrap = pyf.ArgWrapper(self.int_arg)
+        self.int_arg_wrap = pyf.ArgWrapperFactory(self.int_arg)
 
         self.lgcl_arg = pyf.Argument(name='lgcl', dtype=dlgcl, intent='inout')
-        self.lgcl_arg_wrap = pyf.LogicalWrapper(self.lgcl_arg)
+        self.lgcl_arg_wrap = pyf.ArgWrapperFactory(self.lgcl_arg)
 
         self.lgcl_arg_in = pyf.Argument(name='lgcl_in', dtype=dlgcl, intent='in')
-        self.lgcl_arg_in_wrap = pyf.LogicalWrapper(self.lgcl_arg_in)
+        self.lgcl_arg_in_wrap = pyf.ArgWrapperFactory(self.lgcl_arg_in)
 
     def test_extern_int_arg(self):
         eq_(self.int_arg_wrap.extern_declarations(), [self.int_arg.declaration()])
@@ -91,24 +91,22 @@ class test_arg_wrapper(object):
         eq_(self.int_arg_wrap.intern_declarations(), [])
 
     def test_pre_call_code_int(self):
-        eq_(self.int_arg_wrap.pre_call_code(), None)
+        eq_(self.int_arg_wrap.pre_call_code(), [])
 
     def test_post_call_code_int(self):
-        eq_(self.int_arg_wrap.post_call_code(), None)
+        eq_(self.int_arg_wrap.post_call_code(), [])
 
     def test_extern_lgcl_arg(self):
         eq_(self.lgcl_arg_wrap.extern_declarations(),
-                ['integer(fwrap_default_int), intent(inout) :: lgcl'])
+                ['logical(fwrap_default_logical), intent(inout) :: lgcl'])
         eq_(self.lgcl_arg_in_wrap.extern_declarations(),
-                ['integer(fwrap_default_int), intent(in) :: lgcl_in'])
+                ['logical(fwrap_default_logical), intent(in) :: lgcl_in'])
 
     def test_intern_lgcl_var(self):
-        eq_(self.lgcl_arg_wrap.intern_declarations(),
-                ['logical(fwrap_default_logical) :: lgcl_tmp'])
-        eq_(self.lgcl_arg_in_wrap.intern_declarations(),
-                ['logical(fwrap_default_logical) :: lgcl_in_tmp'])
+        eq_(self.lgcl_arg_wrap.intern_declarations(), [])
+        eq_(self.lgcl_arg_in_wrap.intern_declarations(), [])
 
-    def test_pre_call_code(self):
+    def _test_pre_call_code(self):
         for argw in (self.lgcl_arg_wrap, self.lgcl_arg_in_wrap):
             pcc = '''\
 if(%(extern_arg)s .ne. 0) then
@@ -120,7 +118,7 @@ end if
        'intern_var' : argw._intern_var.name}
             eq_(argw.pre_call_code(), pcc.splitlines())
 
-    def test_post_call_code(self):
+    def _test_post_call_code_convert(self):
         for argw in (self.lgcl_arg_wrap, self.lgcl_arg_in_wrap):
             pcc = '''\
 if(%(intern_var)s) then
@@ -131,6 +129,10 @@ end if
 ''' % {'extern_arg' : argw._extern_arg.name,
        'intern_var' : argw._intern_var.name}
             eq_(argw.post_call_code(), pcc.splitlines())
+
+    def test_post_call_code(self):
+        for argw in (self.lgcl_arg_wrap, self.lgcl_arg_in_wrap):
+            eq_(argw.post_call_code(), [])
 
 class test_arg_manager_return(object):
 
@@ -144,15 +146,12 @@ class test_arg_manager_return(object):
 
     def test_declarations(self):
         decl = '''\
-integer(fwrap_default_int) :: ll
+logical(fwrap_default_logical) :: ll
 '''.splitlines()
         eq_(self.am_lgcl.extern_declarations(), decl)
 
     def test_temp_declarations(self):
-        decl = '''\
-logical(fwrap_default_logical) :: ll_tmp
-'''.splitlines()
-        eq_(self.am_lgcl.temp_declarations(), decl)
+        eq_(self.am_lgcl.temp_declarations(), [])
 
 class test_arg_manager(object):
     
@@ -163,11 +162,19 @@ class test_arg_manager(object):
         self.lgcl2 = pyf.Argument(name='lgcl2', dtype=dlgcl, intent='inout')
         self.intarg = pyf.Argument(name='int', dtype=dint, intent='inout')
         self.args = [self.lgcl1, self.lgcl2, self.intarg]
-        self.l1wrap = pyf.LogicalWrapper(self.lgcl1)
-        self.l2wrap = pyf.LogicalWrapper(self.lgcl2)
+        self.l1wrap = pyf.ArgWrapper(self.lgcl1)
+        self.l2wrap = pyf.ArgWrapper(self.lgcl2)
         self.am = pyf.ArgManager(self.args)
 
     def test_arg_declarations(self):
+        decls = '''\
+logical(fwrap_default_logical), intent(inout) :: lgcl1
+logical(fwrap_default_logical), intent(inout) :: lgcl2
+integer(fwrap_int), intent(inout) :: int
+'''.splitlines()
+        eq_(self.am.arg_declarations(), decls)
+
+    def _test_arg_declarations_convert(self):
         decls = '''\
 integer(fwrap_default_int), intent(inout) :: lgcl1
 integer(fwrap_default_int), intent(inout) :: lgcl2
@@ -175,7 +182,7 @@ integer(fwrap_int), intent(inout) :: int
 '''.splitlines()
         eq_(self.am.arg_declarations(), decls)
 
-    def test_temp_declarations(self):
+    def _test_temp_declarations(self):
         decls = '''\
 logical(fwrap_default_logical) :: lgcl1_tmp
 logical(fwrap_default_logical) :: lgcl2_tmp
@@ -195,7 +202,7 @@ logical(fwrap_default_logical) :: lgcl2_tmp
         eq_(self.am.extern_arg_list(), al)
 
     def test_call_arg_list(self):
-        cl = 'lgcl1_tmp lgcl2_tmp int'.split()
+        cl = 'lgcl1 lgcl2 int'.split()
         eq_(self.am.call_arg_list(), cl)
 
     #TODO

@@ -81,9 +81,6 @@ class ProcArgument(object):
         self.name = proc.name
 
 def ArgWrapperFactory(arg):
-    #XXX: demeter
-    if arg.dtype.type == 'logical':
-        return LogicalWrapper(arg)
     if getattr(arg, 'dimension', None):
         return ArrayArgWrapper(arg)
     else:
@@ -97,10 +94,10 @@ class ArgWrapper(object):
         self._intern_var = None
 
     def pre_call_code(self):
-        return None
+        return []
 
     def post_call_code(self):
-        return None
+        return []
 
     def intern_name(self):
         if self._intern_var:

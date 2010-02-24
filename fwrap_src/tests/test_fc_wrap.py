@@ -218,7 +218,7 @@ def test_logical_function():
     function lgcl_fun_c() bind(c, name="lgcl_fun_c")
         use config
         implicit none
-        integer(fwrap_default_int) :: lgcl_fun_c
+        logical(fwrap_lgcl) :: lgcl_fun_c
         interface
             function lgcl_fun()
                 use config
@@ -226,13 +226,7 @@ def test_logical_function():
                 logical(fwrap_lgcl) :: lgcl_fun
             end function lgcl_fun
         end interface
-        logical(fwrap_lgcl) :: lgcl_fun_c_tmp
-        lgcl_fun_c_tmp = lgcl_fun()
-        if(lgcl_fun_c_tmp) then
-            lgcl_fun_c = 1
-        else
-            lgcl_fun_c = 0
-        end if
+        lgcl_fun_c = lgcl_fun()
     end function lgcl_fun_c
 '''
     compare(fort_file, buf.getvalue())
@@ -249,7 +243,7 @@ def test_logical_wrapper():
     subroutine lgcl_arg_c(lgcl) bind(c, name="lgcl_arg_c")
         use config
         implicit none
-        integer(fwrap_default_int), intent(inout) :: lgcl
+        logical(fwrap_lgcl_ktp), intent(inout) :: lgcl
         interface
             subroutine lgcl_arg(lgcl)
                 use config
@@ -257,18 +251,7 @@ def test_logical_wrapper():
                 logical(fwrap_lgcl_ktp), intent(inout) :: lgcl
             end subroutine lgcl_arg
         end interface
-        logical(fwrap_lgcl_ktp) :: lgcl_tmp
-        if(lgcl .ne. 0) then
-            lgcl_tmp = .true.
-        else
-            lgcl_tmp = .false.
-        end if
-        call lgcl_arg(lgcl_tmp)
-        if(lgcl_tmp) then
-            lgcl = 1
-        else
-            lgcl = 0
-        end if
+        call lgcl_arg(lgcl)
     end subroutine lgcl_arg_c
 '''
     compare(fort_file, buf.getvalue())
@@ -372,4 +355,69 @@ def _test_assumed_size_character_array():
 
 def _test_character_iface():
     pass
+
+def _test_logical_function_convert():
+    lgcl_fun = pyf.Function(name='lgcl_fun', args=[],
+                            return_type=pyf.LogicalType(ktp='fwrap_lgcl'))
+    lgcl_fun_wrapped = pyf.FunctionWrapper(name='lgcl_fun_c', wrapped=lgcl_fun)
+    buf = CodeBuffer()
+    fc_wrap.FortranWrapperGen(buf).generate(lgcl_fun_wrapped)
+    fort_file = '''\
+    function lgcl_fun_c() bind(c, name="lgcl_fun_c")
+        use config
+        implicit none
+        integer(fwrap_default_int) :: lgcl_fun_c
+        interface
+            function lgcl_fun()
+                use config
+                implicit none
+                logical(fwrap_lgcl) :: lgcl_fun
+            end function lgcl_fun
+        end interface
+        logical(fwrap_lgcl) :: lgcl_fun_c_tmp
+        lgcl_fun_c_tmp = lgcl_fun()
+        if(lgcl_fun_c_tmp) then
+            lgcl_fun_c = 1
+        else
+            lgcl_fun_c = 0
+        end if
+    end function lgcl_fun_c
+'''
+    compare(fort_file, buf.getvalue())
+
+def _test_logical_wrapper_convert():
+    lgcl_arg = pyf.Subroutine(name='lgcl_arg',
+                           args=[pyf.Argument(name='lgcl',
+                                              dtype=pyf.LogicalType(ktp='fwrap_lgcl_ktp'),
+                                              intent="inout")])
+    lgcl_arg_wrapped = pyf.SubroutineWrapper(name='lgcl_arg_c', wrapped=lgcl_arg)
+    buf = CodeBuffer()
+    fc_wrap.FortranWrapperGen(buf).generate(lgcl_arg_wrapped)
+    fort_file = '''\
+    subroutine lgcl_arg_c(lgcl) bind(c, name="lgcl_arg_c")
+        use config
+        implicit none
+        integer(fwrap_default_int), intent(inout) :: lgcl
+        interface
+            subroutine lgcl_arg(lgcl)
+                use config
+                implicit none
+                logical(fwrap_lgcl_ktp), intent(inout) :: lgcl
+            end subroutine lgcl_arg
+        end interface
+        logical(fwrap_lgcl_ktp) :: lgcl_tmp
+        if(lgcl .ne. 0) then
+            lgcl_tmp = .true.
+        else
+            lgcl_tmp = .false.
+        end if
+        call lgcl_arg(lgcl_tmp)
+        if(lgcl_tmp) then
+            lgcl = 1
+        else
+            lgcl = 0
+        end if
+    end subroutine lgcl_arg_c
+'''
+    compare(fort_file, buf.getvalue())
 
