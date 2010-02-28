@@ -159,22 +159,8 @@ class FortranGen(TreeVisitor):
     def return_spec(self, node):
         return node.return_arg.declaration()
 
-    def visit_ProcArgument(self, node):
-        self.visit(node.proc)
-
-    def visit_Argument(self, node):
-        self.buf.putln(node.declaration())
-
     def proc_preamble(self, node):
-        buf = self.buf
-        buf.putln('use config')
-        buf.putln('implicit none')
-        for decl in node.arg_declarations():
-            buf.putln(decl)
-        # for arg in node.args:
-            # self.visit(arg)
-        # if isinstance(node, pyf.Function):
-            # buf.putln(self.return_spec(node))
+        pass
 
 class FortranWrapperGen(FortranGen):
 
@@ -212,7 +198,7 @@ class FortranWrapperGen(FortranGen):
         buf.putln(self.procedure_decl(node))
         buf.indent()
         self.proc_preamble(node)
-        FortranInterfaceGen(buf).generate(node.wrapped)
+        node.wrapped.generate_interface(buf)
         self.declare_temps(node)
         self.pre_call(node)
         self.proc_call(node)
@@ -226,20 +212,3 @@ class FortranWrapperGen(FortranGen):
         buf.putln('implicit none')
         for decl in node.arg_declarations():
             buf.putln(decl)
-
-class FortranInterfaceGen(FortranGen):
-
-    def procedure_decl(self, node):
-        return "%s %s(%s)" % (node.kind, node.name, ', '.join(node.extern_arg_list()))
-
-    def visit_Procedure(self, node):
-        buf = self.buf
-        buf.putln('interface')
-        buf.indent()
-        buf.putln(self.procedure_decl(node))
-        buf.indent()
-        self.proc_preamble(node)
-        buf.dedent()
-        buf.putln(self.procedure_end(node))
-        buf.dedent()
-        buf.putln('end interface')

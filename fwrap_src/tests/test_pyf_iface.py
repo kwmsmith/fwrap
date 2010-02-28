@@ -41,12 +41,12 @@ class test_program_units(object):
 class test_array_arg_wrapper(object):
 
     def setup(self):
-        self.real_arr_arg = pyf.Argument(name='real_arr_arg', dtype=pyf.default_real, dimension=(':',':',':'), intent='out')
-        self.int_arr_arg = pyf.Argument(name='arr_arg', dtype=pyf.default_integer, dimension=(':',':'), intent='inout')
+        self.real_arr_arg = pyf.Argument('real_arr_arg', pyf.default_real, dimension=(':',':',':'), intent='out')
+        self.int_arr_arg = pyf.Argument('arr_arg', pyf.default_integer, dimension=(':',':'), intent='inout')
         self.int_arr_wrapper = pyf.ArrayArgWrapper(self.int_arr_arg)
         self.real_arr_wrapper = pyf.ArrayArgWrapper(self.real_arr_arg)
 
-        self.real_explicit_arg = pyf.Argument(name='real_exp_arg', dtype=pyf.default_real, dimension=('d1', 'd2', 'd3'), intent='inout')
+        self.real_explicit_arg = pyf.Argument('real_exp_arg', pyf.default_real, dimension=('d1', 'd2', 'd3'), intent='inout')
 
     def test_extern_decls(self):
         int_decls = '''\
@@ -223,3 +223,6 @@ logical(fwrap_default_logical) :: lgcl2_tmp
         # the intern_var for lgcl can't be named 'lgcl_tmp'
         # this needs to be detected and resolved.
         pass
+
+def test_parameter():
+    param = pyf.Parameter(name='FOO', dtype=pyf.default_integer, value='kind(1.0D0)')

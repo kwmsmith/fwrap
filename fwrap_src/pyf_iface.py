@@ -4,6 +4,7 @@ class Dtype(object):
         return '%s(%s)' % (self.type, self.ktp)
 
 class IntegerType(Dtype):
+
     def __init__(self, ktp):
         self.ktp = ktp
         self.type = 'integer'
@@ -11,6 +12,7 @@ class IntegerType(Dtype):
 default_integer = IntegerType(ktp='fwrap_default_int')
 
 class LogicalType(Dtype):
+
     def __init__(self, ktp):
         self.ktp = ktp
         self.type = 'logical'
@@ -18,6 +20,7 @@ class LogicalType(Dtype):
 default_logical = LogicalType(ktp='fwrap_default_logical')
 
 class RealType(Dtype):
+
     def __init__(self, ktp):
         self.ktp = ktp
         self.type = 'real'
@@ -26,12 +29,21 @@ default_real = RealType(ktp='fwrap_default_real')
 default_dbl  = RealType(ktp='fwrap_default_double')
 
 class ComplexType(Dtype):
+
     def __init__(self, ktp):
         self.ktp = ktp
         self.type = 'complex'
 
 default_complex = ComplexType(ktp='fwrap_default_complex')
 default_double_complex = ComplexType(ktp='fwrap_default_dbl_cmplx')
+
+class Parameter(object):
+    
+    def __init__(self, name, dtype, value):
+        self.name = name
+        self.dtype = dtype
+        self.value = value
+
 
 class Var(object):
     def __init__(self, name, dtype, dimension=None):
@@ -51,6 +63,7 @@ class Var(object):
 
     def declaration(self):
         return '%s :: %s' % (', '.join(self.var_specs()), self.name)
+
 
 class Argument(object):
 
@@ -320,6 +333,30 @@ class Procedure(object):
 
     def arg_declarations(self):
         return self.arg_man.arg_declarations()
+
+    def procedure_decl(self):
+        return "%s %s(%s)" % (self.kind, self.name, ', '.join(self.extern_arg_list()))
+
+    def proc_preamble(self, buf):
+        buf.putln('use config')
+        buf.putln('implicit none')
+        for decl in self.arg_declarations():
+            buf.putln(decl)
+
+    def procedure_end(self):
+        return "end %s %s" % (self.kind, self.name)
+
+    def generate_interface(self, buf):
+        buf.putln('interface')
+        buf.indent()
+        buf.putln(self.procedure_decl())
+        buf.indent()
+        self.proc_preamble(buf)
+        buf.dedent()
+        buf.putln(self.procedure_end())
+        buf.dedent()
+        buf.putln('end interface')
+
 
 class Function(Procedure):
     

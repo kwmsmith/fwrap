@@ -117,7 +117,7 @@ def test_gen_iface():
 
     def gen_iface_gen(ast, istr):
         buf = CodeBuffer()
-        fc_wrap.FortranInterfaceGen(buf).generate(ast)
+        ast.generate_interface(buf)
         compare(istr, buf.getvalue())
 
 
@@ -307,6 +307,39 @@ def test_many_arrays():
     fc_wrap.FortranWrapperGen(buf).generate(arr_args_wrapped)
     compare(many_arrays_text, buf.getvalue())
 
+def _test_parameters():
+    param_func = pyf.Function(name='param_func',
+                              params=[pyf.Parameter(name='FOO', dtype=pyf.default_integer, value='kind(1.0D0)'),
+                                      pyf.Parameter(name='dim', dtype=pyf.default_integer, value='100')],
+                              args=[pyf.Argument(name='arg', dtype=pyf.RealType('FOO')),
+                                    pyf.Argument(name='array', dtype=pyf.RealType('FOO'), dimension=('dim', 'dim'))],
+                              return_type=pyf.RealType('FOO'))
+    param_func_wrapped = pyf.FunctionWrapper(name='param_func_c', wrapped=param_func)
+    buf = CodeBuffer()
+    fc_wrap.FortranWrapperGen(buf).generate(param_func_wrapped)
+    wrapped = '''\
+    function param_func_c(arg, array_d1, array_d2, array) bind(c, name="param_func_c")
+        use config
+        implicit none
+        real(fwrap_FOO) :: arg
+        integer(fwrap_default_int), intent(in) :: array_d1
+        integer(fwrap_default_int), intent(in) :: array_d2
+        real(fwrap_FOO), dimension(array_d1, array_d2) :: array
+        interface
+            function param_func(arg, array)
+                use config
+                implicit none
+
+            end function param_func
+        end interface
+
+        param_func_c = param_func(arg, array)
+    end function param_func_c
+'''
+    # compare(
+
+
+
 def _test_declaration_order():
     arr_arg = pyf.Subroutine(name='arr_arg',
                         args=[
@@ -327,7 +360,7 @@ def _test_declaration_order():
     end interface
 '''
     buf = CodeBuffer()
-    fc_wrap.FortranInterfaceGen(buf).generate(arr_arg)
+    arr_arg.generate_interface(buf)
     compare(iface, buf.getvalue())
 
 def _test_assumed_size_real_array():
@@ -470,6 +503,5 @@ def _test_procedure_argument_iface():
     end interface
 '''
     buf = CodeBuffer()
-    fc_wrap.FortranInterfaceGen(buf).generate(proc_arg_func)
+    proc_arg_func.generate_interface(buf)
     compare(proc_arg_iface, buf.getvalue())
-
