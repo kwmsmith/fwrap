@@ -71,7 +71,6 @@ def test_gen_fortran_one_arg_func():
     one_arg_wrapped = pyf.SubroutineWrapper(name='one_arg_c', wrapped=one_arg)
     buf = CodeBuffer()
     one_arg_wrapped.generate_wrapper(buf)
-    # fc_wrap.FortranWrapperGen(buf).generate(one_arg_wrapped)
     fort_file = '''\
     subroutine one_arg_c(a) bind(c, name="one_arg_c")
         use config
@@ -112,7 +111,6 @@ def test_gen_empty_func_wrapper():
 '''
     buf = CodeBuffer()
     empty_func_wrapper.generate_wrapper(buf)
-    # fc_wrap.FortranWrapperGen(buf).generate(empty_func_wrapper)
     compare(empty_func_wrapped, buf.getvalue())
 
 def test_gen_iface():
@@ -186,7 +184,6 @@ def test_logical_function():
     lgcl_fun_wrapped = pyf.FunctionWrapper(name='lgcl_fun_c', wrapped=lgcl_fun)
     buf = CodeBuffer()
     lgcl_fun_wrapped.generate_wrapper(buf)
-    # fc_wrap.FortranWrapperGen(buf).generate(lgcl_fun_wrapped)
     fort_file = '''\
     function lgcl_fun_c() bind(c, name="lgcl_fun_c")
         use config
@@ -212,7 +209,6 @@ def test_logical_wrapper():
     lgcl_arg_wrapped = pyf.SubroutineWrapper(name='lgcl_arg_c', wrapped=lgcl_arg)
     buf = CodeBuffer()
     lgcl_arg_wrapped.generate_wrapper(buf)
-    # fc_wrap.FortranWrapperGen(buf).generate(lgcl_arg_wrapped)
     fort_file = '''\
     subroutine lgcl_arg_c(lgcl) bind(c, name="lgcl_arg_c")
         use config
@@ -240,7 +236,6 @@ def test_assumed_shape_int_array():
     arr_arg_wrapped = pyf.SubroutineWrapper(name='arr_arg_c', wrapped=arr_arg)
     buf = CodeBuffer()
     arr_arg_wrapped.generate_wrapper(buf)
-    # fc_wrap.FortranWrapperGen(buf).generate(arr_arg_wrapped)
     fort_file = '''\
     subroutine arr_arg_c(arr_d1, arr_d2, arr) bind(c, name="arr_arg_c")
         use config
@@ -274,7 +269,6 @@ def test_explicit_shape_int_array():
     arr_arg_wrapped = pyf.SubroutineWrapper(name='arr_arg_c', wrapped=arr_arg)
     buf = CodeBuffer()
     arr_arg_wrapped.generate_wrapper(buf)
-    # fc_wrap.FortranWrapperGen(buf).generate(arr_arg_wrapped)
     fort_file = '''\
     subroutine arr_arg_c(arr_d1, arr_d2, arr, d1, d2) bind(c, name="arr_arg_c")
         use config
@@ -311,7 +305,6 @@ def test_many_arrays():
     arr_args_wrapped = pyf.SubroutineWrapper(name='arr_args_c', wrapped=arr_args)
     buf = CodeBuffer()
     arr_args_wrapped.generate_wrapper(buf)
-    # fc_wrap.FortranWrapperGen(buf).generate(arr_args_wrapped)
     compare(many_arrays_text, buf.getvalue())
 
 def _test_parameters():
@@ -324,7 +317,6 @@ def _test_parameters():
     param_func_wrapped = pyf.FunctionWrapper(name='param_func_c', wrapped=param_func)
     buf = CodeBuffer()
     param_func_wrapped.generate_wrapper(buf)
-    # fc_wrap.FortranWrapperGen(buf).generate(param_func_wrapped)
     wrapped = '''\
     function param_func_c(arg, array_d1, array_d2, array) bind(c, name="param_func_c")
         use config
@@ -393,7 +385,6 @@ def _test_logical_function_convert():
     lgcl_fun_wrapped = pyf.FunctionWrapper(name='lgcl_fun_c', wrapped=lgcl_fun)
     buf = CodeBuffer()
     lgcl_fun_wrapped.generate_wrapper(buf)
-    # fc_wrap.FortranWrapperGen(buf).generate(lgcl_fun_wrapped)
     fort_file = '''\
     function lgcl_fun_c() bind(c, name="lgcl_fun_c")
         use config
@@ -425,7 +416,6 @@ def _test_logical_wrapper_convert():
     lgcl_arg_wrapped = pyf.SubroutineWrapper(name='lgcl_arg_c', wrapped=lgcl_arg)
     buf = CodeBuffer()
     lgcl_arg_wrapped.generate_wrapper(buf)
-    # fc_wrap.FortranWrapperGen(buf).generate(lgcl_arg_wrapped)
     fort_file = '''\
     subroutine lgcl_arg_c(lgcl) bind(c, name="lgcl_arg_c")
         use config
