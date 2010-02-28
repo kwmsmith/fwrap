@@ -375,7 +375,36 @@ class Subroutine(Procedure):
 
 class ProcWrapper(object):
 
-    #XXX: remove delegate (?)
+    def procedure_end(self):
+        return "end %s %s" % (self.kind, self.name)
+
+    def proc_preamble(self, buf):
+        buf.putln('use config')
+        buf.putln('implicit none')
+        for decl in self.arg_declarations():
+            buf.putln(decl)
+
+    def generate_wrapper(self, buf):
+        buf.putln(self.procedure_decl())
+        buf.indent()
+        self.proc_preamble(buf)
+        self.wrapped.generate_interface(buf)
+        self.declare_temps(buf)
+        self.pre_call_code(buf)
+        self.proc_call(buf)
+        self.post_call_code(buf)
+        buf.dedent()
+        buf.putln(self.procedure_end())
+
+    def procedure_decl(self):
+        return '%s %s(%s) bind(c, name="%s")' % \
+                (self.kind, self.name,
+                        ', '.join(self.extern_arg_list()),
+                        self.name)
+
+    def declare_temps(self, buf):
+        for decl in self.temp_declarations():
+            buf.putln(decl)
 
     def extern_arg_list(self):
         return self.arg_man.extern_arg_list()
@@ -386,11 +415,22 @@ class ProcWrapper(object):
     def temp_declarations(self):
         return self.arg_man.temp_declarations()
 
-    def pre_call_code(self):
-        return self.arg_man.pre_call_code()
+    def pre_call_code(self, buf):
+        for line in self.arg_man.pre_call_code():
+            buf.putln(line)
 
-    def post_call_code(self):
-        return self.arg_man.post_call_code()
+    def post_call_code(self, buf):
+        for line in self.arg_man.post_call_code():
+            buf.putln(line)
+
+    def proc_call(self, buf):
+        proc_call = "%s(%s)" % (self.wrapped.name,
+                                ', '.join(self.call_arg_list()))
+        if isinstance(self, SubroutineWrapper):
+            buf.putln("call %s" % proc_call)
+        elif isinstance(self, FunctionWrapper):
+            buf.putln("%s = %s" % (self.proc_result_name(), proc_call))
+
 
     def call_arg_list(self):
         return self.arg_man.call_arg_list()
@@ -401,7 +441,6 @@ class FunctionWrapper(ProcWrapper):
         self.kind = 'function'
         self.name = name
         self.wrapped = wrapped
-        #XXX: demeter ???
         ra = Argument(name=name, dtype=wrapped.return_arg.dtype, intent='out', is_return_arg=True)
         self.arg_man = ArgWrapperManager(wrapped._args, ra)
 
@@ -417,7 +456,6 @@ class SubroutineWrapper(ProcWrapper):
         self.kind = 'subroutine'
         self.name = name
         self.wrapped = wrapped
-        #XXX: better way?
         self.arg_man = ArgWrapperManager(wrapped._args)
 
 class Module(object):
