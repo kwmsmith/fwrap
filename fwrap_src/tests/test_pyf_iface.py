@@ -6,7 +6,6 @@ class test_program_units(object):
         ffun = pyf.Function(name="fort_function",
                 args=(),
                 return_type=pyf.default_integer)
-        ok_(ffun.args == ())
         ok_(ffun.name == 'fort_function')
         ok_(ffun.return_arg.dtype is pyf.default_integer)
 
@@ -140,19 +139,33 @@ class test_arg_manager_return(object):
         dint = pyf.IntegerType(ktp='fwrap_int')
         self.lgcl = pyf.Argument(name='ll', dtype=dlgcl, intent='out', is_return_arg=True)
         self.int = pyf.Argument(name='int', dtype=dint, intent='out', is_return_arg=True)
-        self.am_lgcl = pyf.ArgManager([], self.lgcl)
-        self.am_int = pyf.ArgManager([], self.int)
+        self.am_lgcl = pyf.ArgWrapperManager([], self.lgcl)
+        self.am_int = pyf.ArgWrapperManager([], self.int)
 
     def test_declarations(self):
         decl = '''\
 logical(fwrap_default_logical) :: ll
 '''.splitlines()
-        eq_(self.am_lgcl.extern_declarations(), decl)
+        eq_(self.am_lgcl.arg_declarations(), decl)
 
     def test_temp_declarations(self):
         eq_(self.am_lgcl.temp_declarations(), [])
 
 class test_arg_manager(object):
+    
+    def test_declaration_order(self):
+        array_arg = pyf.Argument('arr', pyf.default_integer, 'in', dimension=('d1', 'd2'))
+        d1 = pyf.Argument('d1', pyf.default_integer, 'in')
+        d2 = pyf.Argument('d2', pyf.default_integer, 'in')
+        am = pyf.ArgManager([array_arg, d2, d1])
+        decls = '''\
+integer(fwrap_default_int), intent(in) :: d2
+integer(fwrap_default_int), intent(in) :: d1
+integer(fwrap_default_int), dimension(d1, d2), intent(in) :: arr
+'''
+        eq_(am.arg_declarations(), decls.splitlines())
+
+class test_arg_wrapper_manager(object):
     
     def setup(self):
         dlgcl = pyf.default_logical
@@ -163,7 +176,7 @@ class test_arg_manager(object):
         self.args = [self.lgcl1, self.lgcl2, self.intarg]
         self.l1wrap = pyf.ArgWrapper(self.lgcl1)
         self.l2wrap = pyf.ArgWrapper(self.lgcl2)
-        self.am = pyf.ArgManager(self.args)
+        self.am = pyf.ArgWrapperManager(self.args)
 
     def test_arg_declarations(self):
         decls = '''\

@@ -169,10 +169,12 @@ class FortranGen(TreeVisitor):
         buf = self.buf
         buf.putln('use config')
         buf.putln('implicit none')
-        for arg in node.args:
-            self.visit(arg)
-        if isinstance(node, pyf.Function):
-            buf.putln(self.return_spec(node))
+        for decl in node.arg_declarations():
+            buf.putln(decl)
+        # for arg in node.args:
+            # self.visit(arg)
+        # if isinstance(node, pyf.Function):
+            # buf.putln(self.return_spec(node))
 
 class FortranWrapperGen(FortranGen):
 
@@ -228,8 +230,7 @@ class FortranWrapperGen(FortranGen):
 class FortranInterfaceGen(FortranGen):
 
     def procedure_decl(self, node):
-        return "%s %s(%s)" % (node.kind, node.name,
-                    ', '.join([arg.name for arg in node.args]))
+        return "%s %s(%s)" % (node.kind, node.name, ', '.join(node.extern_arg_list()))
 
     def visit_Procedure(self, node):
         buf = self.buf

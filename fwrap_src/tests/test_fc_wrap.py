@@ -113,36 +113,6 @@ def test_gen_empty_func_wrapper():
     fc_wrap.FortranWrapperGen(buf).generate(empty_func_wrapper)
     compare(empty_func_wrapped, buf.getvalue())
 
-def test_procedure_argument_iface():
-    passed_subr = pyf.Subroutine(name='passed_subr',
-                       args=[pyf.Argument(name='arg1',
-                                          dtype=pyf.default_integer,
-                                          intent='inout')])
-
-    proc_arg_func = pyf.Function(name='proc_arg_func',
-                         args=[pyf.ProcArgument(passed_subr)],
-                         return_type=pyf.default_integer)
-
-    proc_arg_iface = '''\
-    interface
-        function proc_arg_func(passed_subr)
-            use config
-            implicit none
-            interface
-                subroutine passed_subr(arg1)
-                    use config
-                    implicit none
-                    integer(fwrap_default_int), intent(inout) :: arg1
-                end subroutine passed_subr
-            end interface
-            integer(fwrap_default_int) :: proc_arg_func
-        end function proc_arg_func
-    end interface
-'''
-    buf = CodeBuffer()
-    fc_wrap.FortranInterfaceGen(buf).generate(proc_arg_func)
-    compare(proc_arg_iface, buf.getvalue())
-
 def test_gen_iface():
 
     def gen_iface_gen(ast, istr):
@@ -312,9 +282,9 @@ def test_explicit_shape_int_array():
             subroutine arr_arg(arr, d1, d2)
                 use config
                 implicit none
-                integer(fwrap_default_int), dimension(d1, d2), intent(inout) :: arr
                 integer(fwrap_default_int), intent(in) :: d1
                 integer(fwrap_default_int), intent(in) :: d2
+                integer(fwrap_default_int), dimension(d1, d2), intent(inout) :: arr
             end subroutine arr_arg
         end interface
         call arr_arg(arr, d1, d2)
@@ -322,7 +292,7 @@ def test_explicit_shape_int_array():
 '''
     compare(fort_file, buf.getvalue())
 
-def _test_many_arrays():
+def test_many_arrays():
     arr_args = pyf.Subroutine(name='arr_args',
                            args=[
                                     pyf.Argument('assumed_size', pyf.default_integer, "inout", dimension=('d1','*')),
@@ -335,10 +305,30 @@ def _test_many_arrays():
     arr_args_wrapped = pyf.SubroutineWrapper(name='arr_args_c', wrapped=arr_args)
     buf = CodeBuffer()
     fc_wrap.FortranWrapperGen(buf).generate(arr_args_wrapped)
-    wrapped_subr = '''\
-foobar
+    compare(many_arrays_text, buf.getvalue())
+
+def _test_declaration_order():
+    arr_arg = pyf.Subroutine(name='arr_arg',
+                        args=[
+                            pyf.Argument('explicit_shape', pyf.default_complex, 'out', dimension=('d1', 'd2')),
+                            pyf.Argument('d2', pyf.default_integer, 'in'),
+                            pyf.Argument('d1', pyf.default_integer, 'in'),
+                            ]
+                        )
+    iface = '''\
+    interface
+        subroutine arr_arg(explicit_shape, d2, d1)
+            use config
+            implicit none
+            integer(fwrap_default_int), intent(in) :: d1
+            integer(fwrap_default_int), intent(in) :: d2
+            complex(fwrap_default_complex), dimension(d1, d2), intent(out) :: explicit_shape
+        end subroutine arr_arg
+    end interface
 '''
-    compare(wrapped_subr, buf.getvalue())
+    buf = CodeBuffer()
+    fc_wrap.FortranInterfaceGen(buf).generate(arr_arg)
+    compare(iface, buf.getvalue())
 
 def _test_assumed_size_real_array():
     pass
@@ -420,4 +410,66 @@ def _test_logical_wrapper_convert():
     end subroutine lgcl_arg_c
 '''
     compare(fort_file, buf.getvalue())
+
+many_arrays_text = '''\
+subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assumed_shape_d1, assumed_shape_d2, assumed_shape, explicit_shape_d1, explicit_shape_d2, explicit_shape, c1, c2) bind(c, name="arr_args_c")
+    use config
+    implicit none
+    integer(fwrap_default_int), intent(in) :: assumed_size_d1
+    integer(fwrap_default_int), intent(in) :: assumed_size_d2
+    integer(fwrap_default_int), dimension(assumed_size_d1, assumed_size_d2), intent(inout) :: assumed_size
+    integer(fwrap_default_int), intent(in) :: d1
+    integer(fwrap_default_int), intent(in) :: assumed_shape_d1
+    integer(fwrap_default_int), intent(in) :: assumed_shape_d2
+    logical(fwrap_default_logical), dimension(assumed_shape_d1, assumed_shape_d2), intent(out) :: assumed_shape
+    integer(fwrap_default_int), intent(in) :: explicit_shape_d1
+    integer(fwrap_default_int), intent(in) :: explicit_shape_d2
+    complex(fwrap_default_complex), dimension(explicit_shape_d1, explicit_shape_d2), intent(inout) :: explicit_shape
+    integer(fwrap_default_int), intent(inout) :: c1
+    integer(fwrap_default_int) :: c2
+    interface
+        subroutine arr_args(assumed_size, d1, assumed_shape, explicit_shape, c1, c2)
+            use config
+            implicit none
+            integer(fwrap_default_int), intent(in) :: d1
+            logical(fwrap_default_logical), dimension(:, :), intent(out) :: assumed_shape
+            integer(fwrap_default_int), intent(inout) :: c1
+            integer(fwrap_default_int) :: c2
+            integer(fwrap_default_int), dimension(d1, *), intent(inout) :: assumed_size
+            complex(fwrap_default_complex), dimension(c1, c2), intent(inout) :: explicit_shape
+        end subroutine arr_args
+    end interface
+    call arr_args(assumed_size, d1, assumed_shape, explicit_shape, c1, c2)
+end subroutine arr_args_c
+'''
+
+def _test_procedure_argument_iface():
+    passed_subr = pyf.Subroutine(name='passed_subr',
+                       args=[pyf.Argument(name='arg1',
+                                          dtype=pyf.default_integer,
+                                          intent='inout')])
+
+    proc_arg_func = pyf.Function(name='proc_arg_func',
+                         args=[pyf.ProcArgument(passed_subr)],
+                         return_type=pyf.default_integer)
+
+    proc_arg_iface = '''\
+    interface
+        function proc_arg_func(passed_subr)
+            use config
+            implicit none
+            interface
+                subroutine passed_subr(arg1)
+                    use config
+                    implicit none
+                    integer(fwrap_default_int), intent(inout) :: arg1
+                end subroutine passed_subr
+            end interface
+            integer(fwrap_default_int) :: proc_arg_func
+        end function proc_arg_func
+    end interface
+'''
+    buf = CodeBuffer()
+    fc_wrap.FortranInterfaceGen(buf).generate(proc_arg_func)
+    compare(proc_arg_iface, buf.getvalue())
 

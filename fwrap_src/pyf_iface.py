@@ -38,6 +38,10 @@ class Var(object):
         self.name = name
         self.dtype = dtype
         self.dimension = dimension
+        if self.dimension:
+            self.is_array = True
+        else:
+            self.is_array = False
 
     def var_specs(self):
         specs = [self.dtype.type_spec()]
@@ -57,16 +61,19 @@ class Argument(object):
 
     def _get_name(self):
         return self._var.name
+    name = property(_get_name)
 
     def _get_dtype(self):
         return self._var.dtype
+    dtype = property(_get_dtype)
 
     def _get_dimension(self):
         return self._var.dimension
-
-    name = property(_get_name)
-    dtype = property(_get_dtype)
     dimension = property(_get_dimension)
+
+    def _is_array(self):
+        return self._var.is_array
+    is_array = property(_is_array)
 
     def declaration(self):
         var = self._var
@@ -86,18 +93,23 @@ def ArgWrapperFactory(arg):
     else:
         return ArgWrapper(arg)
 
-class ArgWrapper(object):
-
-    def __init__(self, arg):
-        self._orig_arg = arg
-        self._extern_arg = arg
-        self._intern_var = None
+class ArgWrapperBase(object):
 
     def pre_call_code(self):
         return []
 
     def post_call_code(self):
         return []
+
+    def intern_declarations(self):
+        return []
+
+class ArgWrapper(ArgWrapperBase):
+
+    def __init__(self, arg):
+        self._orig_arg = arg
+        self._extern_arg = arg
+        self._intern_var = None
 
     def intern_name(self):
         if self._intern_var:
@@ -117,7 +129,7 @@ class ArgWrapper(object):
         else:
             return []
 
-class ArrayArgWrapper(object):
+class ArrayArgWrapper(ArgWrapperBase):
 
     def __init__(self, arg):
         self._orig_arg = arg
@@ -139,15 +151,6 @@ class ArrayArgWrapper(object):
 
     def extern_declarations(self):
         return [arg.declaration() for arg in self._extern_args]
-
-    def intern_declarations(self):
-        return []
-
-    def pre_call_code(self):
-        return []
-
-    def post_call_code(self):
-        return []
 
     def intern_name(self):
         return self._extern_args[-1].name
@@ -189,6 +192,51 @@ end if
 class ArgManager(object):
     
     def __init__(self, args, return_arg=None):
+        self._args = args
+        self._return_arg = return_arg
+
+    def extern_arg_list(self):
+        ret = []
+        for arg in self._args:
+            ret.append(arg.name)
+        return ret
+
+    def order_declarations(self):
+        decl_list = []
+        undeclared = self._args[:]
+        while undeclared:
+            for arg in undeclared[:]:
+                if not arg.is_array:
+                    decl_list.append(arg)
+                    undeclared.remove(arg)
+                else:
+                    shape_declared = True
+                    undecl_names = [_arg.name for _arg in undeclared]
+                    for ext_name in arg.dimension:
+                        if ext_name in undecl_names:
+                            shape_declared = False
+                            break
+                    if shape_declared:
+                        decl_list.append(arg)
+                        undeclared.remove(arg)
+        assert not undeclared
+        assert len(decl_list) == len(self._args)
+        return decl_list
+
+    def arg_declarations(self):
+        decls = []
+        for arg in self.order_declarations():
+            decls.append(arg.declaration())
+        if self._return_arg:
+            decls.append(self._return_arg.declaration())
+        return decls
+
+    def return_var_name(self):
+        return self._return_arg.name
+
+class ArgWrapperManager(object):
+    
+    def __init__(self, args, return_arg=None):
         self._orig_args = args
         self._orig_return_arg = return_arg
         self.arg_wrappers = None
@@ -216,17 +264,13 @@ class ArgManager(object):
             ret.extend(argw.extern_arg_list())
         return ret
 
-    def extern_declarations(self):
-        #XXX: demeter ???
+    def arg_declarations(self):
         decls = []
         for argw in self.arg_wrappers:
             decls.extend(argw.extern_declarations())
         if self.return_arg_wrapper:
             decls.extend(self.return_arg_wrapper.extern_declarations())
         return decls
-
-    def arg_declarations(self):
-        return self.extern_declarations()
 
     def __return_spec_declaration(self):
         #XXX: demeter ???
@@ -268,7 +312,14 @@ class Procedure(object):
     def __init__(self, name, args):
         super(Procedure, self).__init__()
         self.name = name
-        self.args = args
+        self._args = args
+        self.arg_man = None
+
+    def extern_arg_list(self):
+        return self.arg_man.extern_arg_list()
+
+    def arg_declarations(self):
+        return self.arg_man.arg_declarations()
 
 class Function(Procedure):
     
@@ -276,17 +327,14 @@ class Function(Procedure):
         super(Function, self).__init__(name, args)
         self.return_arg = Argument(name=name, dtype=return_type, intent='out', is_return_arg=True)
         self.kind = 'function'
-
-    def __eq__(self, other):
-        return self.name == other.name and \
-               self.args == other.args and \
-               self.return_arg == other.return_arg
+        self.arg_man = ArgManager(self._args, self.return_arg)
 
 class Subroutine(Procedure):
 
     def __init__(self, name, args):
         super(Subroutine, self).__init__(name, args)
         self.kind = 'subroutine'
+        self.arg_man = ArgManager(self._args)
 
 class ProcWrapper(object):
 
@@ -318,7 +366,7 @@ class FunctionWrapper(ProcWrapper):
         self.wrapped = wrapped
         #XXX: demeter ???
         ra = Argument(name=name, dtype=wrapped.return_arg.dtype, intent='out', is_return_arg=True)
-        self.arg_man = ArgManager(wrapped.args, ra)
+        self.arg_man = ArgWrapperManager(wrapped._args, ra)
 
     def return_spec_declaration(self):
         return self.arg_man.return_spec_declaration()
@@ -332,7 +380,8 @@ class SubroutineWrapper(ProcWrapper):
         self.kind = 'subroutine'
         self.name = name
         self.wrapped = wrapped
-        self.arg_man = ArgManager(wrapped.args)
+        #XXX: better way?
+        self.arg_man = ArgWrapperManager(wrapped._args)
 
 class Module(object):
 
