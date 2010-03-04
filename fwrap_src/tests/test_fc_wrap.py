@@ -340,7 +340,7 @@ def _test_parameters():
 
 
 
-def _test_declaration_order():
+def test_declaration_order():
     arr_arg = pyf.Subroutine(name='arr_arg',
                         args=[
                             pyf.Argument('explicit_shape', pyf.default_complex, 'out', dimension=('d1', 'd2')),
@@ -353,8 +353,8 @@ def _test_declaration_order():
         subroutine arr_arg(explicit_shape, d2, d1)
             use config
             implicit none
-            integer(fwrap_default_int), intent(in) :: d1
             integer(fwrap_default_int), intent(in) :: d2
+            integer(fwrap_default_int), intent(in) :: d1
             complex(fwrap_default_complex), dimension(d1, d2), intent(out) :: explicit_shape
         end subroutine arr_arg
     end interface
