@@ -338,8 +338,6 @@ def _test_parameters():
 '''
     # compare(
 
-
-
 def test_declaration_order():
     arr_arg = pyf.Subroutine(name='arr_arg',
                         args=[
@@ -362,6 +360,40 @@ def test_declaration_order():
     buf = CodeBuffer()
     arr_arg.generate_interface(buf)
     compare(iface, buf.getvalue())
+
+many_arrays_text = '''\
+subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assumed_shape_d1, assumed_shape_d2, assumed_shape, explicit_shape_d1, explicit_shape_d2, explicit_shape, c1, c2) bind(c, name="arr_args_c")
+    use config
+    implicit none
+    integer(fwrap_default_int), intent(in) :: assumed_size_d1
+    integer(fwrap_default_int), intent(in) :: assumed_size_d2
+    integer(fwrap_default_int), dimension(assumed_size_d1, assumed_size_d2), intent(inout) :: assumed_size
+    integer(fwrap_default_int), intent(in) :: d1
+    integer(fwrap_default_int), intent(in) :: assumed_shape_d1
+    integer(fwrap_default_int), intent(in) :: assumed_shape_d2
+    logical(fwrap_default_logical), dimension(assumed_shape_d1, assumed_shape_d2), intent(out) :: assumed_shape
+    integer(fwrap_default_int), intent(in) :: explicit_shape_d1
+    integer(fwrap_default_int), intent(in) :: explicit_shape_d2
+    complex(fwrap_default_complex), dimension(explicit_shape_d1, explicit_shape_d2), intent(inout) :: explicit_shape
+    integer(fwrap_default_int), intent(inout) :: c1
+    integer(fwrap_default_int) :: c2
+    interface
+        subroutine arr_args(assumed_size, d1, assumed_shape, explicit_shape, c1, c2)
+            use config
+            implicit none
+            integer(fwrap_default_int), intent(in) :: d1
+            logical(fwrap_default_logical), dimension(:, :), intent(out) :: assumed_shape
+            integer(fwrap_default_int), intent(inout) :: c1
+            integer(fwrap_default_int) :: c2
+            integer(fwrap_default_int), dimension(d1, *), intent(inout) :: assumed_size
+            complex(fwrap_default_complex), dimension(c1, c2), intent(inout) :: explicit_shape
+        end subroutine arr_args
+    end interface
+    call arr_args(assumed_size, d1, assumed_shape, explicit_shape, c1, c2)
+end subroutine arr_args_c
+'''
+
+#---------------- Ignored tests, possibly remove -----------------
 
 def _test_assumed_size_real_array():
     pass
@@ -443,38 +475,6 @@ def _test_logical_wrapper_convert():
     end subroutine lgcl_arg_c
 '''
     compare(fort_file, buf.getvalue())
-
-many_arrays_text = '''\
-subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assumed_shape_d1, assumed_shape_d2, assumed_shape, explicit_shape_d1, explicit_shape_d2, explicit_shape, c1, c2) bind(c, name="arr_args_c")
-    use config
-    implicit none
-    integer(fwrap_default_int), intent(in) :: assumed_size_d1
-    integer(fwrap_default_int), intent(in) :: assumed_size_d2
-    integer(fwrap_default_int), dimension(assumed_size_d1, assumed_size_d2), intent(inout) :: assumed_size
-    integer(fwrap_default_int), intent(in) :: d1
-    integer(fwrap_default_int), intent(in) :: assumed_shape_d1
-    integer(fwrap_default_int), intent(in) :: assumed_shape_d2
-    logical(fwrap_default_logical), dimension(assumed_shape_d1, assumed_shape_d2), intent(out) :: assumed_shape
-    integer(fwrap_default_int), intent(in) :: explicit_shape_d1
-    integer(fwrap_default_int), intent(in) :: explicit_shape_d2
-    complex(fwrap_default_complex), dimension(explicit_shape_d1, explicit_shape_d2), intent(inout) :: explicit_shape
-    integer(fwrap_default_int), intent(inout) :: c1
-    integer(fwrap_default_int) :: c2
-    interface
-        subroutine arr_args(assumed_size, d1, assumed_shape, explicit_shape, c1, c2)
-            use config
-            implicit none
-            integer(fwrap_default_int), intent(in) :: d1
-            logical(fwrap_default_logical), dimension(:, :), intent(out) :: assumed_shape
-            integer(fwrap_default_int), intent(inout) :: c1
-            integer(fwrap_default_int) :: c2
-            integer(fwrap_default_int), dimension(d1, *), intent(inout) :: assumed_size
-            complex(fwrap_default_complex), dimension(c1, c2), intent(inout) :: explicit_shape
-        end subroutine arr_args
-    end interface
-    call arr_args(assumed_size, d1, assumed_shape, explicit_shape, c1, c2)
-end subroutine arr_args_c
-'''
 
 def _test_procedure_argument_iface():
     passed_subr = pyf.Subroutine(name='passed_subr',
