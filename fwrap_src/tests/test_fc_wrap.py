@@ -178,6 +178,84 @@ def test_gen_iface():
     for ast, iface in data:
         yield gen_iface_gen, ast, iface
 
+def test_intent_hide():
+    hide_arg_subr = pyf.Subroutine('hide_subr',
+                            args=[pyf.Argument('hide_arg',
+                                        dtype=pyf.default_integer,
+                                        intent='hide',
+                                        value='10')])
+    wppr = pyf.SubroutineWrapper(name='hide_subr_c', wrapped=hide_arg_subr)
+    buf = CodeBuffer()
+    wppr.generate_wrapper(buf)
+    check = '''\
+    subroutine hide_subr_c() bind(c, name="hide_subr_c")
+        use config
+        implicit none
+        interface
+            subroutine hide_subr(hide_arg)
+                use config
+                implicit none
+                integer(fwrap_default_int) :: hide_arg
+            end subroutine hide_subr
+        end interface
+        integer(fwrap_default_int) :: hide_arg
+        hide_arg = (10)
+        call hide_subr(hide_arg)
+    end subroutine hide_subr_c
+'''
+    compare(check, buf.getvalue())
+def _test_check():
+    # this gets complicated...
+    check_subr = pyf.Subroutine('check_subr',
+                        args=[pyf.Argument('arr',
+                                        dtype=pyf.default_integer,
+                                        intent='in',
+                                        dimension=('d1','d2')),
+                              pyf.Argument('d1',
+                                        dtype=pyf.default_integer,
+                                        intent='in'),
+                              pyf.Argument('d2',
+                                        dtype=pyf.default_integer,
+                                        intent='in')],
+                        check=['d1 == size(arr, 1)',
+                               'd2 == size(arr, 2)'])
+
+    wppr = pyf.SubroutineWrapper(name='check_subr_c', wrapped=check_subr)
+    buf = CodeBuffer()
+    wppr.generate_wrapper(buf)
+    check = '''\
+    subroutine check_subr_c(arr_d1, arr_d2, arr, d1, d2, fw_error)
+        use config
+        implicit none
+        integer, intent(in) :: arr_d1
+        integer, intent(in) :: arr_d2
+        integer, dimension(arr_d1, arr_d2), intent(in) :: arr
+        integer, intent(in) :: d1
+        integer, intent(in) :: d2
+        integer, intent(out) :: fw_error
+        interface
+            subroutine check_subr(arr, d1, d2)
+                use config
+                implicit none
+                integer(fwrap_default_int), intent(in) :: d1
+                integer(fwrap_default_int), intent(in) :: d2
+                integer(fwrap_default_int), dimension(d1, d2), intent(in) :: arr
+            end subroutine check_subr
+        end interface
+        fw_error = 0
+        if(.not. (d1 == size(arr, 1))) then
+            fw_error = 1
+            return
+        endif
+        if(.not. (d2 == size(arr, 2))) then
+            fw_error = 2
+            return
+        endif
+        call check_subr(arr, d1, d2)
+    end subroutine check_subr_c
+'''
+    compare(check, buf.getvalue())
+
 def test_logical_function():
     lgcl_fun = pyf.Function(name='lgcl_fun', args=[],
                             return_type=pyf.LogicalType(ktp='fwrap_lgcl'))

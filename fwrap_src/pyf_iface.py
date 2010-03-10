@@ -67,9 +67,14 @@ class Var(object):
 
 class Argument(object):
 
-    def __init__(self, name, dtype, intent=None, dimension=None, is_return_arg=False):
+    def __init__(self, name, dtype,
+                 intent=None,
+                 dimension=None,
+                 value=None,
+                 is_return_arg=False):
         self._var = Var(name=name, dtype=dtype, dimension=dimension)
         self.intent = intent
+        self.value = value
         self.is_return_arg = is_return_arg
 
     def _get_name(self):
@@ -92,7 +97,8 @@ class Argument(object):
         var = self._var
         specs = var.var_specs()
         if self.intent and not self.is_return_arg:
-            specs.append('intent(%s)' % self.intent)
+            if self.intent != 'hide':
+                specs.append('intent(%s)' % self.intent)
         return '%s :: %s' % (', '.join(specs), self.name)
 
 class ProcArgument(object):
@@ -103,6 +109,8 @@ class ProcArgument(object):
 def ArgWrapperFactory(arg):
     if getattr(arg, 'dimension', None):
         return ArrayArgWrapper(arg)
+    elif arg.intent == 'hide':
+        return HideArgWrapper(arg)
     else:
         return ArgWrapper(arg)
 
@@ -141,6 +149,32 @@ class ArgWrapper(ArgWrapperBase):
             return [self._intern_var.declaration()]
         else:
             return []
+
+class HideArgWrapper(ArgWrapperBase):
+
+    def __init__(self, arg):
+        self._orig_arg = arg
+        self._extern_arg = None
+        self._intern_var = \
+                Var(name=arg.name, dtype=arg.dtype, dimension=None)
+        self.value = arg.value
+        assert self.value is not None
+
+    def intern_name(self):
+        return self._intern_var.name
+
+    def extern_arg_list(self):
+        return []
+
+    def extern_declarations(self):
+        return []
+
+    def intern_declarations(self):
+        return [self._intern_var.declaration()]
+
+    def pre_call_code(self):
+        return ["%s = (%s)" % (self._intern_var.name, self.value)]
+
 
 class ArrayArgWrapper(ArgWrapperBase):
 

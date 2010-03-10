@@ -126,6 +126,7 @@ Solution (2) one module with procedure-specific name mangling.
 
 ---
 
+
 intent('hide') arguments, ala f2py:
 
 Argument('arg', intent='hide', value='shape(a, 0)')
@@ -134,6 +135,12 @@ value is a fortran expression that will be assigned to the argument and used in 
 
 NB: this changes the intent of the argument!  We're assigning to it so it has
 to be declared as intent('inout') or something.
+
+DONE 3.9.2010
+
+---
+
+Hide argument can only be a scalar -- no dimension allowed.
 
 ---
 
