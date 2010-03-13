@@ -1,20 +1,9 @@
 from fwrap_src import gen_config as gc
 from fwrap_src.code import CodeBuffer
 
-from tutils import compare
+from nose.tools import assert_raises
 
-def test_gen_default_int():
-    dint_spec = {'fwrap_default_integer' : 'c_int' }
-    buf = CodeBuffer()
-    gc.gen_config(dint_spec, buf)
-    output = '''\
-    module config
-        use iso_c_binding
-        implicit none
-        integer, parameter :: fwrap_default_integer = c_int
-    end module config
-'''
-    compare(output, buf.getvalue())
+from tutils import compare
 
 def test_gen_many():
     spec = {
@@ -36,3 +25,10 @@ def test_gen_many():
     end module config
 '''
     compare(output, buf.getvalue())
+
+def test_raises():
+    error_spec = {
+            'fwrap_foo' : 'invalid'
+            }
+    buf = CodeBuffer()
+    assert_raises(gc.GenConfigException, gc.gen_config, error_spec, buf)
