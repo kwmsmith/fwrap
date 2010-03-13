@@ -1,7 +1,6 @@
 class GenConfigException(Exception):
     pass
 
-
 def check_params(params):
     for p in params:
         if p not in _C_BINDING_TYPES:
