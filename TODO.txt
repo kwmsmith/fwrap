@@ -1,38 +1,3 @@
-gfortran does not allow a bind(c) procedure to have a non-bind(c) derived type
-argument.  To wrap a procedure with a derived-type that is non-bind(c) requires
-a copy-in/copy-out.  If the type is bind(c) then no copy is necessary.
-
-This is probably good for safety, and ensures alignment & padding issues won't
-bite us later.  Since compilers can do crazy things in optimizations of structs
-(reordering?  padding?), this could be the source of nasty bugs.
-
-If the end user wants fast derived-type interoperability, he'll have to declare
-derived-types with bind(c).
-
----
-
-gfortran does not allow this in a bind(c) procedure:
-
-    integer, parameter :: fwrap_default_logical=c_int
-    logical(fwrap_default_logical), intent(in) :: l
-
-Rather, gfortran requires:
-
-    integer, parameter :: fwrap_default_logical=kind(.true.)
-    logical(fwrap_default_logical), intent(in) :: l
-
-which will yield a warning.
-
-This will not yield a warning, but will require copying:
-
-    integer, parameter :: fwrap_default_logical=c_bool
-    logical(fwrap_default_logical), intent(in) :: l
-
-Perhaps have a `strict' mode with the understanding that there will be a
-performance hit.
-
----
-
 Name collisions when mangling --
     When mangling 'empty_func' to 'empty_func_c', need to ensure there aren't
     any pre-existent 'empty_func_c's lying around.
@@ -124,8 +89,12 @@ Solution (1) a separate config module per external subprogram; can put all of th
 Solution (2) one module with procedure-specific name mangling.
     -- if use procedure name to mangle, very long parameter names.
 
----
 
+Config module(s) options:
+
+    (1) Gather together all 'base' expressions used as kind type parameters.
+
+---
 
 intent('hide') arguments, ala f2py:
 
@@ -198,3 +167,38 @@ Derived types
 Config module / header generation.
 
 ---
+gfortran does not allow a bind(c) procedure to have a non-bind(c) derived type
+argument.  To wrap a procedure with a derived-type that is non-bind(c) requires
+a copy-in/copy-out.  If the type is bind(c) then no copy is necessary.
+
+This is probably good for safety, and ensures alignment & padding issues won't
+bite us later.  Since compilers can do crazy things in optimizations of structs
+(reordering?  padding?), this could be the source of nasty bugs.
+
+If the end user wants fast derived-type interoperability, he'll have to declare
+derived-types with bind(c).
+
+---
+
+gfortran does not allow this in a bind(c) procedure:
+
+    integer, parameter :: fwrap_default_logical=c_int
+    logical(fwrap_default_logical), intent(in) :: l
+
+Rather, gfortran requires:
+
+    integer, parameter :: fwrap_default_logical=kind(.true.)
+    logical(fwrap_default_logical), intent(in) :: l
+
+which will yield a warning.
+
+This will not yield a warning, but will require copying:
+
+    integer, parameter :: fwrap_default_logical=c_bool
+    logical(fwrap_default_logical), intent(in) :: l
+
+Perhaps have a `strict' mode with the understanding that there will be a
+performance hit.
+
+---
+
