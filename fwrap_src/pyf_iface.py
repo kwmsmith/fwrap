@@ -168,8 +168,8 @@ class Procedure(object):
     def procedure_decl(self):
         return "%s %s(%s)" % (self.kind, self.name, ', '.join(self.extern_arg_list()))
 
-    def proc_preamble(self, buf):
-        buf.putln('use config')
+    def proc_preamble(self, gen_mod_name, buf):
+        buf.putln('use %s' % gen_mod_name(self.name))
         buf.putln('implicit none')
         for decl in self.arg_declarations():
             buf.putln(decl)

@@ -144,12 +144,12 @@ class TreeVisitor(BasicVisitor):
                 enumerate(content)]
         return result
 
-def generate_interface(proc, buf):
+def generate_interface(proc, gmn, buf):
         buf.putln('interface')
         buf.indent()
         buf.putln(proc.procedure_decl())
         buf.indent()
-        proc.proc_preamble(buf)
+        proc.proc_preamble(gmn, buf)
         buf.dedent()
         buf.putln(proc.procedure_end())
         buf.dedent()
@@ -160,17 +160,18 @@ class ProcWrapper(object):
     def procedure_end(self):
         return "end %s %s" % (self.kind, self.name)
 
-    def proc_preamble(self, buf):
-        buf.putln('use config')
+    def proc_preamble(self, gen_mod_name, buf):
+        buf.putln('use %s' % gen_mod_name(self.wrapped.name))
         buf.putln('implicit none')
         for decl in self.arg_declarations():
             buf.putln(decl)
 
-    def generate_wrapper(self, buf):
+    def generate_wrapper(self, gmn, buf):
         buf.putln(self.procedure_decl())
         buf.indent()
-        self.proc_preamble(buf)
-        self.wrapped.generate_interface(buf)
+        self.proc_preamble(gmn, buf)
+        generate_interface(self.wrapped, gmn, buf)
+        # self.wrapped.generate_interface(buf)
         self.declare_temps(buf)
         self.pre_call_code(buf)
         self.proc_call(buf)
@@ -212,7 +213,6 @@ class ProcWrapper(object):
             buf.putln("call %s" % proc_call)
         elif isinstance(self, FunctionWrapper):
             buf.putln("%s = %s" % (self.proc_result_name(), proc_call))
-
 
     def call_arg_list(self):
         return self.arg_man.call_arg_list()
@@ -443,3 +443,5 @@ end if
        'intern_var' : self._intern_var.name}
         return pcc.splitlines()
 
+def gen_mod_name(proc_name):
+        return "fwrap_mod_%s_ktp" % proc_name
