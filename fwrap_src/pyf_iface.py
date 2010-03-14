@@ -177,18 +177,6 @@ class Procedure(object):
     def procedure_end(self):
         return "end %s %s" % (self.kind, self.name)
 
-    def generate_interface(self, buf):
-        buf.putln('interface')
-        buf.indent()
-        buf.putln(self.procedure_decl())
-        buf.indent()
-        self.proc_preamble(buf)
-        buf.dedent()
-        buf.putln(self.procedure_end())
-        buf.dedent()
-        buf.putln('end interface')
-
-
 class Function(Procedure):
     
     def __init__(self, name, args, return_type):
