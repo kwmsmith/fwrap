@@ -1,3 +1,62 @@
+---
+
+Config module per external procedure:
+
+    function foo(a, b, b1, c, d, e, f, g)
+        implicit none
+        integer, parameter :: a_ktp = selected_int_kind(10)
+        integer, parameter :: d_ktp = kind(.true.)
+        integer, parameter :: e_ktp = kind(0.0D0)
+        integer(a_ktp) :: a
+        integer*4 :: b
+        integer(4) :: b1
+        integer :: c
+        logical(d_ktp) :: d
+        real(e_ktp) :: e
+        real*8 :: f
+        double precision :: g
+    end function foo
+
+The respective names for the ktps:
+
+    fwrap_a_ktp
+    fwrap_integer_x4
+    fwrap_integer_4
+    fwrap_default_integer
+    fwrap_default_logical
+    fwrap_e_ktp
+    fwrap_real_x8
+    fwrap_double_precision
+
+Summarized in a dictionary (??):
+
+    { 
+      'fwrap_a_ktp' : ('integer', 'selected_int_kind(10)'),
+      'fwrap_integer_x4' : ('integer', '*4'), # ??
+      'fwrap_integer_4' : ('integer', '4'),
+      'fwrap_default_integer' : ('integer', ''),
+      'fwrap_default_logical' : ('logical', ''),
+      'fwrap_e_ktp' : ('real', 'kind(0.0D0)'),
+      'fwrap_real_x8' : ('real', '*8'),
+      'fwrap_double_precision' : ('double precision', '')
+    }
+
+The compilation phase is responsible for generating the config module:
+
+module fw_mod_foo_ktp
+    use iso_c_binding
+    implicit none
+    integer, parameter :: fwrap_a_ktp = ...
+    integer, parameter :: fwrap_integer_4 = ...
+    integer, parameter :: fwrap_default_integer = ...
+    integer, parameter :: fwrap_default_logical = ...
+    integer, parameter :: fwrap_e_ktp = ...
+    integer, parameter :: fwrap_real_8 = ...
+    integer, parameter :: fwrap_double_precision = ...
+end module fw_mod_foo_ktp
+
+---
+
 Name collisions when mangling --
     When mangling 'empty_func' to 'empty_func_c', need to ensure there aren't
     any pre-existent 'empty_func_c's lying around.
