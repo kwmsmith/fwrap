@@ -68,6 +68,8 @@ class Parameter(object):
 
 class Var(object):
     def __init__(self, name, dtype, dimension=None):
+        if not valid_fort_name(name):
+            raise InvalidNameException("%s is not a valid fortran variable name.")
         self.name = name
         self.dtype = dtype
         self.dimension = dimension
@@ -176,6 +178,8 @@ class Procedure(object):
 
     def __init__(self, name, args):
         super(Procedure, self).__init__()
+        if not valid_fort_name(name):
+            raise InvalidNameException("%s is not a valid Fortran procedure name.")
         self.name = name
         self._args = args
         self.arg_man = None

@@ -38,6 +38,14 @@ class test_program_units(object):
                     ]
                 )
 
+def test_valid_procedure_name():
+    ok_(pyf.Procedure('name', ()))
+    assert_raises(pyf.InvalidNameException, pyf.Procedure, '_a', ())
+
+def test_valid_arg_name():
+    ok_(pyf.Argument('name', pyf.default_integer))
+    assert_raises(pyf.InvalidNameException, pyf.Argument, '_a', pyf.default_integer)
+
 class test_arg_manager(object):
     
     def test_declaration_order(self):
