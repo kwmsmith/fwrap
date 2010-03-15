@@ -1,6 +1,8 @@
 import inspect
 from fwrap_src import pyf_iface as pyf
 
+KTP_MOD_NAME = "fwrap_ktp_mod"
+
 class SourceGenerator(object):
 
     def __init__(self, basename):
@@ -443,4 +445,3 @@ end if
        'intern_var' : self._intern_var.name}
         return pcc.splitlines()
 
-KTP_MOD_NAME = "fwrap_ktp_mod"
