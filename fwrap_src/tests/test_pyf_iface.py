@@ -1,5 +1,5 @@
 from fwrap_src import pyf_iface as pyf
-from nose.tools import ok_, eq_, set_trace
+from nose.tools import ok_, eq_, set_trace, assert_raises
 
 class test_program_units(object):
     def test_function(self):
@@ -54,3 +54,15 @@ integer(fwrap_default_int), dimension(d1, d2), intent(in) :: arr
 
 def test_parameter():
     param = pyf.Parameter(name='FOO', dtype=pyf.default_integer, value='kind(1.0D0)')
+
+def test_dtype():
+    assert_raises(pyf.InvalidNameException, pyf.IntegerType, 'selected_int_kind(10)')
+    assert_raises(pyf.InvalidNameException, pyf.RealType, 'selected_real_kind(10)')
+
+def test_valid_fort_name():
+    ok_(pyf.valid_fort_name('F12_bar'))
+    ok_(pyf.valid_fort_name('a'*63))
+    ok_(not pyf.valid_fort_name('a'*64))
+    ok_(not pyf.valid_fort_name('_a'))
+    ok_(not pyf.valid_fort_name('1a'))
+    ok_(not pyf.valid_fort_name(' a'))

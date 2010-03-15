@@ -1,41 +1,62 @@
+import re
+
+vfn_matcher = re.compile(r'[a-zA-Z][_a-zA-Z0-9]{,62}$').match
+def valid_fort_name(name):
+    return vfn_matcher(name)
+
+class InvalidNameException(Exception):
+    pass
+
+def ktp_namer(ktp):
+    return "fwrap_%s" % ktp
+
+_do_nothing = lambda x: x
+
 class Dtype(object):
 
+    def __init__(self, ktp, ktp_namer=ktp_namer):
+        if not valid_fort_name(ktp):
+            raise InvalidNameException("%s is not a valid fortran parameter name.")
+        self.ktp = ktp
+        self.ktp_namer = ktp_namer
+        self.type = None
+
     def type_spec(self):
-        return '%s(%s)' % (self.type, self.ktp)
+        return '%s(%s)' % (self.type, self.ktp_namer(self.ktp))
 
 class IntegerType(Dtype):
 
-    def __init__(self, ktp):
-        self.ktp = ktp
+    def __init__(self, ktp, *args, **kwargs):
+        super(IntegerType, self).__init__(ktp, *args, **kwargs)
         self.type = 'integer'
 
-default_integer = IntegerType(ktp='fwrap_default_int')
+default_integer = IntegerType(ktp='fwrap_default_int', ktp_namer=_do_nothing)
 
 class LogicalType(Dtype):
 
-    def __init__(self, ktp):
-        self.ktp = ktp
+    def __init__(self, ktp, *args, **kwargs):
+        super(LogicalType, self).__init__(ktp, *args, **kwargs)
         self.type = 'logical'
 
-default_logical = LogicalType(ktp='fwrap_default_logical')
+default_logical = LogicalType(ktp='fwrap_default_logical', ktp_namer=_do_nothing)
 
 class RealType(Dtype):
 
-    def __init__(self, ktp):
-        self.ktp = ktp
+    def __init__(self, ktp, *args, **kwargs):
+        super(RealType, self).__init__(ktp, *args, **kwargs)
         self.type = 'real'
 
-default_real = RealType(ktp='fwrap_default_real')
-default_dbl  = RealType(ktp='fwrap_default_double')
+default_real = RealType(ktp='fwrap_default_real', ktp_namer=_do_nothing)
+default_dbl  = RealType(ktp='fwrap_default_double', ktp_namer=_do_nothing)
 
 class ComplexType(Dtype):
 
-    def __init__(self, ktp):
-        self.ktp = ktp
+    def __init__(self, ktp, *args, **kwargs):
+        super(ComplexType, self).__init__(ktp, *args, **kwargs)
         self.type = 'complex'
 
-default_complex = ComplexType(ktp='fwrap_default_complex')
-default_double_complex = ComplexType(ktp='fwrap_default_dbl_cmplx')
+default_complex = ComplexType(ktp='fwrap_default_complex', ktp_namer=_do_nothing)
+default_double_complex = ComplexType(ktp='fwrap_default_dbl_cmplx', ktp_namer=_do_nothing)
 
 class Parameter(object):
     

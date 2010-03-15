@@ -101,13 +101,13 @@ def test_gen_iface():
 
     many_arg_subr = pyf.Subroutine(name='many_arg_subr',
                          args=[pyf.Argument(name='arg1',
-                                            dtype=pyf.ComplexType('fwrap_sik_10_20'),
+                                            dtype=pyf.ComplexType('sik_10_20'),
                                             intent='in'),
                                pyf.Argument(name='arg2',
-                                            dtype=pyf.RealType('fwrap_double_precision'),
+                                            dtype=pyf.RealType('double_precision'),
                                             intent='inout'),
                                pyf.Argument(name='arg3',
-                                            dtype=pyf.IntegerType('fwrap_int_x_8'),
+                                            dtype=pyf.IntegerType('int_x_8'),
                                             intent='out')])
     many_arg_subr_iface = '''\
     interface
@@ -236,7 +236,7 @@ def _test_check():
 
 def test_logical_function():
     lgcl_fun = pyf.Function(name='lgcl_fun', args=[],
-                            return_type=pyf.LogicalType(ktp='fwrap_lgcl'))
+                            return_type=pyf.LogicalType(ktp='lgcl'))
     lgcl_fun_wrapped = fc_wrap.FunctionWrapper(name='lgcl_fun_c', wrapped=lgcl_fun)
     buf = CodeBuffer()
     lgcl_fun_wrapped.generate_wrapper(fc_wrap.KTP_MOD_NAME, buf)
@@ -260,7 +260,7 @@ def test_logical_function():
 def test_logical_wrapper():
     lgcl_arg = pyf.Subroutine(name='lgcl_arg',
                            args=[pyf.Argument(name='lgcl',
-                                              dtype=pyf.LogicalType(ktp='fwrap_lgcl_ktp'),
+                                              dtype=pyf.LogicalType(ktp='lgcl_ktp'),
                                               intent="inout")])
     lgcl_arg_wrapped = fc_wrap.SubroutineWrapper(name='lgcl_arg_c', wrapped=lgcl_arg)
     buf = CodeBuffer()
@@ -515,7 +515,7 @@ class test_arg_wrapper_manager(object):
     
     def setup(self):
         dlgcl = pyf.default_logical
-        dint = pyf.IntegerType(ktp='fwrap_int')
+        dint = pyf.IntegerType(ktp='int')
         self.lgcl1 = pyf.Argument(name='lgcl1', dtype=dlgcl, intent='inout')
         self.lgcl2 = pyf.Argument(name='lgcl2', dtype=dlgcl, intent='inout')
         self.intarg = pyf.Argument(name='int', dtype=dint, intent='inout')
@@ -574,7 +574,7 @@ class test_arg_manager_return(object):
 
     def setup(self):
         dlgcl = pyf.default_logical
-        dint = pyf.IntegerType(ktp='fwrap_int')
+        dint = pyf.IntegerType(ktp='int')
         self.lgcl = pyf.Argument(name='ll', dtype=dlgcl, intent='out', is_return_arg=True)
         self.int = pyf.Argument(name='int', dtype=dint, intent='out', is_return_arg=True)
         self.am_lgcl = fc_wrap.ArgWrapperManager([], self.lgcl)
@@ -641,7 +641,7 @@ def _test_character_iface():
 
 def _test_logical_function_convert():
     lgcl_fun = pyf.Function(name='lgcl_fun', args=[],
-                            return_type=pyf.LogicalType(ktp='fwrap_lgcl'))
+                            return_type=pyf.LogicalType(ktp='lgcl'))
     lgcl_fun_wrapped = fc_wrap.FunctionWrapper(name='lgcl_fun_c', wrapped=lgcl_fun)
     buf = CodeBuffer()
     lgcl_fun_wrapped.generate_wrapper(fc_wrap.KTP_MOD_NAME, buf)
@@ -671,7 +671,7 @@ def _test_logical_function_convert():
 def _test_logical_wrapper_convert():
     lgcl_arg = pyf.Subroutine(name='lgcl_arg',
                            args=[pyf.Argument(name='lgcl',
-                                              dtype=pyf.LogicalType(ktp='fwrap_lgcl_ktp'),
+                                              dtype=pyf.LogicalType(ktp='lgcl_ktp'),
                                               intent="inout")])
     lgcl_arg_wrapped = fc_wrap.SubroutineWrapper(name='lgcl_arg_c', wrapped=lgcl_arg)
     buf = CodeBuffer()
