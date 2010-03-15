@@ -7,6 +7,7 @@ def valid_fort_name(name):
 class InvalidNameException(Exception):
     pass
 
+# TODO: this should be collected together with the KTP_MOD_NAME constant
 def ktp_namer(ktp):
     return "fwrap_%s" % ktp
 

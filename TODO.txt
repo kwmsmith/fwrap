@@ -1,6 +1,18 @@
 ---
 
-Config module per external procedure:
+Detect when a ktp/argument/variable/parameter is given with an 'fwrap_' prefix
+and either raise an error or emit a warning.
+
+---
+
+One ktp module per project.
+
+All ktps for entire project collected here, generated at compile time.
+
+Requires ktps to be in project global namespace -- only a single definition per
+ktp is allowed.
+
+User must be made aware of this.
 
     function foo(a, b, b1, c, d, e, f, g)
         implicit none
@@ -16,6 +28,12 @@ Config module per external procedure:
         real*8 :: f
         double precision :: g
     end function foo
+
+    subroutine bar(e)
+        implicit none
+        integer, parameter :: e_ktp = kind(0.0D0)
+        real(e_ktp) :: e ! This is allowed since e_ktp has same value OR raise an error, even though redeclared the same???
+    end subroutine bar
 
 The respective names for the ktps:
 
@@ -43,7 +61,7 @@ Summarized in a dictionary (??):
 
 The compilation phase is responsible for generating the config module:
 
-module fw_mod_foo_ktp
+module fwrap_ktp_mod
     use iso_c_binding
     implicit none
     integer, parameter :: fwrap_a_ktp = ...
@@ -53,7 +71,7 @@ module fw_mod_foo_ktp
     integer, parameter :: fwrap_e_ktp = ...
     integer, parameter :: fwrap_real_8 = ...
     integer, parameter :: fwrap_double_precision = ...
-end module fw_mod_foo_ktp
+end module fwrap_ktp_mod
 
 ---
 
