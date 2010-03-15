@@ -160,8 +160,8 @@ class ProcWrapper(object):
     def procedure_end(self):
         return "end %s %s" % (self.kind, self.name)
 
-    def proc_preamble(self, gen_mod_name, buf):
-        buf.putln('use %s' % gen_mod_name(self.wrapped.name))
+    def proc_preamble(self, ktp_mod, buf):
+        buf.putln('use %s' % ktp_mod)
         buf.putln('implicit none')
         for decl in self.arg_declarations():
             buf.putln(decl)
@@ -443,5 +443,4 @@ end if
        'intern_var' : self._intern_var.name}
         return pcc.splitlines()
 
-def gen_mod_name(proc_name):
-        return "fwrap_mod_%s_ktp" % proc_name
+KTP_MOD_NAME = "fwrap_ktp_mod"
