@@ -1,0 +1,23 @@
+
+
+In this file you will find the working documentation for fwrap, a fortran wrapping tool.
+
+== Fortran and Python namespaces, and implications for fwrap ==
+
+Fwrap requires that all argument kind-type-parameters (the "DP" parameter in
+the declaration "real(DP) :: arr") be single-valued for the entire project.
+This allows fwrap to make a single C header file with all the project's
+kind-type-parameters defined.  Redefinitions of argument kind-type-parameters
+won't work.
+
+Fortran does not impose this restriction; it is entirely possible to have
+multiple "DP" parameters defined differently in different modules, and use them
+as ktps for arguments to your Fortran procedures.  To accomodate one-to-many
+parameter names (one name, many values), fwrap would have to complicate its
+type-resolution algorithm, with complications extending down to every level of
+wrappers.
+
+In the author's experience of Fortran projects kind-type-parameters are global
+to a project -- almost always defined in one simple type module and made
+available via `use' statements.  It is difficult to imagine a scenario where
+redefining ktps would be a benefit.
