@@ -15,15 +15,14 @@ _do_nothing = lambda x: x
 
 class Dtype(object):
 
-    def __init__(self, ktp, ktp_namer=ktp_namer):
+    def __init__(self, ktp):
         if not valid_fort_name(ktp):
             raise InvalidNameException("%s is not a valid fortran parameter name.")
-        self.ktp = ktp
-        self.ktp_namer = ktp_namer
+        self.ktp = ktp_namer(ktp)
         self.type = None
 
     def type_spec(self):
-        return '%s(%s)' % (self.type, self.ktp_namer(self.ktp))
+        return '%s(%s)' % (self.type, self.ktp)
 
 class IntegerType(Dtype):
 
@@ -31,7 +30,7 @@ class IntegerType(Dtype):
         super(IntegerType, self).__init__(ktp, *args, **kwargs)
         self.type = 'integer'
 
-default_integer = IntegerType(ktp='fwrap_default_int', ktp_namer=_do_nothing)
+default_integer = IntegerType(ktp='default_integer')
 
 class LogicalType(Dtype):
 
@@ -39,7 +38,7 @@ class LogicalType(Dtype):
         super(LogicalType, self).__init__(ktp, *args, **kwargs)
         self.type = 'logical'
 
-default_logical = LogicalType(ktp='fwrap_default_logical', ktp_namer=_do_nothing)
+default_logical = LogicalType(ktp='default_logical')
 
 class RealType(Dtype):
 
@@ -47,8 +46,8 @@ class RealType(Dtype):
         super(RealType, self).__init__(ktp, *args, **kwargs)
         self.type = 'real'
 
-default_real = RealType(ktp='fwrap_default_real', ktp_namer=_do_nothing)
-default_dbl  = RealType(ktp='fwrap_default_double', ktp_namer=_do_nothing)
+default_real = RealType(ktp='default_real')
+default_dbl  = RealType(ktp='default_double')
 
 class ComplexType(Dtype):
 
@@ -56,8 +55,8 @@ class ComplexType(Dtype):
         super(ComplexType, self).__init__(ktp, *args, **kwargs)
         self.type = 'complex'
 
-default_complex = ComplexType(ktp='fwrap_default_complex', ktp_namer=_do_nothing)
-default_double_complex = ComplexType(ktp='fwrap_default_dbl_cmplx', ktp_namer=_do_nothing)
+default_complex = ComplexType(ktp='default_complex')
+default_double_complex = ComplexType(ktp='default_double_complex')
 
 class Parameter(object):
     
@@ -112,6 +111,10 @@ class Argument(object):
     def _get_dimension(self):
         return self._var.dimension
     dimension = property(_get_dimension)
+
+    def _get_ktp(self):
+        return self._var.dtype.ktp
+    ktp = property(_get_ktp)
 
     def _is_array(self):
         return self._var.is_array

@@ -16,3 +16,11 @@ cimport DP_c
 cpdef api DP_c.fwrap_default_int empty_func()
 '''
 )
+
+class CyArgWrapper(object):
+
+    def __init__(self, arg):
+        self.arg = arg
+
+    def extern_declarations(self):
+        return ["%s %s" % (self.arg.get_ktp(), self.arg.get_name())]

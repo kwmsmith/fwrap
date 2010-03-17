@@ -54,9 +54,9 @@ class test_arg_manager(object):
         d2 = pyf.Argument('d2', pyf.default_integer, 'in')
         am = pyf.ArgManager([array_arg, d2, d1])
         decls = '''\
-integer(fwrap_default_int), intent(in) :: d2
-integer(fwrap_default_int), intent(in) :: d1
-integer(fwrap_default_int), dimension(d1, d2), intent(in) :: arr
+integer(fwrap_default_integer), intent(in) :: d2
+integer(fwrap_default_integer), intent(in) :: d1
+integer(fwrap_default_integer), dimension(d1, d2), intent(in) :: arr
 '''
         eq_(am.arg_declarations(), decls.splitlines())
 

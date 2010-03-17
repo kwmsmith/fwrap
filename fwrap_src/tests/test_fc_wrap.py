@@ -23,7 +23,7 @@ class test_empty_func(object):
         fc_wrap.GenCHeader(pname).generate([self.empty_func], self.buf)
         header_file = '''
 #include "config.h"
-fwrap_default_int empty_func_c();
+fwrap_default_integer empty_func_c();
 '''.splitlines()
         eq_(header_file, self.buf.getvalue().splitlines())
 
@@ -32,10 +32,10 @@ fwrap_default_int empty_func_c();
         fc_wrap.GenPxd(pname).generate([self.empty_func], self.buf)
         pxd_file = '''
 cdef extern from "config.h":
-    ctypedef int fwrap_default_int
+    ctypedef int fwrap_default_integer
 
 cdef extern:
-    fwrap_default_int empty_func_c()
+    fwrap_default_integer empty_func_c()
 '''.splitlines()
         eq_(pxd_file, self.buf.getvalue().splitlines())
 
@@ -52,12 +52,12 @@ def test_gen_fortran_one_arg_func():
     subroutine one_arg_c(a) bind(c, name="one_arg_c")
         use fwrap_ktp_mod
         implicit none
-        integer(fwrap_default_int), intent(in) :: a
+        integer(fwrap_default_integer), intent(in) :: a
         interface
             subroutine one_arg(a)
                 use fwrap_ktp_mod
                 implicit none
-                integer(fwrap_default_int), intent(in) :: a
+                integer(fwrap_default_integer), intent(in) :: a
             end subroutine one_arg
         end interface
         call one_arg(a)
@@ -75,12 +75,12 @@ def test_gen_empty_func_wrapper():
     function empty_func_c() bind(c, name="empty_func_c")
         use fwrap_ktp_mod
         implicit none
-        integer(fwrap_default_int) :: empty_func_c
+        integer(fwrap_default_integer) :: empty_func_c
         interface
             function empty_func()
                 use fwrap_ktp_mod
                 implicit none
-                integer(fwrap_default_int) :: empty_func
+                integer(fwrap_default_integer) :: empty_func
             end function empty_func
         end interface
         empty_func_c = empty_func()
@@ -132,7 +132,7 @@ def test_gen_iface():
             use fwrap_ktp_mod
             implicit none
             real(fwrap_default_real), intent(inout) :: arg1
-            integer(fwrap_default_int) :: one_arg_func
+            integer(fwrap_default_integer) :: one_arg_func
         end function one_arg_func
     end interface
 '''
@@ -145,7 +145,7 @@ def test_gen_iface():
         function empty_func()
             use fwrap_ktp_mod
             implicit none
-            integer(fwrap_default_int) :: empty_func
+            integer(fwrap_default_integer) :: empty_func
         end function empty_func
     end interface
 '''
@@ -173,10 +173,10 @@ def test_intent_hide():
             subroutine hide_subr(hide_arg)
                 use fwrap_ktp_mod
                 implicit none
-                integer(fwrap_default_int) :: hide_arg
+                integer(fwrap_default_integer) :: hide_arg
             end subroutine hide_subr
         end interface
-        integer(fwrap_default_int) :: hide_arg
+        integer(fwrap_default_integer) :: hide_arg
         hide_arg = (10)
         call hide_subr(hide_arg)
     end subroutine hide_subr_c
@@ -215,9 +215,9 @@ def _test_check():
             subroutine check_subr(arr, d1, d2)
                 use fwrap_ktp_mod
                 implicit none
-                integer(fwrap_default_int), intent(in) :: d1
-                integer(fwrap_default_int), intent(in) :: d2
-                integer(fwrap_default_int), dimension(d1, d2), intent(in) :: arr
+                integer(fwrap_default_integer), intent(in) :: d1
+                integer(fwrap_default_integer), intent(in) :: d2
+                integer(fwrap_default_integer), dimension(d1, d2), intent(in) :: arr
             end subroutine check_subr
         end interface
         fw_error = 0
@@ -296,14 +296,14 @@ def test_assumed_shape_int_array():
     subroutine arr_arg_c(arr_d1, arr_d2, arr) bind(c, name="arr_arg_c")
         use fwrap_ktp_mod
         implicit none
-        integer(fwrap_default_int), intent(in) :: arr_d1
-        integer(fwrap_default_int), intent(in) :: arr_d2
-        integer(fwrap_default_int), dimension(arr_d1, arr_d2), intent(inout) :: arr
+        integer(fwrap_default_integer), intent(in) :: arr_d1
+        integer(fwrap_default_integer), intent(in) :: arr_d2
+        integer(fwrap_default_integer), dimension(arr_d1, arr_d2), intent(inout) :: arr
         interface
             subroutine arr_arg(arr)
                 use fwrap_ktp_mod
                 implicit none
-                integer(fwrap_default_int), dimension(:, :), intent(inout) :: arr
+                integer(fwrap_default_integer), dimension(:, :), intent(inout) :: arr
             end subroutine arr_arg
         end interface
         call arr_arg(arr)
@@ -329,18 +329,18 @@ def test_explicit_shape_int_array():
     subroutine arr_arg_c(arr_d1, arr_d2, arr, d1, d2) bind(c, name="arr_arg_c")
         use fwrap_ktp_mod
         implicit none
-        integer(fwrap_default_int), intent(in) :: arr_d1
-        integer(fwrap_default_int), intent(in) :: arr_d2
-        integer(fwrap_default_int), dimension(arr_d1, arr_d2), intent(inout) :: arr
-        integer(fwrap_default_int), intent(in) :: d1
-        integer(fwrap_default_int), intent(in) :: d2
+        integer(fwrap_default_integer), intent(in) :: arr_d1
+        integer(fwrap_default_integer), intent(in) :: arr_d2
+        integer(fwrap_default_integer), dimension(arr_d1, arr_d2), intent(inout) :: arr
+        integer(fwrap_default_integer), intent(in) :: d1
+        integer(fwrap_default_integer), intent(in) :: d2
         interface
             subroutine arr_arg(arr, d1, d2)
                 use fwrap_ktp_mod
                 implicit none
-                integer(fwrap_default_int), intent(in) :: d1
-                integer(fwrap_default_int), intent(in) :: d2
-                integer(fwrap_default_int), dimension(d1, d2), intent(inout) :: arr
+                integer(fwrap_default_integer), intent(in) :: d1
+                integer(fwrap_default_integer), intent(in) :: d2
+                integer(fwrap_default_integer), dimension(d1, d2), intent(inout) :: arr
             end subroutine arr_arg
         end interface
         call arr_arg(arr, d1, d2)
@@ -378,8 +378,8 @@ def _test_parameters():
         use fwrap_ktp_mod
         implicit none
         real(fwrap_FOO) :: arg
-        integer(fwrap_default_int), intent(in) :: array_d1
-        integer(fwrap_default_int), intent(in) :: array_d2
+        integer(fwrap_default_integer), intent(in) :: array_d1
+        integer(fwrap_default_integer), intent(in) :: array_d2
         real(fwrap_FOO), dimension(array_d1, array_d2) :: array
         interface
             function param_func(arg, array)
@@ -407,8 +407,8 @@ def test_declaration_order():
         subroutine arr_arg(explicit_shape, d2, d1)
             use fwrap_ktp_mod
             implicit none
-            integer(fwrap_default_int), intent(in) :: d2
-            integer(fwrap_default_int), intent(in) :: d1
+            integer(fwrap_default_integer), intent(in) :: d2
+            integer(fwrap_default_integer), intent(in) :: d1
             complex(fwrap_default_complex), dimension(d1, d2), intent(out) :: explicit_shape
         end subroutine arr_arg
     end interface
@@ -429,14 +429,14 @@ class test_array_arg_wrapper(object):
 
     def test_extern_decls(self):
         int_decls = '''\
-integer(fwrap_default_int), intent(in) :: arr_arg_d1
-integer(fwrap_default_int), intent(in) :: arr_arg_d2
-integer(fwrap_default_int), dimension(arr_arg_d1, arr_arg_d2), intent(inout) :: arr_arg
+integer(fwrap_default_integer), intent(in) :: arr_arg_d1
+integer(fwrap_default_integer), intent(in) :: arr_arg_d2
+integer(fwrap_default_integer), dimension(arr_arg_d1, arr_arg_d2), intent(inout) :: arr_arg
 '''
         real_decls = '''\
-integer(fwrap_default_int), intent(in) :: real_arr_arg_d1
-integer(fwrap_default_int), intent(in) :: real_arr_arg_d2
-integer(fwrap_default_int), intent(in) :: real_arr_arg_d3
+integer(fwrap_default_integer), intent(in) :: real_arr_arg_d1
+integer(fwrap_default_integer), intent(in) :: real_arr_arg_d2
+integer(fwrap_default_integer), intent(in) :: real_arr_arg_d3
 real(fwrap_default_real), dimension(real_arr_arg_d1, real_arr_arg_d2, real_arr_arg_d3), intent(out) :: real_arr_arg
 '''
         eq_(self.int_arr_wrapper.extern_declarations(), int_decls.splitlines())
@@ -534,8 +534,8 @@ integer(fwrap_int), intent(inout) :: int
 
     def _test_arg_declarations_convert(self):
         decls = '''\
-integer(fwrap_default_int), intent(inout) :: lgcl1
-integer(fwrap_default_int), intent(inout) :: lgcl2
+integer(fwrap_default_integer), intent(inout) :: lgcl1
+integer(fwrap_default_integer), intent(inout) :: lgcl2
 integer(fwrap_int), intent(inout) :: int
 '''.splitlines()
         eq_(self.am.arg_declarations(), decls)
@@ -593,27 +593,27 @@ many_arrays_text = '''\
 subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assumed_shape_d1, assumed_shape_d2, assumed_shape, explicit_shape_d1, explicit_shape_d2, explicit_shape, c1, c2) bind(c, name="arr_args_c")
     use fwrap_ktp_mod
     implicit none
-    integer(fwrap_default_int), intent(in) :: assumed_size_d1
-    integer(fwrap_default_int), intent(in) :: assumed_size_d2
-    integer(fwrap_default_int), dimension(assumed_size_d1, assumed_size_d2), intent(inout) :: assumed_size
-    integer(fwrap_default_int), intent(in) :: d1
-    integer(fwrap_default_int), intent(in) :: assumed_shape_d1
-    integer(fwrap_default_int), intent(in) :: assumed_shape_d2
+    integer(fwrap_default_integer), intent(in) :: assumed_size_d1
+    integer(fwrap_default_integer), intent(in) :: assumed_size_d2
+    integer(fwrap_default_integer), dimension(assumed_size_d1, assumed_size_d2), intent(inout) :: assumed_size
+    integer(fwrap_default_integer), intent(in) :: d1
+    integer(fwrap_default_integer), intent(in) :: assumed_shape_d1
+    integer(fwrap_default_integer), intent(in) :: assumed_shape_d2
     logical(fwrap_default_logical), dimension(assumed_shape_d1, assumed_shape_d2), intent(out) :: assumed_shape
-    integer(fwrap_default_int), intent(in) :: explicit_shape_d1
-    integer(fwrap_default_int), intent(in) :: explicit_shape_d2
+    integer(fwrap_default_integer), intent(in) :: explicit_shape_d1
+    integer(fwrap_default_integer), intent(in) :: explicit_shape_d2
     complex(fwrap_default_complex), dimension(explicit_shape_d1, explicit_shape_d2), intent(inout) :: explicit_shape
-    integer(fwrap_default_int), intent(inout) :: c1
-    integer(fwrap_default_int) :: c2
+    integer(fwrap_default_integer), intent(inout) :: c1
+    integer(fwrap_default_integer) :: c2
     interface
         subroutine arr_args(assumed_size, d1, assumed_shape, explicit_shape, c1, c2)
             use fwrap_ktp_mod
             implicit none
-            integer(fwrap_default_int), intent(in) :: d1
+            integer(fwrap_default_integer), intent(in) :: d1
             logical(fwrap_default_logical), dimension(:, :), intent(out) :: assumed_shape
-            integer(fwrap_default_int), intent(inout) :: c1
-            integer(fwrap_default_int) :: c2
-            integer(fwrap_default_int), dimension(d1, *), intent(inout) :: assumed_size
+            integer(fwrap_default_integer), intent(inout) :: c1
+            integer(fwrap_default_integer) :: c2
+            integer(fwrap_default_integer), dimension(d1, *), intent(inout) :: assumed_size
             complex(fwrap_default_complex), dimension(c1, c2), intent(inout) :: explicit_shape
         end subroutine arr_args
     end interface
@@ -649,7 +649,7 @@ def _test_logical_function_convert():
     function lgcl_fun_c() bind(c, name="lgcl_fun_c")
         use fwrap_ktp_mod
         implicit none
-        integer(fwrap_default_int) :: lgcl_fun_c
+        integer(fwrap_default_integer) :: lgcl_fun_c
         interface
             function lgcl_fun()
                 use fwrap_ktp_mod
@@ -680,7 +680,7 @@ def _test_logical_wrapper_convert():
     subroutine lgcl_arg_c(lgcl) bind(c, name="lgcl_arg_c")
         use fwrap_ktp_mod
         implicit none
-        integer(fwrap_default_int), intent(inout) :: lgcl
+        integer(fwrap_default_integer), intent(inout) :: lgcl
         interface
             subroutine lgcl_arg(lgcl)
                 use fwrap_ktp_mod
@@ -723,10 +723,10 @@ def _test_procedure_argument_iface():
                 subroutine passed_subr(arg1)
                     use fwrap_ktp_mod
                     implicit none
-                    integer(fwrap_default_int), intent(inout) :: arg1
+                    integer(fwrap_default_integer), intent(inout) :: arg1
                 end subroutine passed_subr
             end interface
-            integer(fwrap_default_int) :: proc_arg_func
+            integer(fwrap_default_integer) :: proc_arg_func
         end function proc_arg_func
     end interface
 '''

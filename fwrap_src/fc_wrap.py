@@ -19,10 +19,10 @@ class GenPxd(SourceGenerator):
     def generate(self, program_unit_list, buf):
         buf.write('''
 cdef extern from "config.h":
-    ctypedef int fwrap_default_int
+    ctypedef int fwrap_default_integer
 
 cdef extern:
-    fwrap_default_int empty_func_c()
+    fwrap_default_integer empty_func_c()
 '''
     )
 
@@ -33,7 +33,7 @@ class GenCHeader(SourceGenerator):
     def generate(self, program_unit_list, buf):
         buf.write('''
 #include "config.h"
-fwrap_default_int empty_func_c();
+fwrap_default_integer empty_func_c();
 '''
     )
 
@@ -347,6 +347,12 @@ class ArgWrapper(ArgWrapperBase):
         else:
             return self._extern_arg.name
 
+    def get_ktp(self):
+        return self._extern_arg.ktp
+
+    def get_name(self):
+        return self._extern_arg.name
+
     def extern_arg_list(self):
         return [self._extern_arg.name]
 
@@ -444,4 +450,3 @@ end if
 ''' % {'extern_arg' : self._extern_arg.name,
        'intern_var' : self._intern_var.name}
         return pcc.splitlines()
-
