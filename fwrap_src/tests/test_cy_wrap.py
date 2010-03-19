@@ -92,20 +92,21 @@ class test_cy_proc_wrapper(object):
     def setup(self):
         int_arg = pyf.Argument("int_arg", pyf.default_integer, 'in')
         real_arg = pyf.Argument("real_arg", pyf.default_real, 'in')
+
         pyf_func = pyf.Function(
-                        name="fort_func",
-                        args=[ int_arg, real_arg],
-                        return_type=pyf.default_integer)
+                                name="fort_func",
+                                args=[int_arg, real_arg],
+                                return_type=pyf.default_integer)
         func_wrapper = fc_wrap.FunctionWrapper(
                                 name="fort_func_c",
                                 wrapped=pyf_func)
         self.cy_func_wrapper = cy_wrap.ProcWrapper(
-                                        name="fort_func",
-                                        wrapped=func_wrapper)
+                                name="fort_func",
+                                wrapped=func_wrapper)
 
         pyf_subr = pyf.Subroutine(
                             name="fort_subr",
-                            args=[ real_arg, int_arg])
+                            args=[real_arg, int_arg])
         subr_wrapper = fc_wrap.SubroutineWrapper(
                             name="fort_subr_c",
                             wrapped=pyf_subr)
