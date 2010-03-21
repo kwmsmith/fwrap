@@ -173,8 +173,7 @@ class ProcWrapper(object):
         buf.indent()
         self.proc_preamble(gmn, buf)
         generate_interface(self.wrapped, gmn, buf)
-        # self.wrapped.generate_interface(buf)
-        self.declare_temps(buf)
+        self.temp_declarations(buf)
         self.pre_call_code(buf)
         self.proc_call(buf)
         self.post_call_code(buf)
@@ -187,8 +186,8 @@ class ProcWrapper(object):
                         ', '.join(self.extern_arg_list()),
                         self.name)
 
-    def declare_temps(self, buf):
-        for declaration in self.temp_declarations():
+    def temp_declarations(self, buf):
+        for declaration in self.arg_man.temp_declarations():
             buf.putln(declaration)
 
     def extern_arg_list(self):
@@ -196,9 +195,6 @@ class ProcWrapper(object):
 
     def arg_declarations(self):
         return self.arg_man.arg_declarations()
-
-    def temp_declarations(self):
-        return self.arg_man.temp_declarations()
 
     def pre_call_code(self, buf):
         for line in self.arg_man.pre_call_code():
