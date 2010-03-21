@@ -73,9 +73,13 @@ class ProcWrapper(object):
         return template % sdict
 
     def proc_call(self):
-        return "%(call_name)s(%(call_arg_list)s)" % {
+        proc_call = "%(call_name)s(%(call_arg_list)s)" % {
                 'call_name' : self.wrapped.name,
                 'call_arg_list' : ', '.join(self.arg_mgr.call_arg_list())}
+        if self.wrapped.kind == 'subroutine':
+            return proc_call
+        else:
+            return '%s = %s' % ('fwrap_return_var', proc_call)
 
     def temp_declarations(self):
         if self.wrapped.kind == 'function':

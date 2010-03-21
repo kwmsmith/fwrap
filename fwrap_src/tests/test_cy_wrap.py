@@ -130,6 +130,10 @@ class test_cy_proc_wrapper(object):
         eq_(self.cy_subr_wrapper.proc_call(),
                 "fort_subr_c(&real_arg, &int_arg)")
 
+    def test_func_call(self):
+        eq_(self.cy_func_wrapper.proc_call(),
+                "fwrap_return_var = fort_func_c(&int_arg, &real_arg)")
+
     def test_subr_declarations(self):
         eq_(self.cy_subr_wrapper.temp_declarations(), [])
 
