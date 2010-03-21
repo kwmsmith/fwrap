@@ -85,7 +85,7 @@ class test_cy_arg_wrapper_mgr(object):
 
     def test_return_arg_declaration(self):
         eq_(self.mgr.return_arg_declaration(),
-                ["%s fwrap_return" % self.rtn])
+                ["%s fwrap_return_var" % self.rtn])
 
 class test_cy_proc_wrapper(object):
 
@@ -130,5 +130,8 @@ class test_cy_proc_wrapper(object):
         eq_(self.cy_subr_wrapper.proc_call(),
                 "fort_subr_c(&real_arg, &int_arg)")
 
-    # def test_subr_declarations(self):
-        # eq_(self.cy_subr_wrapper.
+    def test_subr_declarations(self):
+        eq_(self.cy_subr_wrapper.temp_declarations(), [])
+
+    def test_func_declarations(self):
+        eq_(self.cy_func_wrapper.temp_declarations(), ["fwrap_default_integer fwrap_return_var"])

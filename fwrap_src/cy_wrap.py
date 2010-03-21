@@ -55,7 +55,7 @@ class CyArgWrapperManager(object):
         return decls
 
     def return_arg_declaration(self):
-        return ["%s fwrap_return" % self.return_type_name]
+        return ["%s fwrap_return_var" % self.return_type_name]
 
 class ProcWrapper(object):
     
@@ -76,3 +76,9 @@ class ProcWrapper(object):
         return "%(call_name)s(%(call_arg_list)s)" % {
                 'call_name' : self.wrapped.name,
                 'call_arg_list' : ', '.join(self.arg_mgr.call_arg_list())}
+
+    def temp_declarations(self):
+        if self.wrapped.kind == 'function':
+            return self.arg_mgr.return_arg_declaration()
+        else:
+            return []
