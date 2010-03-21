@@ -38,7 +38,7 @@ class test_program_units(object):
                     ]
                 )
 
-def test_valid_procedure_name():
+def test_valid_proc_name():
     ok_(pyf.Procedure('name', ()))
     assert_raises(pyf.InvalidNameException, pyf.Procedure, '_a', ())
 

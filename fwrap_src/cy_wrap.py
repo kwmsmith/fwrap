@@ -60,13 +60,19 @@ class CyArgWrapperManager(object):
 class ProcWrapper(object):
     
     def __init__(self, name, wrapped):
+        self.wrapped = wrapped
         self.name = name
         self.arg_mgr = CyArgWrapperManager.from_fwrapped_proc(wrapped)
 
-    def procedure_decl(self):
+    def proc_declaration(self):
         template = "cpdef %(return_type_name)s %(proc_name)s(%(arg_list)s):"
         arg_list = ', '.join(self.arg_mgr.arg_declarations())
         sdict = dict(return_type_name=self.arg_mgr.return_type_name,
                 proc_name=self.name,
                 arg_list=arg_list)
         return template % sdict
+
+    def proc_call(self):
+        return "%(call_name)s(%(call_arg_list)s)" % {
+                'call_name' : self.wrapped.name,
+                'call_arg_list' : ', '.join(self.arg_mgr.call_arg_list())}

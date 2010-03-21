@@ -149,27 +149,27 @@ class TreeVisitor(BasicVisitor):
 def generate_interface(proc, gmn, buf):
         buf.putln('interface')
         buf.indent()
-        buf.putln(proc.procedure_decl())
+        buf.putln(proc.proc_declaration())
         buf.indent()
         proc.proc_preamble(gmn, buf)
         buf.dedent()
-        buf.putln(proc.procedure_end())
+        buf.putln(proc.proc_end())
         buf.dedent()
         buf.putln('end interface')
 
 class ProcWrapper(object):
 
-    def procedure_end(self):
+    def proc_end(self):
         return "end %s %s" % (self.kind, self.name)
 
     def proc_preamble(self, ktp_mod, buf):
         buf.putln('use %s' % ktp_mod)
         buf.putln('implicit none')
-        for decl in self.arg_declarations():
-            buf.putln(decl)
+        for declaration in self.arg_declarations():
+            buf.putln(declaration)
 
     def generate_wrapper(self, gmn, buf):
-        buf.putln(self.procedure_decl())
+        buf.putln(self.proc_declaration())
         buf.indent()
         self.proc_preamble(gmn, buf)
         generate_interface(self.wrapped, gmn, buf)
@@ -179,17 +179,17 @@ class ProcWrapper(object):
         self.proc_call(buf)
         self.post_call_code(buf)
         buf.dedent()
-        buf.putln(self.procedure_end())
+        buf.putln(self.proc_end())
 
-    def procedure_decl(self):
+    def proc_declaration(self):
         return '%s %s(%s) bind(c, name="%s")' % \
                 (self.kind, self.name,
                         ', '.join(self.extern_arg_list()),
                         self.name)
 
     def declare_temps(self, buf):
-        for decl in self.temp_declarations():
-            buf.putln(decl)
+        for declaration in self.temp_declarations():
+            buf.putln(declaration)
 
     def extern_arg_list(self):
         return self.arg_man.extern_arg_list()

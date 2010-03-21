@@ -194,7 +194,7 @@ class Procedure(object):
     def arg_declarations(self):
         return self.arg_man.arg_declarations()
 
-    def procedure_decl(self):
+    def proc_declaration(self):
         return "%s %s(%s)" % (self.kind, self.name, ', '.join(self.extern_arg_list()))
 
     def proc_preamble(self, ktp_mod, buf):
@@ -203,7 +203,7 @@ class Procedure(object):
         for decl in self.arg_declarations():
             buf.putln(decl)
 
-    def procedure_end(self):
+    def proc_end(self):
         return "end %s %s" % (self.kind, self.name)
 
 class Function(Procedure):

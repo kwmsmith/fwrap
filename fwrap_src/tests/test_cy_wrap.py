@@ -114,14 +114,21 @@ class test_cy_proc_wrapper(object):
                             name="fort_subr",
                             wrapped=subr_wrapper)
 
-    def test_cy_proc_wrapper_fort_func(self):
-        eq_(self.cy_func_wrapper.procedure_decl(),
+    def test_func_proc_declaration(self):
+        eq_(self.cy_func_wrapper.proc_declaration(),
             "cpdef fwrap_default_integer"
             " fort_func(fwrap_default_integer int_arg,"
             " fwrap_default_real real_arg):")
 
-    def test_cy_proc_wrapper_fort_subr(self):
-        eq_(self.cy_subr_wrapper.procedure_decl(),
+    def test_subr_proc_declaration(self):
+        eq_(self.cy_subr_wrapper.proc_declaration(),
             "cpdef object"
             " fort_subr(fwrap_default_real real_arg,"
             " fwrap_default_integer int_arg):")
+
+    def test_subr_call(self):
+        eq_(self.cy_subr_wrapper.proc_call(),
+                "fort_subr_c(&real_arg, &int_arg)")
+
+    # def test_subr_declarations(self):
+        # eq_(self.cy_subr_wrapper.

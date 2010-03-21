@@ -581,10 +581,10 @@ class test_arg_manager_return(object):
         self.am_int = fc_wrap.ArgWrapperManager([], self.int)
 
     def test_declarations(self):
-        decl = '''\
+        declaration = '''\
 logical(fwrap_default_logical) :: ll
 '''.splitlines()
-        eq_(self.am_lgcl.arg_declarations(), decl)
+        eq_(self.am_lgcl.arg_declarations(), declaration)
 
     def test_temp_declarations(self):
         eq_(self.am_lgcl.temp_declarations(), [])
@@ -704,7 +704,7 @@ def _test_logical_wrapper_convert():
 '''
     compare(fort_file, buf.getvalue())
 
-def _test_procedure_argument_iface():
+def _test_proc_argument_iface():
     passed_subr = pyf.Subroutine(name='passed_subr',
                        args=[pyf.Argument(name='arg1',
                                           dtype=pyf.default_integer,
