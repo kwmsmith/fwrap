@@ -128,6 +128,9 @@ class Argument(object):
                 specs.append('intent(%s)' % self.intent)
         return '%s :: %s' % (', '.join(specs), self.name)
 
+    def c_declaration(self):
+        return "%s *%s" % (self.ktp, self.name)
+
 class ProcArgument(object):
     def __init__(self, proc):
         self.proc = proc

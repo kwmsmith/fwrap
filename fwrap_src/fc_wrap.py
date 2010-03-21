@@ -268,6 +268,12 @@ class ArgWrapperManager(object):
             ret.extend(argw.extern_arg_list())
         return ret
 
+    def c_proto_args(self):
+        ret = []
+        for argw in self.arg_wrappers:
+            ret.extend(argw.c_declarations())
+        return ret
+
     def arg_declarations(self):
         decls = []
         for argw in self.arg_wrappers:
@@ -330,6 +336,9 @@ class ArgWrapperBase(object):
     def intern_declarations(self):
         return []
 
+    def c_declarations(self):
+        return []
+
 class ArgWrapper(ArgWrapperBase):
 
     def __init__(self, arg):
@@ -360,6 +369,9 @@ class ArgWrapper(ArgWrapperBase):
             return [self._intern_var.declaration()]
         else:
             return []
+
+    def c_declarations(self):
+        return [self._extern_arg.c_declaration()]
 
 class HideArgWrapper(ArgWrapperBase):
 
@@ -409,6 +421,9 @@ class ArrayArgWrapper(ArgWrapperBase):
 
     def extern_declarations(self):
         return [arg.declaration() for arg in self._extern_args]
+
+    def c_declarations(self):
+        return [arg.c_declaration() for arg in self._extern_args]
 
     def intern_name(self):
         return self._extern_args[-1].name

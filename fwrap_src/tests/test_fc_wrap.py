@@ -589,6 +589,25 @@ logical(fwrap_default_logical) :: ll
     def test_temp_declarations(self):
         eq_(self.am_lgcl.temp_declarations(), [])
 
+class test_c_proto_generation(object):
+    
+    def test_c_proto_args(self):
+        args = [pyf.Argument(name='int_arg', dtype=pyf.default_integer, intent='in'),
+                pyf.Argument(name='real_arg',dtype=pyf.default_real,    intent='out')]
+        return_type = pyf.Argument(name='fname', dtype=pyf.default_real, intent='out', is_return_arg=True)
+        arg_man = fc_wrap.ArgWrapperManager(args, return_type)
+        eq_(arg_man.c_proto_args(), ['fwrap_default_integer *int_arg', 'fwrap_default_real *real_arg'])
+
+    def test_c_proto_array_args(self):
+        args = [pyf.Argument(name='array', dtype=pyf.default_real, dimension=(':',)*3, intent='out')]
+        arg_man = fc_wrap.ArgWrapperManager(args)
+        eq_(arg_man.c_proto_args(), ['fwrap_default_integer *array_d1',
+                                     'fwrap_default_integer *array_d2',
+                                     'fwrap_default_integer *array_d3',
+                                     'fwrap_default_real *array'])
+
+
+# many_arrays_text#{{{
 many_arrays_text = '''\
 subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assumed_shape_d1, assumed_shape_d2, assumed_shape, explicit_shape_d1, explicit_shape_d2, explicit_shape, c1, c2) bind(c, name="arr_args_c")
     use fwrap_ktp_mod
@@ -620,6 +639,7 @@ subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assume
     call arr_args(assumed_size, d1, assumed_shape, explicit_shape, c1, c2)
 end subroutine arr_args_c
 '''
+#}}}
 
 #---------------- vvv Ignored tests, possibly remove vvv -----------------#{{{
 
