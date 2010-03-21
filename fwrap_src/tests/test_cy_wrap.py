@@ -2,6 +2,9 @@ from fwrap_src import cy_wrap
 from fwrap_src import pyf_iface as pyf
 from fwrap_src import fc_wrap
 from cStringIO import StringIO
+from fwrap_src.code import CodeBuffer
+
+from tutils import compare
 
 from nose.tools import ok_, eq_, set_trace
 
@@ -85,7 +88,7 @@ class test_cy_arg_wrapper_mgr(object):
 
     def test_return_arg_declaration(self):
         eq_(self.mgr.return_arg_declaration(),
-                ["%s fwrap_return_var" % self.rtn])
+                ["cdef %s fwrap_return_var" % self.rtn])
 
 class test_cy_proc_wrapper(object):
 
@@ -138,4 +141,26 @@ class test_cy_proc_wrapper(object):
         eq_(self.cy_subr_wrapper.temp_declarations(), [])
 
     def test_func_declarations(self):
-        eq_(self.cy_func_wrapper.temp_declarations(), ["fwrap_default_integer fwrap_return_var"])
+        eq_(self.cy_func_wrapper.temp_declarations(),
+                ["cdef fwrap_default_integer fwrap_return_var"])
+
+    def test_subr_generate_wrapper(self):
+        buf = CodeBuffer()
+        self.cy_subr_wrapper.generate_wrapper(buf)
+        cy_wrapper = '''\
+        cpdef object fort_subr(fwrap_default_real real_arg, fwrap_default_integer int_arg):
+            fort_subr_c(&real_arg, &int_arg)
+'''
+        compare(cy_wrapper, buf.getvalue())
+
+    def test_func_generate_wrapper(self):
+        buf = CodeBuffer()
+        self.cy_func_wrapper.generate_wrapper(buf)
+        cy_wrapper = '''\
+        cpdef fwrap_default_integer fort_func(fwrap_default_integer int_arg, fwrap_default_real real_arg):
+            cdef fwrap_default_integer fwrap_return_var
+            fwrap_return_var = fort_func_c(&int_arg, &real_arg)
+            return fwrap_return_var
+'''
+        compare(cy_wrapper, buf.getvalue())
+

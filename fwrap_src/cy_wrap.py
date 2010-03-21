@@ -29,6 +29,7 @@ class CyArgWrapper(object):
     def intern_name(self):
         return self.arg.get_name()
 
+FW_RETURN_VAR_NAME = 'fwrap_return_var'
 class CyArgWrapperManager(object):
 
     def __init__(self, args, return_type_name):
@@ -55,7 +56,7 @@ class CyArgWrapperManager(object):
         return decls
 
     def return_arg_declaration(self):
-        return ["%s fwrap_return_var" % self.return_type_name]
+        return ["cdef %s %s" % (self.return_type_name, FW_RETURN_VAR_NAME)]
 
 class ProcWrapper(object):
     
@@ -79,10 +80,24 @@ class ProcWrapper(object):
         if self.wrapped.kind == 'subroutine':
             return proc_call
         else:
-            return '%s = %s' % ('fwrap_return_var', proc_call)
+            return '%s = %s' % (FW_RETURN_VAR_NAME, proc_call)
 
     def temp_declarations(self):
         if self.wrapped.kind == 'function':
             return self.arg_mgr.return_arg_declaration()
         else:
             return []
+
+    def return_statement(self):
+        if self.wrapped.kind == 'function':
+            return 'return %s' % FW_RETURN_VAR_NAME
+
+    def generate_wrapper(self, buf):
+        buf.putln(self.proc_declaration())
+        buf.indent()
+        for decl in self.temp_declarations():
+            buf.putln(decl)
+        buf.putln(self.proc_call())
+        if self.wrapped.kind == 'function':
+            buf.putln(self.return_statement())
+        buf.dedent()
