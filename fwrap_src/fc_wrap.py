@@ -274,6 +274,12 @@ class ArgWrapperManager(object):
             ret.extend(argw.c_declarations())
         return ret
 
+    def c_proto_return_type(self):
+        if self.return_arg_wrapper is None:
+            return 'void'
+        else:
+            return self.return_arg_wrapper.get_ktp()
+
     def arg_declarations(self):
         decls = []
         for argw in self.arg_wrappers:

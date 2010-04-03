@@ -606,6 +606,15 @@ class test_c_proto_generation(object):
                                      'fwrap_default_integer *array_d3',
                                      'fwrap_default_real *array'])
 
+    def test_c_proto_return_type(self):
+        for dtype in (pyf.default_real, pyf.default_integer):
+            return_arg = pyf.Argument(name='ret_arg', dtype=dtype, is_return_arg=True)
+            am = fc_wrap.ArgWrapperManager([], return_arg)
+            eq_(am.c_proto_return_type(), dtype.ktp)
+
+        am_subr = fc_wrap.ArgWrapperManager([])
+        eq_(am_subr.c_proto_return_type(), 'void')
+
 
 # many_arrays_text#{{{
 many_arrays_text = '''\
