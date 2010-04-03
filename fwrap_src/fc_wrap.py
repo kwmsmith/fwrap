@@ -215,6 +215,10 @@ class ProcWrapper(object):
     def call_arg_list(self):
         return self.arg_man.call_arg_list()
 
+    def c_prototype(self):
+        args = ", ".join(self.arg_man.c_proto_args())
+        return '%s %s(%s);' % (self.arg_man.c_proto_return_type(), self.name, args)
+
 class FunctionWrapper(ProcWrapper):
 
     def __init__(self, name, wrapped):

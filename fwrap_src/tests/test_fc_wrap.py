@@ -615,6 +615,29 @@ class test_c_proto_generation(object):
         am_subr = fc_wrap.ArgWrapperManager([])
         eq_(am_subr.c_proto_return_type(), 'void')
 
+    def test_c_prototype_empty(self):
+        empty_func = pyf.Function(name='empty_func',
+                          args=(),
+                          return_type=pyf.default_integer)
+        empty_func_wrapper = fc_wrap.FunctionWrapper(name='empty_func_c', wrapped=empty_func)
+        eq_(empty_func_wrapper.c_prototype(), 'fwrap_default_integer empty_func_c();')
+        empty_subr = pyf.Subroutine(name='empty_subr',
+                            args=())
+        empty_subr_wrapper = fc_wrap.SubroutineWrapper(name='empty_subr_c', wrapped=empty_subr)
+        eq_(empty_subr_wrapper.c_prototype(), 'void empty_subr_c();')
+
+    def test_c_prototype_args(self):
+        args = [pyf.Argument(name='int_arg', dtype=pyf.default_integer, intent='in'),
+                pyf.Argument(name='array', dtype=pyf.default_real, dimension=(':',)*3, intent='out')]
+        func = pyf.Function(name='func', args=args, return_type=pyf.default_integer)
+        func_wrapper = fc_wrap.FunctionWrapper(name='func_c', wrapped=func)
+        eq_(func_wrapper.c_prototype(), "fwrap_default_integer func_c("
+                                        "fwrap_default_integer *int_arg, "
+                                        "fwrap_default_integer *array_d1, "
+                                        "fwrap_default_integer *array_d2, "
+                                        "fwrap_default_integer *array_d3, "
+                                        "fwrap_default_real *array);")
+
 
 # many_arrays_text#{{{
 many_arrays_text = '''\
