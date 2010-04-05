@@ -150,7 +150,7 @@ class test_cy_proc_wrapper(object):
         cy_wrapper = '''\
         cpdef object fort_subr(fwrap_default_real real_arg, fwrap_default_integer int_arg):
             fort_subr_c(&real_arg, &int_arg)
-'''
+        '''
         compare(cy_wrapper, buf.getvalue())
 
     def test_func_generate_wrapper(self):
@@ -161,6 +161,6 @@ class test_cy_proc_wrapper(object):
             cdef fwrap_default_integer fwrap_return_var
             fwrap_return_var = fort_func_c(&int_arg, &real_arg)
             return fwrap_return_var
-'''
+        '''
         compare(cy_wrapper, buf.getvalue())
 
