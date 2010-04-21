@@ -62,6 +62,28 @@ class test_cy_arg_wrapper(object):
         for dt, caw in zip(self.dts, self.caws):
             eq_(caw.intern_name(), "foo")
 
+class test_cy_array_arg_wrapper(object):
+    
+    def setup(self):
+        arg = pyf.Argument('array', dtype=pyf.default_real,
+                            dimension=[':']*3, intent='in')
+        fc_arg = fc_wrap.ArgWrapper(arg)
+        self.cy_arg = cy_wrap.CyArrayArgWrapper(fc_arg)
+
+    def test_extern_declarations(self):
+        eq_(self.cy_arg.extern_declarations(), ['object array'])
+
+    def test_intern_declarations(self):
+        eq_(self.cy_arg.intern_declarations(),
+                ["cdef np.ndarray[fwrap_default_real, ndim=3, mode='fortran'] array_ = array",])
+
+    def test_call_arg_list(self):
+        eq_(self.cy_arg.call_arg_list(),
+                ['&array_.shape[2]',
+                 '&array_.shape[1]',
+                 '&array_.shape[0]',
+                 '<fwrap_default_real*>array_.data'])
+
 class test_cy_arg_wrapper_mgr(object):
 
     def setup(self):
