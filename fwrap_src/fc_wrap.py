@@ -414,7 +414,6 @@ class ArrayArgWrapper(ArgWrapperBase):
     def __init__(self, arg):
         self._orig_arg = arg
         self._extern_args = []
-        self._intern_vars = []
         self._dims = arg.dimension
         self._set_extern_args()
 
