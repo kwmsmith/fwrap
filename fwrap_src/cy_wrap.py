@@ -35,16 +35,21 @@ class CyArrayArgWrapper(object):
         self.arg = arg
 
     def extern_declarations(self):
-        return ['object array']
+        return ['object %s' % self.arg.intern_name()]
 
     def intern_declarations(self):
-        return ["cdef np.ndarray[fwrap_default_real, ndim=3, mode='fortran'] array_ = array"]
+        return ["cdef np.ndarray[%s, ndim=%d, mode='fortran'] %s_ = %s" % \
+                (self.arg.get_ktp(),
+                 self.arg.get_ndims(),
+                 self.arg.intern_name(),
+                 self.arg.intern_name())
+                ]
                  
     def call_arg_list(self):
-        return ['&array_.shape[2]',
-                 '&array_.shape[1]',
-                 '&array_.shape[0]',
-                 '<fwrap_default_real*>array_.data']
+        shapes = reversed(['&%s_.shape[%d]' % (self.arg.intern_name(), i) \
+                                for i in range(self.arg.get_ndims())])
+        data = '<%s*>%s_.data' % (self.arg.get_ktp(), self.arg.intern_name())
+        return list(shapes) + [data]
 
 FW_RETURN_VAR_NAME = 'fwrap_return_var'
 class CyArgWrapperManager(object):

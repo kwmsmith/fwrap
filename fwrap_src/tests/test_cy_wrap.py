@@ -65,17 +65,23 @@ class test_cy_arg_wrapper(object):
 class test_cy_array_arg_wrapper(object):
     
     def setup(self):
-        arg = pyf.Argument('array', dtype=pyf.default_real,
+        arg1 = pyf.Argument('array', dtype=pyf.default_real,
                             dimension=[':']*3, intent='in')
-        fc_arg = fc_wrap.ArgWrapper(arg)
+        arg2 = pyf.Argument('int_array', dtype=pyf.default_integer,
+                            dimension=[':']*1, intent='in')
+        fc_arg = fc_wrap.ArrayArgWrapper(arg1)
         self.cy_arg = cy_wrap.CyArrayArgWrapper(fc_arg)
+        self.cy_int_arg = cy_wrap.CyArrayArgWrapper(fc_wrap.ArrayArgWrapper(arg2))
 
     def test_extern_declarations(self):
         eq_(self.cy_arg.extern_declarations(), ['object array'])
+        eq_(self.cy_int_arg.extern_declarations(), ['object int_array'])
 
     def test_intern_declarations(self):
         eq_(self.cy_arg.intern_declarations(),
                 ["cdef np.ndarray[fwrap_default_real, ndim=3, mode='fortran'] array_ = array",])
+        eq_(self.cy_int_arg.intern_declarations(),
+                ["cdef np.ndarray[fwrap_default_integer, ndim=1, mode='fortran'] int_array_ = int_array",])
 
     def test_call_arg_list(self):
         eq_(self.cy_arg.call_arg_list(),
@@ -83,6 +89,9 @@ class test_cy_array_arg_wrapper(object):
                  '&array_.shape[1]',
                  '&array_.shape[0]',
                  '<fwrap_default_real*>array_.data'])
+        eq_(self.cy_int_arg.call_arg_list(),
+                 ['&int_array_.shape[0]',
+                 '<fwrap_default_integer*>int_array_.data'])
 
 class test_cy_arg_wrapper_mgr(object):
 

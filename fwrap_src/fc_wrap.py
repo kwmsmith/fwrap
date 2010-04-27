@@ -428,6 +428,12 @@ class ArrayArgWrapper(ArgWrapperBase):
                                           intent=self._orig_arg.intent,
                                           dimension=dims))
 
+    def get_ktp(self):
+        return self._extern_args[-1].ktp
+
+    def get_ndims(self):
+        return len(self._dims)
+
     def extern_declarations(self):
         return [arg.declaration() for arg in self._extern_args]
 
