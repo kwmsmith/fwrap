@@ -1,5 +1,30 @@
 ---
 
+intent(out) scalar variables can't be passed through the argument list at Cython level.
+
+Need to be returned in return tuple.
+
+What about intent(out) arrays?  Best solution -- do like 'out' variable for numpy ufuncs.
+
+def sum(a, b, out=None):
+    cdef np.ndarray[<out dtype>, ndim=<out ndim>, mode='fortran'] out_
+    if out is None:
+        out_ = np.empty(<correct size of out>, <correct dtype of out>)
+    else:
+        out_ = out
+    inner_sum(a, b, out_)
+    return (out_,)
+
+for scalar intent(out) arguments:
+
+cpdef api ffunc(fwrap_default_int in_var):
+    cdef fwrap_default_real out_var
+    cdef fwrap_default_real ret_val
+    ret_val = ffunc_c(&in_var, &out_var)
+    return (ret_val, out_var)
+
+---
+
 Detect when a ktp/argument/variable/parameter is given with an 'fwrap_' prefix
 and either raise an error or emit a warning.
 
