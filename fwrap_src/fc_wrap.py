@@ -1,7 +1,7 @@
 import inspect
 from fwrap_src import pyf_iface as pyf
+from fwrap_src import constants
 
-KTP_MOD_NAME = "fwrap_ktp_mod"
 
 class SourceGenerator(object):
 
@@ -146,7 +146,24 @@ class TreeVisitor(BasicVisitor):
                 enumerate(content)]
         return result
 
-def generate_interface(proc, gmn, buf):
+def wrap_pyf_iface(ast):
+    fc_wrapper = []
+    for proc in ast:
+        if proc.kind == 'function':
+            fc_wrapper.append(FunctionWrapper("%s_c" % proc.name, wrapped=proc))
+        elif proc.kind == 'subroutine':
+            fc_wrapper.append(SubroutineWrapper("%s_c" % proc.name, wrapped=proc))
+        else:
+            raise ValueError("object not function or subroutine, %s" % proc)
+    return fc_wrapper
+
+def generate_c_header(ast, ktp_header_name, buf):
+    buf.putln('#include "%s"' % ktp_header_name)
+    buf.putln('')
+    for proc in ast:
+        buf.putln(proc.c_prototype())
+
+def generate_interface(proc, buf, gmn=constants.KTP_MOD_NAME):
         buf.putln('interface')
         buf.indent()
         buf.putln(proc.proc_declaration())
@@ -168,11 +185,11 @@ class ProcWrapper(object):
         for declaration in self.arg_declarations():
             buf.putln(declaration)
 
-    def generate_wrapper(self, gmn, buf):
+    def generate_wrapper(self, buf, gmn=constants.KTP_MOD_NAME):
         buf.putln(self.proc_declaration())
         buf.indent()
         self.proc_preamble(gmn, buf)
-        generate_interface(self.wrapped, gmn, buf)
+        generate_interface(self.wrapped, buf, gmn)
         self.temp_declarations(buf)
         self.pre_call_code(buf)
         self.proc_call(buf)

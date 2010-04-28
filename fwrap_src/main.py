@@ -2,6 +2,7 @@ import os
 from optparse import OptionParser
 from cStringIO import StringIO
 
+import constants
 import pyf_iface as pyf
 import fc_wrap
 import cy_wrap
@@ -67,7 +68,17 @@ def parse_and_validate_args():
 
     return options, args
 
-def generate_ast():
+def generate_c_header(ast, buf):
+    fc_wrap.generate_c_header(ast, constants.KTP_HEADER_NAME, buf)
+
+def wrap_fc(ast):
+    return fc_wrap.wrap_pyf_iface(ast)
+
+def generate_fc(ast, buf):
+    for proc in ast:
+        proc.generate_wrapper(buf)
+
+def generate_ast(fsrc):
     # this is a stub for now...
     empty_func = pyf.Function(name='empty_func',
                     args=(),

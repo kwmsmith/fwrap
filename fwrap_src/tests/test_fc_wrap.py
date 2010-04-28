@@ -47,7 +47,7 @@ def test_gen_fortran_one_arg_func():
                                intent="in")])
     one_arg_wrapped = fc_wrap.SubroutineWrapper(name='one_arg_c', wrapped=one_arg)
     buf = CodeBuffer()
-    one_arg_wrapped.generate_wrapper(fc_wrap.KTP_MOD_NAME, buf)
+    one_arg_wrapped.generate_wrapper(buf)
     fort_file = '''\
     subroutine one_arg_c(a) bind(c, name="one_arg_c")
         use fwrap_ktp_mod
@@ -87,7 +87,7 @@ def test_gen_empty_func_wrapper():
     end function empty_func_c
 '''
     buf = CodeBuffer()
-    empty_func_wrapper.generate_wrapper(fc_wrap.KTP_MOD_NAME, buf)
+    empty_func_wrapper.generate_wrapper(buf)
     compare(empty_func_wrapped, buf.getvalue())
 
 def test_gen_iface():
@@ -95,7 +95,7 @@ def test_gen_iface():
     def gen_iface_gen(ast, istr):
         buf = CodeBuffer()
         #ast.generate_interface(buf)
-        fc_wrap.generate_interface(ast, fc_wrap.KTP_MOD_NAME, buf)
+        fc_wrap.generate_interface(ast, buf)
         compare(istr, buf.getvalue())
 
 
@@ -164,7 +164,7 @@ def test_intent_hide():
                                         value='10')])
     wppr = fc_wrap.SubroutineWrapper(name='hide_subr_c', wrapped=hide_arg_subr)
     buf = CodeBuffer()
-    wppr.generate_wrapper(fc_wrap.KTP_MOD_NAME, buf)
+    wppr.generate_wrapper(buf)
     check = '''\
     subroutine hide_subr_c() bind(c, name="hide_subr_c")
         use fwrap_ktp_mod
@@ -200,7 +200,7 @@ def _test_check():
 
     wppr = fc_wrap.SubroutineWrapper(name='check_subr_c', wrapped=check_subr)
     buf = CodeBuffer()
-    wppr.generate_wrapper(fc_wrap.KTP_MOD_NAME, buf)
+    wppr.generate_wrapper(buf)
     check = '''\
     subroutine check_subr_c(arr_d1, arr_d2, arr, d1, d2, fw_error)
         use fwrap_ktp_mod
@@ -239,7 +239,7 @@ def test_logical_function():
                             return_type=pyf.LogicalType(ktp='lgcl'))
     lgcl_fun_wrapped = fc_wrap.FunctionWrapper(name='lgcl_fun_c', wrapped=lgcl_fun)
     buf = CodeBuffer()
-    lgcl_fun_wrapped.generate_wrapper(fc_wrap.KTP_MOD_NAME, buf)
+    lgcl_fun_wrapped.generate_wrapper(buf)
     fort_file = '''\
     function lgcl_fun_c() bind(c, name="lgcl_fun_c")
         use fwrap_ktp_mod
@@ -264,7 +264,7 @@ def test_logical_wrapper():
                                               intent="inout")])
     lgcl_arg_wrapped = fc_wrap.SubroutineWrapper(name='lgcl_arg_c', wrapped=lgcl_arg)
     buf = CodeBuffer()
-    lgcl_arg_wrapped.generate_wrapper(fc_wrap.KTP_MOD_NAME, buf)
+    lgcl_arg_wrapped.generate_wrapper(buf)
     fort_file = '''\
     subroutine lgcl_arg_c(lgcl) bind(c, name="lgcl_arg_c")
         use fwrap_ktp_mod
@@ -291,7 +291,7 @@ def test_assumed_shape_int_array():
                                               intent="inout")])
     arr_arg_wrapped = fc_wrap.SubroutineWrapper(name='arr_arg_c', wrapped=arr_arg)
     buf = CodeBuffer()
-    arr_arg_wrapped.generate_wrapper(fc_wrap.KTP_MOD_NAME, buf)
+    arr_arg_wrapped.generate_wrapper(buf)
     fort_file = '''\
     subroutine arr_arg_c(arr_d1, arr_d2, arr) bind(c, name="arr_arg_c")
         use fwrap_ktp_mod
@@ -324,7 +324,7 @@ def test_explicit_shape_int_array():
                                 ])
     arr_arg_wrapped = fc_wrap.SubroutineWrapper(name='arr_arg_c', wrapped=arr_arg)
     buf = CodeBuffer()
-    arr_arg_wrapped.generate_wrapper(fc_wrap.KTP_MOD_NAME, buf)
+    arr_arg_wrapped.generate_wrapper(buf)
     fort_file = '''\
     subroutine arr_arg_c(arr_d1, arr_d2, arr, d1, d2) bind(c, name="arr_arg_c")
         use fwrap_ktp_mod
@@ -360,7 +360,7 @@ def test_many_arrays():
                                 ])
     arr_args_wrapped = fc_wrap.SubroutineWrapper(name='arr_args_c', wrapped=arr_args)
     buf = CodeBuffer()
-    arr_args_wrapped.generate_wrapper(fc_wrap.KTP_MOD_NAME, buf)
+    arr_args_wrapped.generate_wrapper(buf)
     compare(many_arrays_text, buf.getvalue())
 
 def _test_parameters():
@@ -372,7 +372,7 @@ def _test_parameters():
                               return_type=pyf.RealType('FOO'))
     param_func_wrapped = fc_wrap.FunctionWrapper(name='param_func_c', wrapped=param_func)
     buf = CodeBuffer()
-    param_func_wrapped.generate_wrapper(fc_wrap.KTP_MOD_NAME, buf)
+    param_func_wrapped.generate_wrapper(buf)
     wrapped = '''\
     function param_func_c(arg, array_d1, array_d2, array) bind(c, name="param_func_c")
         use fwrap_ktp_mod
@@ -414,7 +414,7 @@ def test_declaration_order():
     end interface
 '''
     buf = CodeBuffer()
-    fc_wrap.generate_interface(arr_arg, fc_wrap.KTP_MOD_NAME, buf)
+    fc_wrap.generate_interface(arr_arg, buf)
     compare(iface, buf.getvalue())
  
 class test_array_arg_wrapper(object):
