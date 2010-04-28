@@ -5,6 +5,8 @@ from fwrap_src.code import CodeBuffer
 
 from nose.tools import ok_, eq_, set_trace
 
+from tutils import compare
+
 empty_func = '''
 function empty_func()
     implicit none
@@ -28,9 +30,31 @@ def test_generate_fc():
     buf = CodeBuffer()
     fc_wrap = main.wrap_fc(ast)
     main.generate_fc(fc_wrap, buf)
+    fc = '''\
+    function empty_func_c() bind(c, name="empty_func_c")
+        use fwrap_ktp_mod
+        implicit none
+        integer(fwrap_default_integer) :: empty_func_c
+        interface
+            function empty_func()
+                use fwrap_ktp_mod
+                implicit none
+                integer(fwrap_default_integer) :: empty_func
+            end function empty_func
+        end interface
+        empty_func_c = empty_func()
+    end function empty_func_c
+    '''
+    compare(fc, buf.getvalue())
 
 def test_generate_c_header():
     ast = main.generate_ast(fsrc)
     buf = CodeBuffer()
     fc_wrap = main.wrap_fc(ast)
     main.generate_c_header(fc_wrap, buf)
+    header = '''\
+    #include "fwrap_ktp_header.h"
+
+    fwrap_default_integer empty_func_c();
+    '''
+    compare(buf.getvalue(), header)
