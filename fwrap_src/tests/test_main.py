@@ -47,7 +47,7 @@ def test_generate_fc():
     '''
     compare(fc, buf.getvalue())
 
-def test_generate_c_header():
+def test_generate_h_fc():
     ast = main.generate_ast(fsrc)
     buf = CodeBuffer()
     fc_wrap = main.wrap_fc(ast)
@@ -58,3 +58,12 @@ def test_generate_c_header():
     fwrap_default_integer empty_func_c();
     '''
     compare(buf.getvalue(), header)
+
+def test_generate_pxd_fc():
+    pass
+
+def test_generate_pxd_fwrap():
+    pass
+
+def test_generate_pyx_fwrap():
+    pass
