@@ -68,9 +68,16 @@ def parse_and_validate_args():
 
     return options, args
 
+def generate_pxd_fc(ast, projname, buf):
+    fc_header_name = constants.FC_HDR_TMPL % projname
+    cy_wrap.generate_pxd_fc(ast, fc_header_name, buf)
+
 def generate_c_header(ast, buf):
     fc_wrap.generate_c_header(ast, constants.KTP_HEADER_NAME, buf)
 
+def wrap_cy(ast):
+    return cy_wrap.wrap_fc(ast)
+ 
 def wrap_fc(ast):
     return fc_wrap.wrap_pyf_iface(ast)
 

@@ -1,4 +1,4 @@
-function fw_empty_func() bind(c, name='empty_func')
+function empty_func_c() bind(c, name='empty_func_c')
       use fwrap_ktp_mod
       implicit none
       interface
@@ -7,6 +7,6 @@ function fw_empty_func() bind(c, name='empty_func')
             integer :: empty_func
         end function empty_func
       end interface
-      integer(fwrap_default_int) :: fw_empty_func
-      fw_empty_func = empty_func()
-end function fw_empty_func
+      integer(fwrap_default_int) :: empty_func_c
+      empty_func_c = empty_func()
+end function fw_empty_func_c

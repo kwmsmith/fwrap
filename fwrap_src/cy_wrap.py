@@ -1,3 +1,5 @@
+import constants
+
 def generate_pyx(program_unit_list, buf):
     buf.write('''
 cimport DP_c
@@ -80,12 +82,31 @@ class CyArgWrapperManager(object):
     def return_arg_declaration(self):
         return ["cdef %s %s" % (self.return_type_name, FW_RETURN_VAR_NAME)]
 
+def wrap_fc(ast):
+    ret = []
+    for proc in ast:
+        ret.append(ProcWrapper(name='XXX', wrapped=proc))
+    return ret
+
+def generate_pxd_fc(ast, fc_header_name, buf):
+    buf.putln("from %s cimport *" % constants.KTP_PXD_HEADER_NAME)
+    buf.putln('')
+    buf.putln('cdef extern from "%s":' % fc_header_name)
+    buf.indent()
+    for proc in ast:
+        buf.putln(proc.cy_prototype())
+    buf.dedent()
+
 class ProcWrapper(object):
     
     def __init__(self, name, wrapped):
         self.wrapped = wrapped
         self.name = name
         self.arg_mgr = CyArgWrapperManager.from_fwrapped_proc(wrapped)
+
+    def cy_prototype(self):
+        cp = self.wrapped.c_prototype()
+        return cp.strip(";")
 
     def proc_declaration(self):
         template = "cpdef api %(return_type_name)s %(proc_name)s(%(arg_list)s):"

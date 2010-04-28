@@ -60,7 +60,18 @@ def test_generate_h_fc():
     compare(buf.getvalue(), header)
 
 def test_generate_pxd_fc():
-    pass
+    ast = main.generate_ast(fsrc)
+    buf = CodeBuffer()
+    fc_wrap = main.wrap_fc(ast)
+    cy_wrap = main.wrap_cy(fc_wrap)
+    main.generate_pxd_fc(cy_wrap, projname="DP", buf=buf)
+    header = '''\
+    from fwrap_ktp cimport *
+
+    cdef extern from "DP_fc.h":
+        fwrap_default_integer empty_func_c()
+    '''
+    compare(header, buf.getvalue())
 
 def test_generate_pxd_fwrap():
     pass
