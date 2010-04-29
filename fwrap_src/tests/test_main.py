@@ -7,90 +7,77 @@ from nose.tools import ok_, eq_, set_trace
 
 from tutils import compare
 
-empty_func = '''
+class test_generation(object):
+    
+    def setup(self):
+        fsrc = StringIO('''\
 function empty_func()
     implicit none
     integer :: empty_func
 end function empty_func
-'''
+''')
+        self.ast = main.generate_ast(fsrc)
+        self.fc_wrap = main.wrap_fc(self.ast)
+        self.cy_wrap = main.wrap_cy(self.fc_wrap)
+        self.buf = CodeBuffer()
 
-fsrc = StringIO(empty_func)
+    def test_generate_ast(self):
+        empty_func = pyf.Function(name='empty_func',
+                        args=(),
+                        return_type=pyf.default_integer)
+        eq_(self.ast[0].name, empty_func.name)
+        eq_(self.ast[0].return_arg.name, empty_func.return_arg.name)
+        eq_(self.ast[0]._args, empty_func._args)
 
-def test_generate_ast():
-    ast = main.generate_ast(fsrc)
-    empty_func = pyf.Function(name='empty_func',
-                    args=(),
-                    return_type=pyf.default_integer)
-    eq_(ast[0].name, empty_func.name)
-    eq_(ast[0].return_arg.name, empty_func.return_arg.name)
-    eq_(ast[0]._args, empty_func._args)
+    def test_generate_fc(self):
+        main.generate_fc(self.fc_wrap, self.buf)
+        fc = '''\
+        function empty_func_c() bind(c, name="empty_func_c")
+            use fwrap_ktp_mod
+            implicit none
+            integer(fwrap_default_integer) :: empty_func_c
+            interface
+                function empty_func()
+                    use fwrap_ktp_mod
+                    implicit none
+                    integer(fwrap_default_integer) :: empty_func
+                end function empty_func
+            end interface
+            empty_func_c = empty_func()
+        end function empty_func_c
+        '''
+        compare(fc, self.buf.getvalue())
 
-def test_generate_fc():
-    ast = main.generate_ast(fsrc)
-    buf = CodeBuffer()
-    fc_wrap = main.wrap_fc(ast)
-    main.generate_fc(fc_wrap, buf)
-    fc = '''\
-    function empty_func_c() bind(c, name="empty_func_c")
-        use fwrap_ktp_mod
-        implicit none
-        integer(fwrap_default_integer) :: empty_func_c
-        interface
-            function empty_func()
-                use fwrap_ktp_mod
-                implicit none
-                integer(fwrap_default_integer) :: empty_func
-            end function empty_func
-        end interface
-        empty_func_c = empty_func()
-    end function empty_func_c
-    '''
-    compare(fc, buf.getvalue())
+    def test_generate_h_fc(self):
+        main.generate_c_header(self.fc_wrap, self.buf)
+        header = '''\
+        #include "fwrap_ktp_header.h"
 
-def test_generate_h_fc():
-    ast = main.generate_ast(fsrc)
-    buf = CodeBuffer()
-    fc_wrap = main.wrap_fc(ast)
-    main.generate_c_header(fc_wrap, buf)
-    header = '''\
-    #include "fwrap_ktp_header.h"
+        fwrap_default_integer empty_func_c();
+        '''
+        compare(self.buf.getvalue(), header)
 
-    fwrap_default_integer empty_func_c();
-    '''
-    compare(buf.getvalue(), header)
+    def test_generate_pxd_fc(self):
+        main.generate_pxd_fc(self.fc_wrap, projname="DP", buf=self.buf)
+        header = '''\
+        from fwrap_ktp cimport *
 
-def test_generate_pxd_fc():
-    ast = main.generate_ast(fsrc)
-    buf = CodeBuffer()
-    fc_wrap = main.wrap_fc(ast)
-    main.generate_pxd_fc(fc_wrap, projname="DP", buf=buf)
-    header = '''\
-    from fwrap_ktp cimport *
+        cdef extern from "DP_fc.h":
+            fwrap_default_integer empty_func_c()
+        '''
+        compare(header, self.buf.getvalue())
 
-    cdef extern from "DP_fc.h":
-        fwrap_default_integer empty_func_c()
-    '''
-    compare(header, buf.getvalue())
+    def test_generate_cy_pxd(self):
+        main.generate_cy_pxd(self.cy_wrap, projname="DP", buf=self.buf)
+        pxd = '''\
+        from DP_fc cimport *
 
-def test_generate_cy_pxd():
-    ast = main.generate_ast(fsrc)
-    buf = CodeBuffer()
-    fc_wrap = main.wrap_fc(ast)
-    cy_wrap = main.wrap_cy(fc_wrap)
-    main.generate_cy_pxd(cy_wrap, projname="DP", buf=buf)
-    pxd = '''\
-    from DP_fc cimport *
+        cpdef api object empty_func()
+        '''
+        compare(pxd, self.buf.getvalue())
 
-    cpdef api object empty_func()
-    '''
-    compare(pxd, buf.getvalue())
-
-def test_generate_cy_pyx():
-    ast = main.generate_ast(fsrc)
-    buf = CodeBuffer()
-    fc_wrap = main.wrap_fc(ast)
-    cy_wrap = main.wrap_cy(fc_wrap)
-    main.generate_cy_pyx(cy_wrap, buf=buf)
-    buf2 = CodeBuffer()
-    cy_wrap[0].generate_wrapper(buf2)
-    compare(buf2.getvalue(), buf.getvalue())
+    def test_generate_cy_pyx(self):
+        main.generate_cy_pyx(self.cy_wrap, buf=self.buf)
+        buf2 = CodeBuffer()
+        self.cy_wrap[0].generate_wrapper(buf2)
+        compare(buf2.getvalue(), self.buf.getvalue())
