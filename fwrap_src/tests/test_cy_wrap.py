@@ -146,7 +146,7 @@ class test_cy_proc_wrapper(object):
 
     def test_func_proc_declaration(self):
         eq_(self.cy_func_wrapper.proc_declaration(),
-            "cpdef api fwrap_default_integer"
+            "cpdef api object"
             " fort_func(fwrap_default_integer int_arg,"
             " fwrap_default_real real_arg):")
 
@@ -184,9 +184,9 @@ class test_cy_proc_wrapper(object):
         buf = CodeBuffer()
         self.cy_func_wrapper.generate_wrapper(buf)
         cy_wrapper = '''\
-        cpdef api fwrap_default_integer fort_func(fwrap_default_integer int_arg, fwrap_default_real real_arg):
+        cpdef api object fort_func(fwrap_default_integer int_arg, fwrap_default_real real_arg):
             cdef fwrap_default_integer fwrap_return_var
             fwrap_return_var = fort_func_c(&int_arg, &real_arg)
-            return fwrap_return_var
+            return (fwrap_return_var,)
         '''
         compare(cy_wrapper, buf.getvalue())
