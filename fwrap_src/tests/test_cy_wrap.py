@@ -132,20 +132,16 @@ class test_cy_proc_wrapper(object):
                                 args=[int_arg, real_arg],
                                 return_type=pyf.default_integer)
         func_wrapper = fc_wrap.FunctionWrapper(
-                                name="fort_func_c",
                                 wrapped=pyf_func)
         self.cy_func_wrapper = cy_wrap.ProcWrapper(
-                                name="fort_func",
                                 wrapped=func_wrapper)
 
         pyf_subr = pyf.Subroutine(
                             name="fort_subr",
                             args=[real_arg, int_arg])
         subr_wrapper = fc_wrap.SubroutineWrapper(
-                            name="fort_subr_c",
                             wrapped=pyf_subr)
         self.cy_subr_wrapper = cy_wrap.ProcWrapper(
-                            name="fort_subr",
                             wrapped=subr_wrapper)
 
     def test_func_proc_declaration(self):

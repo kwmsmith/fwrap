@@ -85,7 +85,7 @@ class CyArgWrapperManager(object):
 def wrap_fc(ast):
     ret = []
     for proc in ast:
-        ret.append(ProcWrapper(name='XXX', wrapped=proc))
+        ret.append(ProcWrapper(wrapped=proc))
     return ret
 
 def generate_pxd_fc(ast, fc_header_name, buf):
@@ -99,9 +99,9 @@ def generate_pxd_fc(ast, fc_header_name, buf):
 
 class ProcWrapper(object):
     
-    def __init__(self, name, wrapped):
+    def __init__(self, wrapped):
         self.wrapped = wrapped
-        self.name = name
+        self.name = self.wrapped.wrapped_name()
         self.arg_mgr = CyArgWrapperManager.from_fwrapped_proc(wrapped)
 
     def cy_prototype(self):

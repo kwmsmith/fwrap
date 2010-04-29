@@ -150,9 +150,9 @@ def wrap_pyf_iface(ast):
     fc_wrapper = []
     for proc in ast:
         if proc.kind == 'function':
-            fc_wrapper.append(FunctionWrapper("%s_c" % proc.name, wrapped=proc))
+            fc_wrapper.append(FunctionWrapper(wrapped=proc))
         elif proc.kind == 'subroutine':
-            fc_wrapper.append(SubroutineWrapper("%s_c" % proc.name, wrapped=proc))
+            fc_wrapper.append(SubroutineWrapper(wrapped=proc))
         else:
             raise ValueError("object not function or subroutine, %s" % proc)
     return fc_wrapper
@@ -175,6 +175,9 @@ def generate_interface(proc, buf, gmn=constants.KTP_MOD_NAME):
         buf.putln('end interface')
 
 class ProcWrapper(object):
+
+    def wrapped_name(self):
+        return self.wrapped.name
 
     def proc_end(self):
         return "end %s %s" % (self.kind, self.name)
@@ -238,11 +241,13 @@ class ProcWrapper(object):
 
 class FunctionWrapper(ProcWrapper):
 
-    def __init__(self, name, wrapped):
+    def __init__(self, wrapped):
         self.kind = 'function'
-        self.name = name
+        self.name = constants.PROC_SUFFIX_TMPL % wrapped.name
         self.wrapped = wrapped
-        ra = pyf.Argument(name=name, dtype=wrapped.return_arg.dtype, intent='out', is_return_arg=True)
+        ra = pyf.Argument(name=self.name,
+                dtype=wrapped.return_arg.dtype,
+                intent='out', is_return_arg=True)
         self.arg_man = ArgWrapperManager(wrapped._args, ra)
 
     def return_spec_declaration(self):
@@ -253,9 +258,9 @@ class FunctionWrapper(ProcWrapper):
 
 class SubroutineWrapper(ProcWrapper):
 
-    def __init__(self, name, wrapped):
+    def __init__(self, wrapped):
         self.kind = 'subroutine'
-        self.name = name
+        self.name = constants.PROC_SUFFIX_TMPL % wrapped.name
         self.wrapped = wrapped
         self.arg_man = ArgWrapperManager(wrapped._args)
 

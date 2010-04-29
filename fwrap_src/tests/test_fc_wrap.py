@@ -45,7 +45,7 @@ def test_gen_fortran_one_arg_func():
             args=[pyf.Argument(name='a',
                                dtype=pyf.default_integer,
                                intent="in")])
-    one_arg_wrapped = fc_wrap.SubroutineWrapper(name='one_arg_c', wrapped=one_arg)
+    one_arg_wrapped = fc_wrap.SubroutineWrapper(wrapped=one_arg)
     buf = CodeBuffer()
     one_arg_wrapped.generate_wrapper(buf)
     fort_file = '''\
@@ -69,7 +69,7 @@ def test_gen_empty_func_wrapper():
     empty_func = pyf.Function(name='empty_func',
                       args=(),
                       return_type=pyf.default_integer)
-    empty_func_wrapper = fc_wrap.FunctionWrapper(name='empty_func_c', wrapped=empty_func)
+    empty_func_wrapper = fc_wrap.FunctionWrapper(wrapped=empty_func)
                       
     empty_func_wrapped = '''\
     function empty_func_c() bind(c, name="empty_func_c")
@@ -162,7 +162,7 @@ def test_intent_hide():
                                         dtype=pyf.default_integer,
                                         intent='hide',
                                         value='10')])
-    wppr = fc_wrap.SubroutineWrapper(name='hide_subr_c', wrapped=hide_arg_subr)
+    wppr = fc_wrap.SubroutineWrapper(wrapped=hide_arg_subr)
     buf = CodeBuffer()
     wppr.generate_wrapper(buf)
     check = '''\
@@ -198,7 +198,7 @@ def _test_check():
                         check=['d1 == size(arr, 1)',
                                'd2 == size(arr, 2)'])
 
-    wppr = fc_wrap.SubroutineWrapper(name='check_subr_c', wrapped=check_subr)
+    wppr = fc_wrap.SubroutineWrapper(wrapped=check_subr)
     buf = CodeBuffer()
     wppr.generate_wrapper(buf)
     check = '''\
@@ -237,7 +237,7 @@ def _test_check():
 def test_logical_function():
     lgcl_fun = pyf.Function(name='lgcl_fun', args=[],
                             return_type=pyf.LogicalType(ktp='lgcl'))
-    lgcl_fun_wrapped = fc_wrap.FunctionWrapper(name='lgcl_fun_c', wrapped=lgcl_fun)
+    lgcl_fun_wrapped = fc_wrap.FunctionWrapper(wrapped=lgcl_fun)
     buf = CodeBuffer()
     lgcl_fun_wrapped.generate_wrapper(buf)
     fort_file = '''\
@@ -262,7 +262,7 @@ def test_logical_wrapper():
                            args=[pyf.Argument(name='lgcl',
                                               dtype=pyf.LogicalType(ktp='lgcl_ktp'),
                                               intent="inout")])
-    lgcl_arg_wrapped = fc_wrap.SubroutineWrapper(name='lgcl_arg_c', wrapped=lgcl_arg)
+    lgcl_arg_wrapped = fc_wrap.SubroutineWrapper(wrapped=lgcl_arg)
     buf = CodeBuffer()
     lgcl_arg_wrapped.generate_wrapper(buf)
     fort_file = '''\
@@ -289,7 +289,7 @@ def test_assumed_shape_int_array():
                                               dtype=pyf.default_integer,
                                               dimension=(':',':'),
                                               intent="inout")])
-    arr_arg_wrapped = fc_wrap.SubroutineWrapper(name='arr_arg_c', wrapped=arr_arg)
+    arr_arg_wrapped = fc_wrap.SubroutineWrapper(wrapped=arr_arg)
     buf = CodeBuffer()
     arr_arg_wrapped.generate_wrapper(buf)
     fort_file = '''\
@@ -322,7 +322,7 @@ def test_explicit_shape_int_array():
                                 pyf.Argument(name='d2', dtype=pyf.default_integer,
                                                 intent='in')
                                 ])
-    arr_arg_wrapped = fc_wrap.SubroutineWrapper(name='arr_arg_c', wrapped=arr_arg)
+    arr_arg_wrapped = fc_wrap.SubroutineWrapper(wrapped=arr_arg)
     buf = CodeBuffer()
     arr_arg_wrapped.generate_wrapper(buf)
     fort_file = '''\
@@ -358,7 +358,7 @@ def test_many_arrays():
                                     pyf.Argument('c1', pyf.default_integer, 'inout'),
                                     pyf.Argument('c2', pyf.default_integer)
                                 ])
-    arr_args_wrapped = fc_wrap.SubroutineWrapper(name='arr_args_c', wrapped=arr_args)
+    arr_args_wrapped = fc_wrap.SubroutineWrapper(wrapped=arr_args)
     buf = CodeBuffer()
     arr_args_wrapped.generate_wrapper(buf)
     compare(many_arrays_text, buf.getvalue())
@@ -370,7 +370,7 @@ def _test_parameters():
                               args=[pyf.Argument(name='arg', dtype=pyf.RealType('FOO')),
                                     pyf.Argument(name='array', dtype=pyf.RealType('FOO'), dimension=('dim', 'dim'))],
                               return_type=pyf.RealType('FOO'))
-    param_func_wrapped = fc_wrap.FunctionWrapper(name='param_func_c', wrapped=param_func)
+    param_func_wrapped = fc_wrap.FunctionWrapper(wrapped=param_func)
     buf = CodeBuffer()
     param_func_wrapped.generate_wrapper(buf)
     wrapped = '''\
@@ -619,18 +619,18 @@ class test_c_proto_generation(object):
         empty_func = pyf.Function(name='empty_func',
                           args=(),
                           return_type=pyf.default_integer)
-        empty_func_wrapper = fc_wrap.FunctionWrapper(name='empty_func_c', wrapped=empty_func)
+        empty_func_wrapper = fc_wrap.FunctionWrapper(wrapped=empty_func)
         eq_(empty_func_wrapper.c_prototype(), 'fwrap_default_integer empty_func_c();')
         empty_subr = pyf.Subroutine(name='empty_subr',
                             args=())
-        empty_subr_wrapper = fc_wrap.SubroutineWrapper(name='empty_subr_c', wrapped=empty_subr)
+        empty_subr_wrapper = fc_wrap.SubroutineWrapper(wrapped=empty_subr)
         eq_(empty_subr_wrapper.c_prototype(), 'void empty_subr_c();')
 
     def test_c_prototype_args(self):
         args = [pyf.Argument(name='int_arg', dtype=pyf.default_integer, intent='in'),
                 pyf.Argument(name='array', dtype=pyf.default_real, dimension=(':',)*3, intent='out')]
         func = pyf.Function(name='func', args=args, return_type=pyf.default_integer)
-        func_wrapper = fc_wrap.FunctionWrapper(name='func_c', wrapped=func)
+        func_wrapper = fc_wrap.FunctionWrapper(wrapped=func)
         eq_(func_wrapper.c_prototype(), "fwrap_default_integer func_c("
                                         "fwrap_default_integer *int_arg, "
                                         "fwrap_default_integer *array_d1, "
