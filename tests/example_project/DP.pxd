@@ -1,3 +1,3 @@
-cimport DP_fc
+from DP_fc cimport *
 
-cpdef api DP_fc.fwrap_default_int cy_empty_func()
+cpdef api fwrap_default_int empty_func()

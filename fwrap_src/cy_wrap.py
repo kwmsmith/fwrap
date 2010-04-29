@@ -88,12 +88,22 @@ def wrap_fc(ast):
         ret.append(ProcWrapper(wrapped=proc))
     return ret
 
+def generate_cy_pxd(ast, fc_pxd_name, buf):
+    buf.putln("from %s cimport *" % fc_pxd_name)
+    buf.putln('')
+    for proc in ast:
+        buf.putln(proc.cy_prototype())
+
 class ProcWrapper(object):
     
     def __init__(self, wrapped):
         self.wrapped = wrapped
         self.name = self.wrapped.wrapped_name()
         self.arg_mgr = CyArgWrapperManager.from_fwrapped_proc(wrapped)
+
+    def cy_prototype(self):
+        pd = self.proc_declaration()
+        return pd.strip(":")
 
     def proc_declaration(self):
         template = "cpdef api object %(proc_name)s(%(arg_list)s):"

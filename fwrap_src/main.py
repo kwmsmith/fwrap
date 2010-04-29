@@ -68,6 +68,10 @@ def parse_and_validate_args():
 
     return options, args
 
+def generate_cy_pxd(ast, projname, buf):
+    fc_pxd_name = constants.FC_PXD_TMPL % projname
+    cy_wrap.generate_cy_pxd(ast, fc_pxd_name, buf)
+ 
 def generate_pxd_fc(ast, projname, buf):
     fc_header_name = constants.FC_HDR_TMPL % projname
     fc_wrap.generate_pxd_fc(ast, fc_header_name, buf)

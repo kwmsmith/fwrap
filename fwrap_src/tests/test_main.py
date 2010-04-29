@@ -72,8 +72,25 @@ def test_generate_pxd_fc():
     '''
     compare(header, buf.getvalue())
 
-def test_generate_pxd_fwrap():
-    pass
+def test_generate_cy_pxd():
+    ast = main.generate_ast(fsrc)
+    buf = CodeBuffer()
+    fc_wrap = main.wrap_fc(ast)
+    cy_wrap = main.wrap_cy(fc_wrap)
+    main.generate_cy_pxd(cy_wrap, projname="DP", buf=buf)
+    pxd = '''\
+    from DP_fc cimport *
 
-def test_generate_pyx_fwrap():
-    pass
+    cpdef api object empty_func()
+    '''
+    compare(pxd, buf.getvalue())
+
+def _test_generate_cy_pyx():
+    ast = main.generate_ast(fsrc)
+    buf = CodeBuffer()
+    fc_wrap = main.wrap_fc(ast)
+    cy_wrap = main.wrap_cy(fc_wrap)
+    main.generate_cy_pyx(cy_wrap, projname="DP", buf=buf)
+    buf2 = CodeBuffer()
+    cy_wrap[0].generate_wrapper(buf2)
+    compare(buf2.getvalue(), buf.getvalue())
