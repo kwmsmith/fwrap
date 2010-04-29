@@ -85,7 +85,7 @@ def test_generate_cy_pxd():
     '''
     compare(pxd, buf.getvalue())
 
-def _test_generate_cy_pyx():
+def test_generate_cy_pyx():
     ast = main.generate_ast(fsrc)
     buf = CodeBuffer()
     fc_wrap = main.wrap_fc(ast)

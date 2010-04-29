@@ -94,6 +94,10 @@ def generate_cy_pxd(ast, fc_pxd_name, buf):
     for proc in ast:
         buf.putln(proc.cy_prototype())
 
+def generate_cy_pyx(ast, buf):
+    for proc in ast:
+        proc.generate_wrapper(buf)
+
 class ProcWrapper(object):
     
     def __init__(self, wrapped):
