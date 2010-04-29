@@ -90,7 +90,7 @@ def test_generate_cy_pyx():
     buf = CodeBuffer()
     fc_wrap = main.wrap_fc(ast)
     cy_wrap = main.wrap_cy(fc_wrap)
-    main.generate_cy_pyx(cy_wrap, projname="DP", buf=buf)
+    main.generate_cy_pyx(cy_wrap, buf=buf)
     buf2 = CodeBuffer()
     cy_wrap[0].generate_wrapper(buf2)
     compare(buf2.getvalue(), buf.getvalue())

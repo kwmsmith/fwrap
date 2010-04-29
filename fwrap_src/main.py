@@ -68,8 +68,7 @@ def parse_and_validate_args():
 
     return options, args
 
-def generate_cy_pyx(ast, projname, buf):
-    fc_pxd_name = constants.FC_PXD_TMPL % projname
+def generate_cy_pyx(ast, buf):
     cy_wrap.generate_cy_pyx(ast, buf)
 
 def generate_cy_pxd(ast, projname, buf):
