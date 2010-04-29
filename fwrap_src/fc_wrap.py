@@ -245,12 +245,11 @@ class ProcWrapper(object):
         return self.arg_man.call_arg_list()
 
     def c_prototype(self):
-        args = ", ".join(self.arg_man.c_proto_args())
-        return '%s %s(%s);' % (self.arg_man.c_proto_return_type(), self.name, args)
+        return "%s;" % self.cy_prototype()
 
     def cy_prototype(self):
-        cp = self.c_prototype()
-        return cp.strip(";")
+        args = ", ".join(self.arg_man.c_proto_args())
+        return '%s %s(%s)' % (self.arg_man.c_proto_return_type(), self.name, args)
 
 class FunctionWrapper(ProcWrapper):
 

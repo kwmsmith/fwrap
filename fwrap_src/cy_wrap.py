@@ -106,15 +106,14 @@ class ProcWrapper(object):
         self.arg_mgr = CyArgWrapperManager.from_fwrapped_proc(wrapped)
 
     def cy_prototype(self):
-        pd = self.proc_declaration()
-        return pd.strip(":")
-
-    def proc_declaration(self):
-        template = "cpdef api object %(proc_name)s(%(arg_list)s):"
+        template = "cpdef api object %(proc_name)s(%(arg_list)s)"
         arg_list = ', '.join(self.arg_mgr.arg_declarations())
         sdict = dict(proc_name=self.name,
                 arg_list=arg_list)
         return template % sdict
+
+    def proc_declaration(self):
+        return "%s:" % self.cy_prototype()
 
     def proc_call(self):
         proc_call = "%(call_name)s(%(call_arg_list)s)" % {
