@@ -63,8 +63,7 @@ def test_generate_pxd_fc():
     ast = main.generate_ast(fsrc)
     buf = CodeBuffer()
     fc_wrap = main.wrap_fc(ast)
-    cy_wrap = main.wrap_cy(fc_wrap)
-    main.generate_pxd_fc(cy_wrap, projname="DP", buf=buf)
+    main.generate_pxd_fc(fc_wrap, projname="DP", buf=buf)
     header = '''\
     from fwrap_ktp cimport *
 
