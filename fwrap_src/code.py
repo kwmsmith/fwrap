@@ -63,6 +63,9 @@ class CodeBuffer(object):
         self._level = level
         self.indent_tok = indent
 
+    def putempty(self):
+        self.sio.write('\n')
+
     def putln(self, line):
         self.sio.write(self.indent_tok * self._level + line + '\n')
 
