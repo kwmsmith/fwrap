@@ -5,36 +5,42 @@ from nose.tools import assert_raises
 
 from tutils import compare
 
-def test_gen_genconfig():
-    ctpi = gc.ConfigTypeParam(basetype="integer",
-            ktp="kind(0)",
-            fwrap_name="fwrap_default_integer")
-    ctpr = gc.ConfigTypeParam(basetype="real",
-            ktp="kind(0.0)",
-            fwrap_name="fwrap_default_real")
-    ctpl = gc.ConfigTypeParam(basetype="logical",
-            ktp="kind(.true.)",
-            fwrap_name="fwrap_default_logical")
-    ctpcpx = gc.ConfigTypeParam(basetype="complex",
-            ktp="kind((0.0,0.0))",
-            fwrap_name="fwrap_default_complex")
-    ctpchar = gc.ConfigTypeParam(basetype="character",
-            ktp="kind('a')",
-            fwrap_name="fwrap_default_character")
-    buf = CodeBuffer()
-    ctpi.generate_call(buf)
-    ctpr.generate_call(buf)
-    ctpl.generate_call(buf)
-    ctpcpx.generate_call(buf)
-    ctpchar.generate_call(buf)
-    calls = '''\
-call lookup_integer(kind(0), "fwrap_default_integer", iserr)
-call lookup_real(kind(0.0), "fwrap_default_real", iserr)
-call lookup_logical(kind(.true.), "fwrap_default_logical", iserr)
-call lookup_complex(kind((0.0,0.0)), "fwrap_default_complex", iserr)
-call lookup_character(kind('a'), "fwrap_default_character", iserr)
-'''
-    compare(buf.getvalue(), calls)
+class test_genconfig(object):
+
+    def test_gen_genconfig_main(self):
+        ctps = [
+            gc.ConfigTypeParam(basetype="integer",
+                    ktp="kind(0)",
+                    fwrap_name="fwrap_default_integer"),
+            gc.ConfigTypeParam(basetype="real",
+                    ktp="kind(0.0)",
+                    fwrap_name="fwrap_default_real"),
+            gc.ConfigTypeParam(basetype="logical",
+                    ktp="kind(.true.)",
+                    fwrap_name="fwrap_default_logical"),
+            gc.ConfigTypeParam(basetype="complex",
+                    ktp="kind((0.0,0.0))",
+                    fwrap_name="fwrap_default_complex"),
+             gc.ConfigTypeParam(basetype="character",
+                    ktp="kind('a')",
+                    fwrap_name="fwrap_default_character")
+        ]
+        buf = CodeBuffer()
+        gc.generate_genconfig_main(ctps, buf)
+        main_program = '''\
+        program genconfig
+            use fc_type_map
+            implicit none
+            integer :: iserr
+            iserr = 0
+            call lookup_integer(kind(0), "fwrap_default_integer", iserr)
+            call lookup_real(kind(0.0), "fwrap_default_real", iserr)
+            call lookup_logical(kind(.true.), "fwrap_default_logical", iserr)
+            call lookup_complex(kind((0.0,0.0)), "fwrap_default_complex", iserr)
+            call lookup_character(kind('a'), "fwrap_default_character", iserr)
+        end program genconfig
+        '''
+        compare(buf.getvalue(), main_program)
 
 
 def test_gen_many():
@@ -42,7 +48,7 @@ def test_gen_many():
             'fwrap_default_double_precision' : 'c_double',
             'fwrap_default_integer' : 'c_int',
             'fwrap_default_real'    : 'c_float',
-            'fwrap_foo' : 'c_short' 
+            'fwrap_foo' : 'c_short'
             }
     buf = CodeBuffer()
     gc.gen_config(spec, buf)
