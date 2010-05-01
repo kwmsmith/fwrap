@@ -5,6 +5,38 @@ from nose.tools import assert_raises
 
 from tutils import compare
 
+def test_gen_genconfig():
+    ctpi = gc.ConfigTypeParam(basetype="integer",
+            ktp="kind(0)",
+            fwrap_name="fwrap_default_integer")
+    ctpr = gc.ConfigTypeParam(basetype="real",
+            ktp="kind(0.0)",
+            fwrap_name="fwrap_default_real")
+    ctpl = gc.ConfigTypeParam(basetype="logical",
+            ktp="kind(.true.)",
+            fwrap_name="fwrap_default_logical")
+    ctpcpx = gc.ConfigTypeParam(basetype="complex",
+            ktp="kind((0.0,0.0))",
+            fwrap_name="fwrap_default_complex")
+    ctpchar = gc.ConfigTypeParam(basetype="character",
+            ktp="kind('a')",
+            fwrap_name="fwrap_default_character")
+    buf = CodeBuffer()
+    ctpi.generate_call(buf)
+    ctpr.generate_call(buf)
+    ctpl.generate_call(buf)
+    ctpcpx.generate_call(buf)
+    ctpchar.generate_call(buf)
+    calls = '''\
+call lookup_integer(kind(0), "fwrap_default_integer", iserr)
+call lookup_real(kind(0.0), "fwrap_default_real", iserr)
+call lookup_logical(kind(.true.), "fwrap_default_logical", iserr)
+call lookup_complex(kind((0.0,0.0)), "fwrap_default_complex", iserr)
+call lookup_character(kind('a'), "fwrap_default_character", iserr)
+'''
+    compare(buf.getvalue(), calls)
+
+
 def test_gen_many():
     spec = {
             'fwrap_default_double_precision' : 'c_double',

@@ -1,5 +1,17 @@
+class ConfigTypeParam(object):
+
+    def __init__(self, basetype, ktp, fwrap_name):
+        self.basetype = basetype
+        self.ktp = ktp
+        self.fwrap_name = fwrap_name
+
+    def generate_call(self, buf):
+        templ = 'call lookup_%(basetype)s(%(ktp)s, "%(fwrap_name)s", iserr)'
+        buf.putln(templ % self.__dict__)
+
 class GenConfigException(Exception):
     pass
+
 
 def check_params(params):
     for p in params:
