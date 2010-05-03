@@ -15,21 +15,21 @@ class test_genconfig(object):
         ok_(set(map(lambda x: x.fwrap_name, ctps))
                 >
                 set(["fwrap_default_integer",
-                        "fwrap_default_real",
-                        "fwrap_default_logical",
-                        "fwrap_default_double",
-                        "fwrap_default_complex",
-                        "fwrap_default_double_complex",
-                        ]))
+                    "fwrap_default_real",
+                    "fwrap_default_logical",
+                    "fwrap_default_double",
+                    "fwrap_default_complex",
+                    "fwrap_default_double_complex",
+                    ]))
         ok_(set(map(lambda x: x.ktp, ctps))
                 >
                 set(["kind(0)",
-                        "kind(0.0)",
-                        "kind(0.0D0)",
-                        "kind((0.0,0.0))",
-                        "kind((0.0D0,0.0D0))",
-                        "kind(.true.)",
-                        ]))
+                    "kind(0.0)",
+                    "kind(0.0D0)",
+                    "kind((0.0,0.0))",
+                    "kind((0.0D0,0.0D0))",
+                    "kind(.true.)",
+                    ]))
 
     def test_gen_genconfig_main(self):
         ctps = [
