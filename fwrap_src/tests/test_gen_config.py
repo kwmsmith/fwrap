@@ -1,11 +1,35 @@
+from fwrap_src import pyf_iface
 from fwrap_src import gen_config as gc
 from fwrap_src.code import CodeBuffer
 
-from nose.tools import assert_raises
+from nose.tools import assert_raises, ok_, eq_
 
 from tutils import compare
 
 class test_genconfig(object):
+
+    def test_get_ctp_list(self):
+        dtypes = pyf_iface.Dtype.all_dtypes()
+        ok_(dtypes)
+        ctps = gc.ConfigTypeParam.from_dtypes(dtypes)
+        ok_(set(map(lambda x: x.fwrap_name, ctps))
+                >
+                set(["fwrap_default_integer",
+                        "fwrap_default_real",
+                        "fwrap_default_logical",
+                        "fwrap_default_double",
+                        "fwrap_default_complex",
+                        "fwrap_default_double_complex",
+                        ]))
+        ok_(set(map(lambda x: x.ktp, ctps))
+                >
+                set(["kind(0)",
+                        "kind(0.0)",
+                        "kind(0.0D0)",
+                        "kind((0.0,0.0))",
+                        "kind((0.0D0,0.0D0))",
+                        "kind(.true.)",
+                        ]))
 
     def test_gen_genconfig_main(self):
         ctps = [

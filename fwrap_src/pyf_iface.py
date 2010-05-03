@@ -15,48 +15,63 @@ _do_nothing = lambda x: x
 
 class Dtype(object):
 
-    def __init__(self, ktp):
+    _all_dtypes = {}
+
+    def __new__(cls, ktp, *args, **kwargs):
         if not valid_fort_name(ktp):
             raise InvalidNameException("%s is not a valid fortran parameter name.")
+        name = ktp_namer(ktp)
+        if name in cls._all_dtypes:
+            return cls._all_dtypes[name]
+        dt = super(Dtype, cls).__new__(cls)
+        cls._all_dtypes[name] = dt
+        return dt
+
+    def __init__(self, ktp, orig_ktp=''):
         self.ktp = ktp_namer(ktp)
+        self.orig_ktp = orig_ktp
         self.type = None
 
     def type_spec(self):
         return '%s(%s)' % (self.type, self.ktp)
 
+    @classmethod
+    def all_dtypes(cls):
+        return list(cls._all_dtypes.values())
+
 class IntegerType(Dtype):
 
-    def __init__(self, ktp, *args, **kwargs):
-        super(IntegerType, self).__init__(ktp, *args, **kwargs)
+    def __init__(self, ktp, orig_ktp=''):
+        super(IntegerType, self).__init__(ktp, orig_ktp)
         self.type = 'integer'
 
-default_integer = IntegerType(ktp='default_integer')
+default_integer = IntegerType(ktp='default_integer', orig_ktp="kind(0)")
 
 class LogicalType(Dtype):
 
-    def __init__(self, ktp, *args, **kwargs):
-        super(LogicalType, self).__init__(ktp, *args, **kwargs)
+    def __init__(self, ktp, orig_ktp=''):
+        super(LogicalType, self).__init__(ktp, orig_ktp)
         self.type = 'logical'
 
-default_logical = LogicalType(ktp='default_logical')
+default_logical = LogicalType(ktp='default_logical', orig_ktp="kind(.true.)")
 
 class RealType(Dtype):
 
-    def __init__(self, ktp, *args, **kwargs):
-        super(RealType, self).__init__(ktp, *args, **kwargs)
+    def __init__(self, ktp, orig_ktp=''):
+        super(RealType, self).__init__(ktp, orig_ktp)
         self.type = 'real'
 
-default_real = RealType(ktp='default_real')
-default_dbl  = RealType(ktp='default_double')
+default_real = RealType(ktp='default_real', orig_ktp="kind(0.0)")
+default_dbl  = RealType(ktp='default_double', orig_ktp="kind(0.0D0)")
 
 class ComplexType(Dtype):
 
-    def __init__(self, ktp, *args, **kwargs):
-        super(ComplexType, self).__init__(ktp, *args, **kwargs)
+    def __init__(self, ktp, orig_ktp=''):
+        super(ComplexType, self).__init__(ktp, orig_ktp)
         self.type = 'complex'
 
-default_complex = ComplexType(ktp='default_complex')
-default_double_complex = ComplexType(ktp='default_double_complex')
+default_complex = ComplexType(ktp='default_complex', orig_ktp="kind((0.0,0.0))")
+default_double_complex = ComplexType(ktp='default_double_complex', orig_ktp="kind((0.0D0,0.0D0))")
 
 class Parameter(object):
     

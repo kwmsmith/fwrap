@@ -81,3 +81,6 @@ end function empty_func
         buf2 = CodeBuffer()
         self.cy_wrap[0].generate_wrapper(buf2)
         compare(buf2.getvalue(), self.buf.getvalue())
+
+    # def test_generate_genconfig(self):
+        # main.generate_genconfig(self.ast, buf=self.buf)

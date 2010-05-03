@@ -14,6 +14,10 @@ class ConfigTypeParam(object):
         templ = 'call lookup_%(basetype)s(%(ktp)s, "%(fwrap_name)s", iserr)'
         buf.putln(templ % self.__dict__)
 
+    @classmethod
+    def from_dtypes(cls, dtypes):
+        return [cls(basetype=dtype.type, fwrap_name=dtype.ktp, ktp=dtype.orig_ktp) for dtype in dtypes]
+
 def put_preamble(buf):
     code = '''\
 use fc_type_map
