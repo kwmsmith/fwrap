@@ -45,7 +45,7 @@ class test_genconfig(object):
             gc.ConfigTypeParam(basetype="complex",
                     ktp="kind((0.0,0.0))",
                     fwrap_name="fwrap_default_complex"),
-             gc.ConfigTypeParam(basetype="character",
+            gc.ConfigTypeParam(basetype="character",
                     ktp="kind('a')",
                     fwrap_name="fwrap_default_character")
         ]
