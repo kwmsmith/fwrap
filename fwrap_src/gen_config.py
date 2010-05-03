@@ -1,3 +1,4 @@
+from fwrap_src import pyf_iface
 import constants
 
 NON_ERR_LABEL = 200
@@ -16,7 +17,14 @@ class ConfigTypeParam(object):
 
     @classmethod
     def from_dtypes(cls, dtypes):
-        return [cls(basetype=dtype.type, fwrap_name=dtype.ktp, ktp=dtype.orig_ktp) for dtype in dtypes]
+        ret = []
+        for dtype in dtypes:
+            if dtype.orig_ktp is None:
+                continue
+            ret.append(cls(basetype=dtype.type,
+                           fwrap_name=dtype.ktp,
+                           ktp=dtype.orig_ktp))
+        return ret
 
 def put_preamble(buf):
     code = '''\
@@ -73,10 +81,15 @@ def generate_genconfig_main(ctps, buf):
     buf.dedent()
     buf.putln("end program genconfig")
 
-def generate_genconfig(ctps, buf):
+def generate_genconfig(ast, buf):
+    ctps = extract_ctps(ast)
     buf.write(fc_type_map_code)
     buf.putempty()
     generate_genconfig_main(ctps, buf)
+
+def extract_ctps(ast):
+    dts = pyf_iface.Dtype.all_dtypes()
+    return ConfigTypeParam.from_dtypes(dts)
 
 class GenConfigException(Exception):
     pass

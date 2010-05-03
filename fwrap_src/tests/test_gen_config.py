@@ -13,7 +13,7 @@ class test_genconfig(object):
         ok_(dtypes)
         ctps = gc.ConfigTypeParam.from_dtypes(dtypes)
         ok_(set(map(lambda x: x.fwrap_name, ctps))
-                >
+                ==
                 set(["fwrap_default_integer",
                     "fwrap_default_real",
                     "fwrap_default_logical",
@@ -22,7 +22,7 @@ class test_genconfig(object):
                     "fwrap_default_double_complex",
                     ]))
         ok_(set(map(lambda x: x.ktp, ctps))
-                >
+                ==
                 set(["kind(0)",
                     "kind(0.0)",
                     "kind(0.0D0)",

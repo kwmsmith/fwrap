@@ -82,5 +82,49 @@ end function empty_func
         self.cy_wrap[0].generate_wrapper(buf2)
         compare(buf2.getvalue(), self.buf.getvalue())
 
-    # def test_generate_genconfig(self):
-        # main.generate_genconfig(self.ast, buf=self.buf)
+    def test_generate_genconfig(self):
+        main.generate_genconfig(self.ast, buf=self.buf)
+        ok_(genconfig_code in self.buf.getvalue(), "'%r' \n\n not in \n\n '%r'" % (genconfig_code, self.buf.getvalue()))
+
+genconfig_code = '''\
+program genconfig
+    use fc_type_map
+    implicit none
+    integer :: iserr
+    iserr = 0
+
+    call open_map_file(iserr)
+    if (iserr .ne. 0) then
+        print *, errmsg
+        stop 1
+    endif
+    call lookup_complex(kind((0.0,0.0)), "fwrap_default_complex", iserr)
+    if (iserr .ne. 0) then
+        goto 100
+    endif
+    call lookup_logical(kind(.true.), "fwrap_default_logical", iserr)
+    if (iserr .ne. 0) then
+        goto 100
+    endif
+    call lookup_real(kind(0.0D0), "fwrap_default_double", iserr)
+    if (iserr .ne. 0) then
+        goto 100
+    endif
+    call lookup_integer(kind(0), "fwrap_default_integer", iserr)
+    if (iserr .ne. 0) then
+        goto 100
+    endif
+    call lookup_real(kind(0.0), "fwrap_default_real", iserr)
+    if (iserr .ne. 0) then
+        goto 100
+    endif
+    call lookup_complex(kind((0.0D0,0.0D0)), "fwrap_default_double_complex", iserr)
+    if (iserr .ne. 0) then
+        goto 100
+    endif
+    goto 200
+    100 print *, errmsg
+    call close_map_file(iserr)
+    stop 1
+    200 call close_map_file(iserr)
+end program genconfig'''

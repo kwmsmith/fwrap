@@ -4,6 +4,7 @@ from cStringIO import StringIO
 
 import constants
 import pyf_iface as pyf
+import gen_config as gc
 import fc_wrap
 import cy_wrap
 
@@ -67,6 +68,9 @@ def parse_and_validate_args():
     options.projectname = options.projectname.strip()
 
     return options, args
+
+def generate_genconfig(ast, buf):
+    gc.generate_genconfig(ast, buf)
 
 def generate_cy_pyx(ast, buf):
     cy_wrap.generate_cy_pyx(ast, buf)

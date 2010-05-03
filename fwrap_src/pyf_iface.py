@@ -27,7 +27,7 @@ class Dtype(object):
         cls._all_dtypes[name] = dt
         return dt
 
-    def __init__(self, ktp, orig_ktp=''):
+    def __init__(self, ktp, orig_ktp=None):
         self.ktp = ktp_namer(ktp)
         self.orig_ktp = orig_ktp
         self.type = None
@@ -41,7 +41,7 @@ class Dtype(object):
 
 class IntegerType(Dtype):
 
-    def __init__(self, ktp, orig_ktp=''):
+    def __init__(self, ktp, orig_ktp=None):
         super(IntegerType, self).__init__(ktp, orig_ktp)
         self.type = 'integer'
 
@@ -49,7 +49,7 @@ default_integer = IntegerType(ktp='default_integer', orig_ktp="kind(0)")
 
 class LogicalType(Dtype):
 
-    def __init__(self, ktp, orig_ktp=''):
+    def __init__(self, ktp, orig_ktp=None):
         super(LogicalType, self).__init__(ktp, orig_ktp)
         self.type = 'logical'
 
@@ -57,7 +57,7 @@ default_logical = LogicalType(ktp='default_logical', orig_ktp="kind(.true.)")
 
 class RealType(Dtype):
 
-    def __init__(self, ktp, orig_ktp=''):
+    def __init__(self, ktp, orig_ktp=None):
         super(RealType, self).__init__(ktp, orig_ktp)
         self.type = 'real'
 
@@ -66,7 +66,7 @@ default_dbl  = RealType(ktp='default_double', orig_ktp="kind(0.0D0)")
 
 class ComplexType(Dtype):
 
-    def __init__(self, ktp, orig_ktp=''):
+    def __init__(self, ktp, orig_ktp=None):
         super(ComplexType, self).__init__(ktp, orig_ktp)
         self.type = 'complex'
 
