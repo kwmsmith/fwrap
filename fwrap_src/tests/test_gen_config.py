@@ -33,11 +33,37 @@ class test_genconfig(object):
             implicit none
             integer :: iserr
             iserr = 0
+
+            call open_map_file(iserr)
+            if (iserr .ne. 0) then
+                print *, errmsg
+                stop 1
+            endif
             call lookup_integer(kind(0), "fwrap_default_integer", iserr)
+            if (iserr .ne. 0) then
+                goto 100
+            endif
             call lookup_real(kind(0.0), "fwrap_default_real", iserr)
+            if (iserr .ne. 0) then
+                goto 100
+            endif
             call lookup_logical(kind(.true.), "fwrap_default_logical", iserr)
+            if (iserr .ne. 0) then
+                goto 100
+            endif
             call lookup_complex(kind((0.0,0.0)), "fwrap_default_complex", iserr)
+            if (iserr .ne. 0) then
+                goto 100
+            endif
             call lookup_character(kind('a'), "fwrap_default_character", iserr)
+            if (iserr .ne. 0) then
+                goto 100
+            endif
+            goto 200
+            100 print *, errmsg
+            call close_map_file(iserr)
+            stop 1
+            200 call close_map_file(iserr)
         end program genconfig
         '''
         compare(buf.getvalue(), main_program)
@@ -70,3 +96,25 @@ def test_raises():
             }
     buf = CodeBuffer()
     assert_raises(gc.GenConfigException, gc.gen_config, error_spec, buf)
+
+if __name__ == '__main__':
+    ctps = [
+        gc.ConfigTypeParam(basetype="integer",
+                ktp="kind(0)",
+                fwrap_name="fwrap_default_integer"),
+        gc.ConfigTypeParam(basetype="real",
+                ktp="kind(0.0)",
+                fwrap_name="fwrap_default_real"),
+        gc.ConfigTypeParam(basetype="logical",
+                ktp="kind(.true.)",
+                fwrap_name="fwrap_default_logical"),
+        gc.ConfigTypeParam(basetype="complex",
+                ktp="kind((0.0,0.0))",
+                fwrap_name="fwrap_default_complex"),
+        gc.ConfigTypeParam(basetype="character",
+                ktp="kind('a')",
+                fwrap_name="fwrap_default_character")
+    ]
+    buf = CodeBuffer()
+    gc.generate_genconfig(ctps, buf)
+    print buf.getvalue()

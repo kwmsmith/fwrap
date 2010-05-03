@@ -1,3 +1,8 @@
+import constants
+
+NON_ERR_LABEL = 200
+ERR_LABEL = 100
+
 class ConfigTypeParam(object):
 
     def __init__(self, basetype, ktp, fwrap_name):
@@ -9,21 +14,64 @@ class ConfigTypeParam(object):
         templ = 'call lookup_%(basetype)s(%(ktp)s, "%(fwrap_name)s", iserr)'
         buf.putln(templ % self.__dict__)
 
+def put_preamble(buf):
+    code = '''\
+use fc_type_map
+implicit none
+integer :: iserr
+iserr = 0
+'''
+    buf.putlines(code)
+    buf.putempty()
+
+def put_open_map_file(buf):
+    code = '''\
+call open_map_file(iserr)
+if (iserr .ne. 0) then
+    print *, errmsg
+    stop 1
+endif
+'''
+    buf.putlines(code)
+
+def put_lu_calls(ctps, buf):
+    errcode = '''\
+if (iserr .ne. 0) then
+    goto %d
+endif
+''' % ERR_LABEL
+
+    for ctp in ctps:
+        ctp.generate_call(buf)
+        buf.putlines(errcode)
+
+def put_error_handle(buf):
+    code = '''\
+goto %d
+%d print *, errmsg
+call close_map_file(iserr)
+stop 1
+''' % (NON_ERR_LABEL, ERR_LABEL)
+    buf.putlines(code)
+
+def put_close_map_file(buf):
+    buf.putln('%d call close_map_file(iserr)' % NON_ERR_LABEL)
+
+
 def generate_genconfig_main(ctps, buf):
     buf.putln("program genconfig")
     buf.indent()
-    buf.putln("use fc_type_map")
-    buf.putln("implicit none")
-    buf.putln("integer :: iserr")
-    buf.putln("iserr = 0")
-    for ctp in ctps:
-        ctp.generate_call(buf)
+    put_preamble(buf)
+    put_open_map_file(buf)
+    put_lu_calls(ctps, buf)
+    put_error_handle(buf)
+    put_close_map_file(buf)
     buf.dedent()
     buf.putln("end program genconfig")
 
 def generate_genconfig(ctps, buf):
     buf.write(fc_type_map_code)
-    buf.putln('')
+    buf.putempty()
     generate_genconfig_main(ctps, buf)
 
 class GenConfigException(Exception):
@@ -96,7 +144,17 @@ module fc_type_map
 
   save
 
-  integer :: mapping_file_unit
+  character(*), parameter :: NEG_KTP = &
+  "genconfig: ktp is negative."
+
+  character(*), parameter :: NO_C_TYPE = &
+  "genconfig: no corresponding c type."
+
+  character(len=100) :: errmsg
+
+  integer, parameter :: mapping_file_unit = 19
+
+  character(*), parameter :: map_file_name = "%(MAP_FILE_NAME)s"
 
   contains
 
@@ -111,21 +169,23 @@ module fc_type_map
     if (real_kind .lt. 0) then
         ! set error condition
         iserr = 1
+        errmsg = NEG_KTP // "[" // alias // "]"
         return
     endif
 
     if (real_kind .eq. c_float) then
-        call write_map(alias, "c_float")
+        call write_map(alias, "c_float", iserr)
         return
     else if (real_kind .eq. c_double) then
-        call write_map(alias, "c_double")
+        call write_map(alias, "c_double", iserr)
         return
     else if (real_kind .eq. c_long_double) then
-        call write_map(alias, "c_long_double")
+        call write_map(alias, "c_long_double", iserr)
         return
     else
         ! No corresponding interoperable type, set error.
         iserr = 1
+        errmsg = NO_C_TYPE // "[" // alias // "]"
         return
     end if
 
@@ -142,28 +202,30 @@ module fc_type_map
     if (int_kind .lt. 0) then
         ! set error condition
         iserr = 1
+        errmsg = NEG_KTP // "[" // alias // "]"
         return
     endif
 
     if (int_kind .eq. c_signed_char) then
-        call write_map(alias, "c_signed_char")
+        call write_map(alias, "c_signed_char", iserr)
         return
     else if (int_kind .eq. c_short) then
-        call write_map(alias, "c_short")
+        call write_map(alias, "c_short", iserr)
         return
     else if (int_kind .eq. c_int) then
-        call write_map(alias, "c_int")
+        call write_map(alias, "c_int", iserr)
         return
     else if (int_kind .eq. c_long) then
-        call write_map(alias, "c_long")
+        call write_map(alias, "c_long", iserr)
         return
     else if (int_kind .eq. c_long_long) then
         ! XXX assumes C99 long long type exists
-        call write_map(alias, "c_long_long")
+        call write_map(alias, "c_long_long", iserr)
         return
     else
         ! No corresponding interoperable type, set error.
         iserr = 1
+        errmsg = NO_C_TYPE // "[" // alias // "]"
         return
     end if
 
@@ -180,15 +242,17 @@ module fc_type_map
     if (char_kind .lt. 0) then
         ! set error condition
         iserr = 1
+        errmsg = NEG_KTP // "[" // alias // "]"
         return
     endif
 
     if (char_kind .eq. c_char) then
-        call write_map(alias, "c_char")
+        call write_map(alias, "c_char", iserr)
         return
     else
         ! No corresponding interoperable type, set error.
         iserr = 1
+        errmsg = NO_C_TYPE // "[" // alias // "]"
         return
     end if
 
@@ -206,6 +270,7 @@ module fc_type_map
     if (log_kind .lt. 0) then
         ! set error condition
         iserr = 1
+        errmsg = NEG_KTP // "[" // alias // "]"
         return
     endif
 
@@ -214,24 +279,25 @@ module fc_type_map
 !        c_type_str = "_Bool"
 !        return
      if (log_kind .eq. c_signed_char) then
-        call write_map(alias, "c_signed_char")
+        call write_map(alias, "c_signed_char", iserr)
         return
     else if (log_kind .eq. c_short) then
-        call write_map(alias, "c_short")
+        call write_map(alias, "c_short", iserr)
         return
     else if (log_kind .eq. c_int) then
-        call write_map(alias, "c_int")
+        call write_map(alias, "c_int", iserr)
         return
     else if (log_kind .eq. c_long) then
-        call write_map(alias, "c_long")
+        call write_map(alias, "c_long", iserr)
         return
     else if (log_kind .eq. c_long_long) then
         ! XXX assumes C99 long long type exists
-        call write_map(alias, "c_long_long")
+        call write_map(alias, "c_long_long", iserr)
         return
     else
         ! No corresponding interoperable type, set error.
         iserr = 1
+        errmsg = NO_C_TYPE // "[" // alias // "]"
         return
     end if
 
@@ -249,33 +315,78 @@ module fc_type_map
     if (complex_kind .lt. 0) then
         ! set error condition
         iserr = 1
+        errmsg = NEG_KTP // "[" // alias // "]"
         return
     endif
 
     if (complex_kind .eq. c_float_complex) then
-        call write_map(alias, "c_float_complex")
+        call write_map(alias, "c_float_complex", iserr)
         return
     else if (complex_kind .eq. c_double_complex) then
-        call write_map(alias, "c_double_complex")
+        call write_map(alias, "c_double_complex", iserr)
         return
     else if (complex_kind .eq. c_long_double_complex) then
-        call write_map(alias, "c_long_double_complex")
+        call write_map(alias, "c_long_double_complex", iserr)
         return
     else
         ! No corresponding interoperable type, set error.
         iserr = 1
+        errmsg = NO_C_TYPE // "[" // alias // "]"
         return
     end if
 
   end subroutine lookup_complex
 
-  subroutine write_map(alias, c_name)
+  subroutine write_map(alias, c_name, iserr)
     implicit none
+    integer, intent(out) :: iserr
     character(len=*), intent(in) :: alias, c_name
 
-    write(unit=mapping_file_unit, fmt="(3A)") alias, " ", c_name
+    write(unit=mapping_file_unit, fmt="(3A)", iostat=iserr) alias, " ", c_name
+
+    if (iserr .ne. 0) then
+        errmsg = "genconfig: error writing to file %(MAP_FILE_NAME)s"
+    endif
 
   end subroutine write_map
 
+  subroutine open_map_file(iserr)
+    implicit none
+    integer, intent(out) :: iserr
+    logical :: exists
+    character(len=3) :: status
+
+    errmsg = ""
+
+    inquire(file=map_file_name, exist=exists)
+
+    if (exists) then
+        status='OLD'
+    else
+        status='NEW'
+    endif
+
+    open(unit=mapping_file_unit, file=map_file_name,&
+            status=status, form='FORMATTED',&
+            action='WRITE', position='APPEND', iostat=iserr)
+
+    if (iserr .ne. 0) then
+        errmsg = "genconfig: unable to open '%(MAP_FILE_NAME)s', aborting."
+    endif
+
+  end subroutine open_map_file
+
+  subroutine close_map_file(iserr)
+    implicit none
+    integer, intent(out) :: iserr
+
+    close(unit=mapping_file_unit, iostat=iserr)
+
+    if (iserr .ne. 0) then
+        errmsg = "genconfig: unable to close '%(MAP_FILE_NAME)s', aborting."
+    endif
+
+  end subroutine close_map_file
+
 end module fc_type_map
-'''
+''' % {'MAP_FILE_NAME' : constants.MAP_FILE_NAME}

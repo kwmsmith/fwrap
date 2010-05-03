@@ -6,3 +6,5 @@ KTP_PXD_HEADER_NAME = "fwrap_ktp"
 
 FC_HDR_TMPL = "%s_fc.h"
 FC_PXD_TMPL = "%s_fc"
+
+MAP_FILE_NAME = "fwrap_type_map.out"
