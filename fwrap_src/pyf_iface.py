@@ -47,6 +47,8 @@ class IntegerType(Dtype):
 
 default_integer = IntegerType(ktp='default_integer', orig_ktp="kind(0)")
 
+dim_dtype = IntegerType(ktp="npy_intp", orig_ktp=None)
+
 class LogicalType(Dtype):
 
     def __init__(self, ktp, orig_ktp=None):

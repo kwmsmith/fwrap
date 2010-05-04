@@ -455,7 +455,7 @@ class ArrayArgWrapper(ArgWrapperBase):
         orig_name = self._orig_arg.name
         for idx, dim in enumerate(self._dims):
             self._extern_args.append(pyf.Argument(name='%s_d%d' % (orig_name, idx+1),
-                                              dtype=pyf.default_integer,
+                                              dtype=pyf.dim_dtype,
                                               intent='in'))
         dims = [dim.name for dim in self._extern_args]
         self._extern_args.append(pyf.Argument(name=orig_name, dtype=self._orig_arg.dtype,

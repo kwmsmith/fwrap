@@ -296,8 +296,8 @@ def test_assumed_shape_int_array():
     subroutine arr_arg_c(arr_d1, arr_d2, arr) bind(c, name="arr_arg_c")
         use fwrap_ktp_mod
         implicit none
-        integer(fwrap_default_integer), intent(in) :: arr_d1
-        integer(fwrap_default_integer), intent(in) :: arr_d2
+        integer(fwrap_npy_intp), intent(in) :: arr_d1
+        integer(fwrap_npy_intp), intent(in) :: arr_d2
         integer(fwrap_default_integer), dimension(arr_d1, arr_d2), intent(inout) :: arr
         interface
             subroutine arr_arg(arr)
@@ -329,8 +329,8 @@ def test_explicit_shape_int_array():
     subroutine arr_arg_c(arr_d1, arr_d2, arr, d1, d2) bind(c, name="arr_arg_c")
         use fwrap_ktp_mod
         implicit none
-        integer(fwrap_default_integer), intent(in) :: arr_d1
-        integer(fwrap_default_integer), intent(in) :: arr_d2
+        integer(fwrap_npy_intp), intent(in) :: arr_d1
+        integer(fwrap_npy_intp), intent(in) :: arr_d2
         integer(fwrap_default_integer), dimension(arr_d1, arr_d2), intent(inout) :: arr
         integer(fwrap_default_integer), intent(in) :: d1
         integer(fwrap_default_integer), intent(in) :: d2
@@ -378,8 +378,8 @@ def _test_parameters():
         use fwrap_ktp_mod
         implicit none
         real(fwrap_FOO) :: arg
-        integer(fwrap_default_integer), intent(in) :: array_d1
-        integer(fwrap_default_integer), intent(in) :: array_d2
+        integer(fwrap_npy_intp), intent(in) :: array_d1
+        integer(fwrap_npy_intp), intent(in) :: array_d2
         real(fwrap_FOO), dimension(array_d1, array_d2) :: array
         interface
             function param_func(arg, array)
@@ -429,14 +429,14 @@ class test_array_arg_wrapper(object):
 
     def test_extern_decls(self):
         int_decls = '''\
-integer(fwrap_default_integer), intent(in) :: arr_arg_d1
-integer(fwrap_default_integer), intent(in) :: arr_arg_d2
+integer(fwrap_npy_intp), intent(in) :: arr_arg_d1
+integer(fwrap_npy_intp), intent(in) :: arr_arg_d2
 integer(fwrap_default_integer), dimension(arr_arg_d1, arr_arg_d2), intent(inout) :: arr_arg
 '''
         real_decls = '''\
-integer(fwrap_default_integer), intent(in) :: real_arr_arg_d1
-integer(fwrap_default_integer), intent(in) :: real_arr_arg_d2
-integer(fwrap_default_integer), intent(in) :: real_arr_arg_d3
+integer(fwrap_npy_intp), intent(in) :: real_arr_arg_d1
+integer(fwrap_npy_intp), intent(in) :: real_arr_arg_d2
+integer(fwrap_npy_intp), intent(in) :: real_arr_arg_d3
 real(fwrap_default_real), dimension(real_arr_arg_d1, real_arr_arg_d2, real_arr_arg_d3), intent(out) :: real_arr_arg
 '''
         eq_(self.int_arr_wrapper.extern_declarations(), int_decls.splitlines())
@@ -601,9 +601,9 @@ class test_c_proto_generation(object):
     def test_c_proto_array_args(self):
         args = [pyf.Argument(name='array', dtype=pyf.default_real, dimension=(':',)*3, intent='out')]
         arg_man = fc_wrap.ArgWrapperManager(args)
-        eq_(arg_man.c_proto_args(), ['fwrap_default_integer *array_d1',
-                                     'fwrap_default_integer *array_d2',
-                                     'fwrap_default_integer *array_d3',
+        eq_(arg_man.c_proto_args(), ['fwrap_npy_intp *array_d1',
+                                     'fwrap_npy_intp *array_d2',
+                                     'fwrap_npy_intp *array_d3',
                                      'fwrap_default_real *array'])
 
     def test_c_proto_return_type(self):
@@ -633,9 +633,9 @@ class test_c_proto_generation(object):
         func_wrapper = fc_wrap.FunctionWrapper(wrapped=func)
         eq_(func_wrapper.c_prototype(), "fwrap_default_integer func_c("
                                         "fwrap_default_integer *int_arg, "
-                                        "fwrap_default_integer *array_d1, "
-                                        "fwrap_default_integer *array_d2, "
-                                        "fwrap_default_integer *array_d3, "
+                                        "fwrap_npy_intp *array_d1, "
+                                        "fwrap_npy_intp *array_d2, "
+                                        "fwrap_npy_intp *array_d3, "
                                         "fwrap_default_real *array);")
 
 
@@ -644,15 +644,15 @@ many_arrays_text = '''\
 subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assumed_shape_d1, assumed_shape_d2, assumed_shape, explicit_shape_d1, explicit_shape_d2, explicit_shape, c1, c2) bind(c, name="arr_args_c")
     use fwrap_ktp_mod
     implicit none
-    integer(fwrap_default_integer), intent(in) :: assumed_size_d1
-    integer(fwrap_default_integer), intent(in) :: assumed_size_d2
+    integer(fwrap_npy_intp), intent(in) :: assumed_size_d1
+    integer(fwrap_npy_intp), intent(in) :: assumed_size_d2
     integer(fwrap_default_integer), dimension(assumed_size_d1, assumed_size_d2), intent(inout) :: assumed_size
     integer(fwrap_default_integer), intent(in) :: d1
-    integer(fwrap_default_integer), intent(in) :: assumed_shape_d1
-    integer(fwrap_default_integer), intent(in) :: assumed_shape_d2
+    integer(fwrap_npy_intp), intent(in) :: assumed_shape_d1
+    integer(fwrap_npy_intp), intent(in) :: assumed_shape_d2
     logical(fwrap_default_logical), dimension(assumed_shape_d1, assumed_shape_d2), intent(out) :: assumed_shape
-    integer(fwrap_default_integer), intent(in) :: explicit_shape_d1
-    integer(fwrap_default_integer), intent(in) :: explicit_shape_d2
+    integer(fwrap_npy_intp), intent(in) :: explicit_shape_d1
+    integer(fwrap_npy_intp), intent(in) :: explicit_shape_d2
     complex(fwrap_default_complex), dimension(explicit_shape_d1, explicit_shape_d2), intent(inout) :: explicit_shape
     integer(fwrap_default_integer), intent(inout) :: c1
     integer(fwrap_default_integer) :: c2
