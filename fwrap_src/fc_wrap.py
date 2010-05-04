@@ -157,7 +157,7 @@ def wrap_pyf_iface(ast):
             raise ValueError("object not function or subroutine, %s" % proc)
     return fc_wrapper
 
-def generate_pxd_fc(ast, fc_header_name, buf):
+def generate_fc_pxd(ast, fc_header_name, buf):
     buf.putln("from %s cimport *" % constants.KTP_PXD_HEADER_NAME)
     buf.putln('')
     buf.putln('cdef extern from "%s":' % fc_header_name)
@@ -166,7 +166,7 @@ def generate_pxd_fc(ast, fc_header_name, buf):
         buf.putln(proc.cy_prototype())
     buf.dedent()
 
-def generate_c_header(ast, ktp_header_name, buf):
+def generate_fc_h(ast, ktp_header_name, buf):
     buf.putln('#include "%s"' % ktp_header_name)
     buf.putln('')
     for proc in ast:

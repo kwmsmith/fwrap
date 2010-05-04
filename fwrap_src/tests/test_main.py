@@ -30,7 +30,7 @@ end function empty_func
         eq_(self.ast[0]._args, empty_func._args)
 
     def test_generate_fc(self):
-        main.generate_fc(self.fc_wrap, self.buf)
+        main.generate_fc_f(self.fc_wrap, self.buf)
         fc = '''\
         function empty_func_c() bind(c, name="empty_func_c")
             use fwrap_ktp_mod
@@ -48,8 +48,8 @@ end function empty_func
         '''
         compare(fc, self.buf.getvalue())
 
-    def test_generate_h_fc(self):
-        main.generate_c_header(self.fc_wrap, self.buf)
+    def test_generate_fc_h(self):
+        main.generate_fc_h(self.fc_wrap, self.buf)
         header = '''\
         #include "fwrap_ktp_header.h"
 
@@ -58,7 +58,7 @@ end function empty_func
         compare(self.buf.getvalue(), header)
 
     def test_generate_pxd_fc(self):
-        main.generate_pxd_fc(self.fc_wrap, projname="DP", buf=self.buf)
+        main.generate_fc_pxd(self.fc_wrap, projname="DP", buf=self.buf)
         header = '''\
         from fwrap_ktp cimport *
 

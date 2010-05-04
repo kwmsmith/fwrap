@@ -79,12 +79,12 @@ def generate_cy_pxd(ast, projname, buf):
     fc_pxd_name = constants.FC_PXD_TMPL % projname
     cy_wrap.generate_cy_pxd(ast, fc_pxd_name, buf)
  
-def generate_pxd_fc(ast, projname, buf):
+def generate_fc_pxd(ast, projname, buf):
     fc_header_name = constants.FC_HDR_TMPL % projname
-    fc_wrap.generate_pxd_fc(ast, fc_header_name, buf)
+    fc_wrap.generate_fc_pxd(ast, fc_header_name, buf)
 
-def generate_c_header(ast, buf):
-    fc_wrap.generate_c_header(ast, constants.KTP_HEADER_NAME, buf)
+def generate_fc_h(ast, buf):
+    fc_wrap.generate_fc_h(ast, constants.KTP_HEADER_NAME, buf)
 
 def wrap_cy(ast):
     return cy_wrap.wrap_fc(ast)
@@ -92,7 +92,7 @@ def wrap_cy(ast):
 def wrap_fc(ast):
     return fc_wrap.wrap_pyf_iface(ast)
 
-def generate_fc(ast, buf):
+def generate_fc_f(ast, buf):
     for proc in ast:
         proc.generate_wrapper(buf)
 
