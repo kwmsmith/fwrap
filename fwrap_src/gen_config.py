@@ -88,8 +88,10 @@ def generate_genconfig(ast, buf):
     generate_genconfig_main(ctps, buf)
 
 def extract_ctps(ast):
-    dts = pyf_iface.Dtype.all_dtypes()
-    return ConfigTypeParam.from_dtypes(dts)
+    dtypes = []
+    for proc in ast:
+        dtypes.extend(proc.all_dtypes())
+    return ConfigTypeParam.from_dtypes(dtypes)
 
 class GenConfigException(Exception):
     pass

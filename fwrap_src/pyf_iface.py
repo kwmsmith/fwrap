@@ -196,6 +196,14 @@ class ArgManager(object):
     def return_var_name(self):
         return self._return_arg.name
 
+    def all_dtypes(self):
+        dts = []
+        for arg in self._args:
+            dts.append(arg.dtype)
+        if self._return_arg:
+            dts.append(self._return_arg.dtype)
+        return dts
+
 class Procedure(object):
 
     def __init__(self, name, args):
@@ -223,6 +231,9 @@ class Procedure(object):
 
     def proc_end(self):
         return "end %s %s" % (self.kind, self.name)
+
+    def all_dtypes(self):
+        return self.arg_man.all_dtypes()
 
 class Function(Procedure):
     

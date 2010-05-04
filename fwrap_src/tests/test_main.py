@@ -84,7 +84,7 @@ end function empty_func
 
     def test_generate_genconfig(self):
         main.generate_genconfig(self.ast, buf=self.buf)
-        ok_(genconfig_code in self.buf.getvalue(), "'%r' \n\n not in \n\n '%r'" % (genconfig_code, self.buf.getvalue()))
+        ok_(genconfig_code in self.buf.getvalue(), "'%s' \n\n not in \n\n '%s'" % (genconfig_code, self.buf.getvalue()))
 
 genconfig_code = '''\
 program genconfig
@@ -98,27 +98,7 @@ program genconfig
         print *, errmsg
         stop 1
     endif
-    call lookup_complex(kind((0.0,0.0)), "fwrap_default_complex", iserr)
-    if (iserr .ne. 0) then
-        goto 100
-    endif
-    call lookup_logical(kind(.true.), "fwrap_default_logical", iserr)
-    if (iserr .ne. 0) then
-        goto 100
-    endif
-    call lookup_real(kind(0.0D0), "fwrap_default_double", iserr)
-    if (iserr .ne. 0) then
-        goto 100
-    endif
     call lookup_integer(kind(0), "fwrap_default_integer", iserr)
-    if (iserr .ne. 0) then
-        goto 100
-    endif
-    call lookup_real(kind(0.0), "fwrap_default_real", iserr)
-    if (iserr .ne. 0) then
-        goto 100
-    endif
-    call lookup_complex(kind((0.0D0,0.0D0)), "fwrap_default_double_complex", iserr)
     if (iserr .ne. 0) then
         goto 100
     endif
