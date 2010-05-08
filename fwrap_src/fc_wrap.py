@@ -260,7 +260,7 @@ class FunctionWrapper(ProcWrapper):
         ra = pyf.Argument(name=self.name,
                 dtype=wrapped.return_arg.dtype,
                 intent='out', is_return_arg=True)
-        self.arg_man = ArgWrapperManager(wrapped._args, ra)
+        self.arg_man = ArgWrapperManager(wrapped.args, ra)
 
     def return_spec_declaration(self):
         return self.arg_man.return_spec_declaration()
@@ -274,7 +274,7 @@ class SubroutineWrapper(ProcWrapper):
         self.kind = 'subroutine'
         self.name = constants.PROC_SUFFIX_TMPL % wrapped.name
         self.wrapped = wrapped
-        self.arg_man = ArgWrapperManager(wrapped._args)
+        self.arg_man = ArgWrapperManager(wrapped.args)
 
 class ArgWrapperManager(object):
     

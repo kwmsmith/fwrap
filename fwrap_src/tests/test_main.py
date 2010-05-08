@@ -27,7 +27,7 @@ end function empty_func
                         return_type=pyf.default_integer)
         eq_(self.ast[0].name, empty_func.name)
         eq_(self.ast[0].return_arg.name, empty_func.return_arg.name)
-        eq_(self.ast[0]._args, empty_func._args)
+        eq_(self.ast[0].args, empty_func.args)
 
     def test_generate_fc(self):
         main.generate_fc_f(self.fc_wrap, self.buf)

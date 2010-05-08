@@ -213,7 +213,7 @@ class Procedure(object):
         if not valid_fort_name(name):
             raise InvalidNameException("%s is not a valid Fortran procedure name.")
         self.name = name
-        self._args = args
+        self.args = args
         self.arg_man = None
 
     def extern_arg_list(self):
@@ -243,14 +243,14 @@ class Function(Procedure):
         super(Function, self).__init__(name, args)
         self.return_arg = Argument(name=name, dtype=return_type, intent='out', is_return_arg=True)
         self.kind = 'function'
-        self.arg_man = ArgManager(self._args, self.return_arg)
+        self.arg_man = ArgManager(self.args, self.return_arg)
 
 class Subroutine(Procedure):
 
     def __init__(self, name, args):
         super(Subroutine, self).__init__(name, args)
         self.kind = 'subroutine'
-        self.arg_man = ArgManager(self._args)
+        self.arg_man = ArgManager(self.args)
 
 class Module(object):
 
