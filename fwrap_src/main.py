@@ -9,9 +9,13 @@ import gen_config as gc
 import fc_wrap
 import cy_wrap
 
+def main():
+    options = parse_and_validate_args()
+    wrap(options)
+
 def wrap(options):
     # Parsing goes here...
-    f_ast = generate_ast()
+    f_ast = generate_ast("")
 
     fc_ast = wrap_fc(f_ast)
     cy_ast = wrap_cy(fc_ast)
