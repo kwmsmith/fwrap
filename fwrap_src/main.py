@@ -35,13 +35,6 @@ def wrap(options):
         fh.write(buf.getvalue())
         fh.close()
 
-def setup_project(projectname, outdir):
-    fq_projdir = os.path.join(outdir, projectname)
-    if os.path.isdir(fq_projdir):
-        raise RuntimeError("Error, project directory %s already exists." % fq_projdir)
-    os.mkdir(fq_projdir)
-    return fq_projdir
-
 def parse_and_validate_args():
     default_projname = 'fwproj'
     parser = OptionParser()
