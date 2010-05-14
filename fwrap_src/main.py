@@ -1,6 +1,7 @@
 import os
 from optparse import OptionParser
 from cStringIO import StringIO
+from code import CodeBuffer
 
 import constants
 import pyf_iface as pyf
@@ -8,29 +9,26 @@ import gen_config as gc
 import fc_wrap
 import cy_wrap
 
-def main():
-    options, args = parse_and_validate_args()
-    options.fq_projdir = setup_project(options.projectname, options.outdir)
-    wrap(options, args)
-
-def wrap(options, args):
+def wrap(options):
     # Parsing goes here...
-    ast = generate_ast()
+    f_ast = generate_ast()
 
-    funcs_templ = [(fc_wrap.generate_fortran, "%s_c.f90"),
-                   (fc_wrap.generate_h, "%s_c.h"),
-                   (fc_wrap.generate_pxd, "%s_c.pxd"),
-                   (cy_wrap.generate_pyx, "%s_cy.pyx"),
-                   (cy_wrap.generate_pxd, "%s_cy.pxd")]
+    fc_ast = wrap_fc(f_ast)
+    cy_ast = wrap_cy(fc_ast)
 
-    for func, templ in funcs_templ:
-        buf = StringIO()
-        func(ast, buf)
-        fname = templ % options.projectname
-        full_path = os.path.join(options.fq_projdir, fname)
+    gens = [(generate_genconfig, f_ast),
+            (generate_fc_f, fc_ast),
+            (generate_fc_h, fc_ast),
+            (generate_fc_pxd, fc_ast),
+            (generate_cy_pxd, cy_ast),
+            (generate_cy_pyx, cy_ast)
+            ]
+
+    for gen, ast in gens:
+        fname, buf = gen(ast, options)
+        full_path = os.path.join(options.outdir, fname)
         fh = open(full_path, 'w')
         fh.write(buf.getvalue())
-        buf.close()
         fh.close()
 
 def setup_project(projectname, outdir):
@@ -41,50 +39,73 @@ def setup_project(projectname, outdir):
     return fq_projdir
 
 def parse_and_validate_args():
+    default_projname = 'fwproj'
     parser = OptionParser()
     parser.add_option('--outdir',
                       dest='outdir',
-                      default=os.path.curdir,
-                      help='base of output directory')
+                      default=None,
+                      help='output directory for fwrap sources, defaults to "%s"' % default_projname)
     parser.add_option('--indir',
                       dest='indir',
                       default=os.path.curdir,
                       help='directory of fortran source files')
     parser.add_option('--projname',
                       dest='projectname',
-                      default='untitled',
-                      help='name of fwrap project -- will be the name of the directory.')
+                      default=default_projname,
+                      help='name of fwrap project.')
+
     options, args = parser.parse_args()
 
-    # Validate indir and outdir
-    options.outdir = os.path.abspath(options.outdir)
-    options.indir = os.path.abspath(options.indir)
-    if not os.path.exists(options.outdir):
-        parser.error("--outdir option must be a valid directory, given '%s'." % options.outdir)
-    if not os.path.exists(options.indir):
-        parser.error("--indir option must be a valid directory, given '%s'." % options.indir)
+    if args:
+        parser.error("error: leftover arguments '%s'" % args)
 
     # Validate projectname
     options.projectname = options.projectname.strip()
 
-    return options, args
+    # Validate indir and outdir
+    if options.outdir is None:
+        options.outdir = os.path.join(os.path.curdir, options.projectname)
 
-def generate_genconfig(ast, buf):
-    gc.generate_genconfig(ast, buf)
+    options.outdir = os.path.abspath(options.outdir)
+    options.indir = os.path.abspath(options.indir)
 
-def generate_cy_pyx(ast, buf):
-    cy_wrap.generate_cy_pyx(ast, buf)
+    if not os.path.exists(options.indir):
+        parser.error("error: indir must be a valid directory, given '%s'." % options.indir)
 
-def generate_cy_pxd(ast, projname, buf):
-    fc_pxd_name = constants.FC_PXD_TMPL % projname
-    cy_wrap.generate_cy_pxd(ast, fc_pxd_name, buf)
+    if os.path.exists(options.outdir) and os.listdir(options.outdir):
+        parser.error("error: outdir '%s' exists and is not empty.")
+     
+    if not os.path.exists(options.outdir):
+        os.makedirs(options.outdir)
+
+    return options
+
+def generate_genconfig(f_ast, options):
+    buf = CodeBuffer()
+    gc.generate_genconfig(f_ast, buf)
+    return constants.GENCONFIG_NAME, buf
+
+def generate_cy_pyx(cy_ast, options):
+    buf = CodeBuffer()
+    cy_wrap.generate_cy_pyx(cy_ast, buf)
+    return constants.CY_PYX_TMPL % options.projectname, buf
+
+def generate_cy_pxd(cy_ast, options):
+    buf = CodeBuffer()
+    fc_pxd_name = (constants.FC_PXD_TMPL % options.projectname).split('.')[0]
+    cy_wrap.generate_cy_pxd(cy_ast, fc_pxd_name, buf)
+    return constants.CY_PXD_TMPL % options.projectname, buf
  
-def generate_fc_pxd(ast, projname, buf):
-    fc_header_name = constants.FC_HDR_TMPL % projname
-    fc_wrap.generate_fc_pxd(ast, fc_header_name, buf)
+def generate_fc_pxd(fc_ast, options):
+    buf = CodeBuffer()
+    fc_header_name = constants.FC_HDR_TMPL % options.projectname
+    fc_wrap.generate_fc_pxd(fc_ast, fc_header_name, buf)
+    return constants.FC_PXD_TMPL % options.projectname, buf
 
-def generate_fc_h(ast, buf):
-    fc_wrap.generate_fc_h(ast, constants.KTP_HEADER_NAME, buf)
+def generate_fc_h(fc_ast, options):
+    buf = CodeBuffer()
+    fc_wrap.generate_fc_h(fc_ast, constants.KTP_HEADER_NAME, buf)
+    return constants.FC_HDR_TMPL % options.projectname, buf
 
 def wrap_cy(ast):
     return cy_wrap.wrap_fc(ast)
@@ -92,9 +113,11 @@ def wrap_cy(ast):
 def wrap_fc(ast):
     return fc_wrap.wrap_pyf_iface(ast)
 
-def generate_fc_f(ast, buf):
-    for proc in ast:
+def generate_fc_f(fc_ast, options):
+    buf = CodeBuffer()
+    for proc in fc_ast:
         proc.generate_wrapper(buf)
+    return constants.FC_F_TMPL % options.projectname, buf
 
 def generate_ast(fsrc):
     # this is a stub for now...
