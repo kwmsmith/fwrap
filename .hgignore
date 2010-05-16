@@ -3,3 +3,4 @@ syntax: glob
 fparser
 .coverage
 *.vim
+BUILD/*
