@@ -10,10 +10,13 @@ import fc_wrap
 import cy_wrap
 
 def main():
-    options = parse_and_validate_args()
-    wrap(options)
+    options, args = parse_args()
+    wrap(options, args)
 
-def wrap(options):
+def wrap(source_files, options):
+
+    validate_args(options, source_files)
+
     # Parsing goes here...
     f_ast = generate_ast("")
 
@@ -35,17 +38,13 @@ def wrap(options):
         fh.write(buf.getvalue())
         fh.close()
 
-def parse_and_validate_args():
+def parse_args():
     default_projname = 'fwproj'
     parser = OptionParser()
     parser.add_option('--outdir',
                       dest='outdir',
                       default=None,
                       help='output directory for fwrap sources, defaults to "%s"' % default_projname)
-    parser.add_option('--indir',
-                      dest='indir',
-                      default=os.path.curdir,
-                      help='directory of fortran source files')
     parser.add_option('--projname',
                       dest='projectname',
                       default=default_projname,
@@ -53,21 +52,18 @@ def parse_and_validate_args():
 
     options, args = parser.parse_args()
 
-    if args:
-        parser.error("error: leftover arguments '%s'" % args)
+    return options, args
+
+def validate_args(options, args):
 
     # Validate projectname
     options.projectname = options.projectname.strip()
 
-    # Validate indir and outdir
+    # Validate outdir
     if options.outdir is None:
         options.outdir = os.path.join(os.path.curdir, options.projectname)
 
     options.outdir = os.path.abspath(options.outdir)
-    options.indir = os.path.abspath(options.indir)
-
-    if not os.path.exists(options.indir):
-        parser.error("error: indir must be a valid directory, given '%s'." % options.indir)
 
     if os.path.exists(options.outdir) and os.listdir(options.outdir):
         parser.error("error: outdir '%s' exists and is not empty.")
@@ -75,7 +71,7 @@ def parse_and_validate_args():
     if not os.path.exists(options.outdir):
         os.makedirs(options.outdir)
 
-    return options
+    return options, args
 
 def generate_genconfig(f_ast, options):
     buf = CodeBuffer()

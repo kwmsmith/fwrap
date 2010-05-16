@@ -9,6 +9,8 @@ from distutils.core import Extension
 from distutils.command.build_ext import build_ext as _build_ext
 distutils_distro = Distribution()
 
+FWRAP_SETUP = os.path.abspath(os.path.join('fwrap_src', 'fwrap_setup.py'))
+
 TEST_DIRS = ['compile', 'errors', 'run', 'pyregr']
 TEST_RUN_DIRS = ['run', 'pyregr']
 
@@ -78,6 +80,9 @@ class TestBuilderBase(object):
 
     def build_suite(self):
         pass
+
+class FwrapOptions(object):
+    pass
 
 class FwrapTestBuilder(object):
     def __init__(self, rootdir, workdir, selectors, exclude_selectors,
@@ -186,11 +191,14 @@ class FwrapCompileTestCase(unittest.TestCase):
         self.projname = os.path.splitext(self.filename)[0] + '_fwrap'
         self.projdir = os.path.join(self.workdir, self.projname)
         self.wrapped_filename = self.projname+'_fortran.f95'
-        self.fwrap_config_source='genconfig.f95'
+        self.fwrap_config_source='genconfig.f90'
         self.fwrap_config_module_source='config.f95'
         self.fwrap_cython_source=self.projname+'.pyx'
         fq_fname = os.path.join(os.path.abspath(self.directory), self.filename)
-        wrap([fq_fname], self.directory, self.workdir, self.projname)
+        options = FwrapOptions()
+        options.projectname = self.projname
+        options.outdir = self.projdir
+        wrap([fq_fname], options)
         # self.runCompileTest()
         self.runCompileTest_distutils()
 
@@ -234,19 +242,20 @@ setup(cmdclass={'build_ext' : fwrap_build_ext},
         f.write(setup_source)
         f.close()
 
-        shutil.copy('fwrap_setup.py', self.projdir)
+        shutil.copy(FWRAP_SETUP, self.projdir)
         shutil.copy(os.path.join(self.directory, self.filename), self.projdir)
         from distutils.core import run_setup
         thisdir = os.path.abspath(os.curdir)
         try:
+            # import pdb; pdb.set_trace()
             os.chdir(self.projdir)
-            orig_stdout, orig_stderr = sys.stdout, sys.stderr
-            sys.stdout = _devnull()
-            sys.stderr = _devnull()
+            if self.projdir not in sys.path:
+                sys.path.insert(0, self.projdir)
             run_setup(setup_fqpath, script_args=['build_ext', '--fcompiler=gnu95', '-lgfortran', '--inplace'])
         finally:
+            if self.projdir in sys.path:
+                sys.path.remove(self.projdir)
             os.chdir(thisdir)
-            sys.stdout,sys.stderr = orig_stdout, orig_stderr
 
     def build_target_filenames(self, filename):
         fortran_wrapper = "wrap_%s" % filename
@@ -796,7 +805,7 @@ if __name__ == '__main__':
             sys.stderr.write("Running tests without Cython.\n")
     #if 0
 
-    from fwrap_src.Main import wrap
+    from fwrap_src.main import wrap
 
     sys.stderr.write("Python %s\n" % sys.version)
     sys.stderr.write("\n")
