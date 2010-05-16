@@ -76,7 +76,7 @@ def validate_args(options, args):
 def generate_genconfig(f_ast, options):
     buf = CodeBuffer()
     gc.generate_genconfig(f_ast, buf)
-    return constants.GENCONFIG_NAME, buf
+    return constants.GENCONFIG_SRC, buf
 
 def generate_cy_pyx(cy_ast, options):
     buf = CodeBuffer()
@@ -97,7 +97,7 @@ def generate_fc_pxd(fc_ast, options):
 
 def generate_fc_h(fc_ast, options):
     buf = CodeBuffer()
-    fc_wrap.generate_fc_h(fc_ast, constants.KTP_HEADER_NAME, buf)
+    fc_wrap.generate_fc_h(fc_ast, constants.KTP_HEADER_SRC, buf)
     return constants.FC_HDR_TMPL % options.projectname, buf
 
 def wrap_cy(ast):

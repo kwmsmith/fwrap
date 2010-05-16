@@ -155,3 +155,6 @@ class fwrap_build_ext(np_build_ext, cy_build_ext):
             ext.sources = c_sources + [config_result] + ext.sources
             print ext.sources
             np_build_ext.build_extension(self, ext)
+
+    def gen_type_map(self):
+        pass

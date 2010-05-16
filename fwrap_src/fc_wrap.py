@@ -158,7 +158,7 @@ def wrap_pyf_iface(ast):
     return fc_wrapper
 
 def generate_fc_pxd(ast, fc_header_name, buf):
-    buf.putln("from %s cimport *" % constants.KTP_PXD_HEADER_NAME.split('.')[0])
+    buf.putln("from %s cimport *" % constants.KTP_PXD_HEADER_SRC.split('.')[0])
     buf.putln('')
     buf.putln('cdef extern from "%s":' % fc_header_name)
     buf.indent()

@@ -173,7 +173,7 @@ module fc_type_map
 
   integer, parameter :: mapping_file_unit = 19
 
-  character(*), parameter :: map_file_name = "%(MAP_FILE_NAME)s"
+  character(*), parameter :: map_file_name = "%(MAP_SRC)s"
 
   contains
 
@@ -364,7 +364,7 @@ module fc_type_map
     write(unit=mapping_file_unit, fmt="(3A)", iostat=iserr) alias, " ", c_name
 
     if (iserr .ne. 0) then
-        errmsg = "genconfig: error writing to file %(MAP_FILE_NAME)s"
+        errmsg = "genconfig: error writing to file %(MAP_SRC)s"
     endif
 
   end subroutine write_map
@@ -390,7 +390,7 @@ module fc_type_map
             action='WRITE', position='APPEND', iostat=iserr)
 
     if (iserr .ne. 0) then
-        errmsg = "genconfig: unable to open '%(MAP_FILE_NAME)s', aborting."
+        errmsg = "genconfig: unable to open '%(MAP_SRC)s', aborting."
     endif
 
   end subroutine open_map_file
@@ -402,10 +402,10 @@ module fc_type_map
     close(unit=mapping_file_unit, iostat=iserr)
 
     if (iserr .ne. 0) then
-        errmsg = "genconfig: unable to close '%(MAP_FILE_NAME)s', aborting."
+        errmsg = "genconfig: unable to close '%(MAP_SRC)s', aborting."
     endif
 
   end subroutine close_map_file
 
 end module fc_type_map
-''' % {'MAP_FILE_NAME' : constants.MAP_FILE_NAME}
+''' % {'MAP_SRC' : constants.MAP_SRC}
