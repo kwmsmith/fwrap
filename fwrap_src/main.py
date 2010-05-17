@@ -11,7 +11,7 @@ import cy_wrap
 
 def main():
     options, args = parse_args()
-    wrap(options, args)
+    wrap(args, options)
 
 def wrap(source_files, options):
 
