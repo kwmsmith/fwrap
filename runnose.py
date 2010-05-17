@@ -1,5 +1,3 @@
 from subprocess import call
 
-call("nosetests fwrap_src/tests".split())
-
-
+call("nosetests -s fwrap_src/tests".split())
