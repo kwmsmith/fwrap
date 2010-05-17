@@ -191,8 +191,6 @@ class FwrapCompileTestCase(unittest.TestCase):
         self.projname = os.path.splitext(self.filename)[0] + '_fwrap'
         self.projdir = os.path.join(self.workdir, self.projname)
         self.wrapped_filename = self.projname+'_fortran.f95'
-        self.fwrap_config_source='genconfig.f90'
-        self.fwrap_config_module_source='config.f95'
         self.fwrap_cython_source=self.projname+'.pyx'
         fq_fname = os.path.join(os.path.abspath(self.directory), self.filename)
         options = FwrapOptions()
@@ -217,8 +215,6 @@ class FwrapCompileTestCase(unittest.TestCase):
         FILENAME = self.filename
         WRAPPED_FILENAME = self.wrapped_filename
         PROJNAME = self.projname
-        FWRAP_CONFIG_SOURCE = self.fwrap_config_source
-        FWRAP_CONFIG_MODULE_SOURCE = self.fwrap_config_module_source
         FWRAP_CYTHON_SOURCE = self.fwrap_cython_source
 
         setup_source = '''
@@ -226,13 +222,13 @@ import os,sys
 sys.path.insert(0, '%(CYTHON_DIR)s')
 
 from fwrap_setup import FwrapExtension, fwrap_build_ext, setup
-sources = ['%(FILENAME)s', '%(WRAPPED_FILENAME)s']
+
 ext = FwrapExtension(
             '%(PROJNAME)s',
             sources= ['%(FILENAME)s', '%(WRAPPED_FILENAME)s'],
-            fwrap_config_sources=[('%(FWRAP_CONFIG_SOURCE)s', '%(FWRAP_CONFIG_MODULE_SOURCE)s')],
             fwrap_cython_sources=['%(FWRAP_CYTHON_SOURCE)s'],
             )
+
 setup(cmdclass={'build_ext' : fwrap_build_ext},
         ext_modules = [ext])
 ''' % locals()
