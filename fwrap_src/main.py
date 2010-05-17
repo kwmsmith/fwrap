@@ -18,7 +18,7 @@ def wrap(source_files, options):
     validate_args(options, source_files)
 
     # Parsing goes here...
-    f_ast = generate_ast("")
+    f_ast = generate_ast(source_files)
 
     fc_ast = wrap_fc(f_ast)
     cy_ast = wrap_cy(fc_ast)
@@ -112,9 +112,6 @@ def generate_fc_f(fc_ast, options):
         proc.generate_wrapper(buf)
     return constants.FC_F_TMPL % options.projectname, buf
 
-def generate_ast(fsrc):
-    # this is a stub for now...
-    empty_func = pyf.Function(name='empty_func',
-                    args=(),
-                    return_type=pyf.default_integer)
-    return [empty_func]
+def generate_ast(fsrcs):
+    import fwrap_parse
+    return fwrap_parse.generate_ast(fsrcs)

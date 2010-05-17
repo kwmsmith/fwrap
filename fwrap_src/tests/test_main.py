@@ -14,13 +14,14 @@ class test_generation(object):
         pass
     
     def setup(self):
-        fsrc = StringIO('''\
+        fsrc = '''\
 function empty_func()
     implicit none
     integer :: empty_func
+    empty_func = 1
 end function empty_func
-''')
-        self.ast = main.generate_ast(fsrc)
+'''
+        self.ast = main.generate_ast([fsrc])
         self.fc_wrap = main.wrap_fc(self.ast)
         self.cy_wrap = main.wrap_cy(self.fc_wrap)
         self.options = test_generation.fake_options()
