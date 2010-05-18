@@ -20,6 +20,7 @@ class test_genconfig(object):
                     "fwrap_default_double",
                     "fwrap_default_complex",
                     "fwrap_default_double_complex",
+                    "fwrap_default_character",
                     ]))
         ok_(set(map(lambda x: x.ktp, ctps))
                 ==
@@ -29,6 +30,7 @@ class test_genconfig(object):
                     "kind((0.0,0.0))",
                     "kind((0.0D0,0.0D0))",
                     "kind(.true.)",
+                    "kind('a')",
                     ]))
 
     def test_gen_genconfig_main(self):

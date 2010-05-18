@@ -39,6 +39,13 @@ class Dtype(object):
     def all_dtypes(cls):
         return list(cls._all_dtypes.values())
 
+class CharacterType(Dtype):
+    def __init__(self, ktp, orig_ktp=None):
+        super(CharacterType, self).__init__(ktp, orig_ktp)
+        self.type = 'character'
+
+default_character = CharacterType(ktp="default_character", orig_ktp="kind('a')")
+
 class IntegerType(Dtype):
 
     def __init__(self, ktp, orig_ktp=None):
