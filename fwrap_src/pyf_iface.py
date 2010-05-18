@@ -163,7 +163,7 @@ class ProcArgument(object):
 class ArgManager(object):
     
     def __init__(self, args, return_arg=None):
-        self._args = args
+        self._args = list(args)
         self._return_arg = return_arg
 
     def extern_arg_list(self):
@@ -174,7 +174,7 @@ class ArgManager(object):
 
     def order_declarations(self):
         decl_list = []
-        undeclared = self._args[:]
+        undeclared = list(self._args)
         while undeclared:
             for arg in undeclared[:]:
                 if not arg.is_array:
