@@ -371,6 +371,8 @@ def ArgWrapperFactory(arg):
 
 class ArgWrapperBase(object):
 
+    is_array = False
+
     def pre_call_code(self):
         return []
 
@@ -444,6 +446,8 @@ class HideArgWrapper(ArgWrapperBase):
 
 
 class ArrayArgWrapper(ArgWrapperBase):
+
+    is_array = True
 
     def __init__(self, arg):
         self._orig_arg = arg
