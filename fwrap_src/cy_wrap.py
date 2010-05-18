@@ -31,6 +31,9 @@ class CyArgWrapper(object):
     def intern_name(self):
         return self.arg.get_name()
 
+    def call_arg_list(self):
+        return ["&%s" % self.arg.get_name()]
+
 class CyArrayArgWrapper(object):
 
     def __init__(self, arg):
@@ -63,7 +66,12 @@ class CyArgWrapperManager(object):
     @classmethod
     def from_fwrapped_proc(cls, fw_proc):
         fw_arg_man = fw_proc.arg_man
-        args = [CyArgWrapper(fw_arg) for fw_arg in fw_arg_man.arg_wrappers]
+        args = []
+        for fw_arg in fw_arg_man.arg_wrappers:
+            if fw_arg.is_array:
+                args.append(CyArrayArgWrapper(fw_arg))
+            else:
+                args.append(CyArgWrapper(fw_arg))
         return_wpr = fw_arg_man.return_arg_wrapper
         rtn = 'object'
         if return_wpr:
@@ -71,7 +79,10 @@ class CyArgWrapperManager(object):
         return cls(args=args, return_type_name=rtn)
 
     def call_arg_list(self):
-        return ["&%s" % arg.intern_name() for arg in self.args]
+        cal = []
+        for arg in self.args:
+            cal.extend(arg.call_arg_list())
+        return cal
 
     def arg_declarations(self):
         decls = []
