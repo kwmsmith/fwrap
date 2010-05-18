@@ -37,3 +37,27 @@ end function func1
                                            pyf.default_complex,
                                            pyf.default_dbl])
     # eq_([arg.name for arg in subr.args], ['a', 'b', 'c'])
+
+def test_parse_array_args():
+    buf = '''\
+      SUBROUTINE DGESDD( JOBZ, M, N, A, LDA, S, U, LDU, VT, LDVT, WORK,
+     $                   LWORK, IWORK, INFO )
+*
+*  -- LAPACK driver routine (version 3.2.1)                                  --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     March 2009
+*
+*     .. Scalar Arguments ..
+      CHARACTER          JOBZ
+      INTEGER            INFO, LDA, LDU, LDVT, LWORK, M, N
+*     ..
+*     .. Array Arguments ..
+      INTEGER            IWORK( * )
+      DOUBLE PRECISION   A( LDA, * ), S( * ), U( LDU, * ),
+     $                   VT( LDVT, * ), WORK( * )
+      END SUBROUTINE DGESDD'''
+    subr = fp.generate_ast([buf])[0]
+    eq_(subr.name, 'dgesdd')
+    eq_([arg.name for arg in subr.args],
+        "jobz m n a lda s u ldu vt ldvt work lwork iwork info".split())
