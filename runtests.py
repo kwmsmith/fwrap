@@ -190,7 +190,7 @@ class FwrapCompileTestCase(unittest.TestCase):
     def runTest(self):
         self.projname = os.path.splitext(self.filename)[0] + '_fwrap'
         self.projdir = os.path.join(self.workdir, self.projname)
-        self.wrapped_filename = self.projname+'_fortran.f95'
+        self.wrapped_filename = self.projname+'_fc.f90'
         self.fwrap_cython_source=self.projname+'.pyx'
         fq_fname = os.path.join(os.path.abspath(self.directory), self.filename)
         options = FwrapOptions()
