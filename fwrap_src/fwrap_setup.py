@@ -1,5 +1,6 @@
 import os
 
+from numpy.distutils.command.config import config as np_config, old_config
 from numpy.distutils.command.build_src import build_src as np_build_src
 from numpy.distutils.command.scons import scons as npscons
 from Cython.Distutils import build_ext as cy_build_ext
@@ -37,6 +38,27 @@ class _dummy_scons(npscons):
     def run(self):
         pass
 
+class fw_config(np_config):
+    
+    def _check_compiler(self):
+        old_config._check_compiler(self)
+        from numpy.distutils.fcompiler import FCompiler, new_fcompiler
+
+        if not isinstance(self.fcompiler, FCompiler):
+            self.fcompiler = new_fcompiler(compiler=self.fcompiler,
+                                           dry_run=self.dry_run,
+                                           force=1,
+                                           requiref90=True,
+                                           c_compiler=self.compiler)
+            if self.fcompiler is not None:
+                self.fcompiler.customize(self.distribution)
+                if self.fcompiler.get_version():
+                    self.fcompiler.customize_cmd(self)
+                    self.fcompiler.show_customization()
+                else:
+                    self.warn('f90_compiler=%s is not available.' % self.fcompiler.compiler_type)
+                    self.fcompiler = None
+
 class fw_build_src(np_build_src):
 
     def pyrex_sources(self, sources, extension):
@@ -48,7 +70,8 @@ class fw_build_src(np_build_src):
         # intercept to disable calling f2py
         return sources
 
-fwrap_cmdclass = {'build_src' : fw_build_src,
+fwrap_cmdclass = {'config' : fw_config,
+                  'build_src' : fw_build_src,
                   'scons' : _dummy_scons}
     
 def gen_type_map_files():
