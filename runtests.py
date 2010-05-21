@@ -218,20 +218,29 @@ class FwrapCompileTestCase(unittest.TestCase):
         FWRAP_CYTHON_SOURCE = self.fwrap_cython_source
 
         setup_source = '''
-import os,sys
-sys.path.insert(0, '%(CYTHON_DIR)s')
+from fwrap_setup import setup, fwrap_cmdclass, configuration
+      
+cfg = configuration(projname='%(PROJNAME)s', extra_sources=['%(FILENAME)s'])
 
-from fwrap_setup import FwrapExtension, fwrap_build_ext, setup
+setup(cmdclass=fwrap_cmdclass, configuration=cfg)
+''' % {'PROJNAME': PROJNAME,
+       'FILENAME': FILENAME}
 
-ext = FwrapExtension(
-            '%(PROJNAME)s',
-            sources= ['%(FILENAME)s', '%(WRAPPED_FILENAME)s'],
-            fwrap_cython_sources=['%(FWRAP_CYTHON_SOURCE)s'],
-            )
+        # setup_source = '''
+# import os,sys
+# sys.path.insert(0, '%(CYTHON_DIR)s')
 
-setup(cmdclass={'build_ext' : fwrap_build_ext},
-        ext_modules = [ext])
-''' % locals()
+# from fwrap_setup import FwrapExtension, fwrap_build_ext, setup
+
+# ext = FwrapExtension(
+            # '%(PROJNAME)s',
+            # sources= ['%(FILENAME)s', '%(WRAPPED_FILENAME)s'],
+            # fwrap_cython_sources=['%(FWRAP_CYTHON_SOURCE)s'],
+            # )
+
+# setup(cmdclass={'build_ext' : fwrap_build_ext},
+        # ext_modules = [ext])
+# ''' % locals()
 
         setup_fqpath = os.path.join(self.projdir, 'setup.py')
         f = open(setup_fqpath,'w')

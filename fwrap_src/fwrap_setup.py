@@ -1,214 +1,101 @@
-from distutils.errors import DistutilsFileError
-from Cython.Distutils import build_ext as cy_build_ext
-from numpy.distutils.command.build_ext import build_ext as np_build_ext
-from numpy.distutils.extension import Extension as np_extension
-from numpy.distutils.core import setup
 import os
 
-class FwrapExtension(np_extension):
-    def __init__ (self, name, sources,
-                  include_dirs=None,
-                  define_macros=None,
-                  undef_macros=None,
-                  library_dirs=None,
-                  libraries=None,
-                  runtime_library_dirs=None,
-                  extra_objects=None,
-                  extra_compile_args=None,
-                  extra_link_args=None,
-                  export_symbols=None,
-                  swig_opts=None,
-                  depends=None,
-                  language=None,
-                  f2py_options=None,
-                  module_dirs=None,
-                  pyrex_include_dirs = None,
-                  pyrex_create_listing = 0,
-                  pyrex_cplus = 0,
-                  pyrex_c_in_temp = 0,
-                  pyrex_gen_pxi = 0,
-                  fwrap_cython_sources = None,
-                  fwrap_config_sources={'f_exe' : "genconfig.f90",
-                                        'map_out' : "fwrap_type_map.out",
-                                        "f_out" : "fwrap_ktp_mod.f90",
-                                        "h_out" : "fwrap_ktp_header.h",
-                                        "pxd_out" : "fwrap_ktp.pxd",
-                                        },
-                  **kw):
+from numpy.distutils.command.build_src import build_src as np_build_src
+from Cython.Distutils import build_ext as cy_build_ext
+from numpy.distutils.core import setup
 
-        np_extension.__init__(self, name, sources,
-                  include_dirs,
-                  define_macros,
-                  undef_macros,
-                  library_dirs,
-                  libraries,
-                  runtime_library_dirs,
-                  extra_objects,
-                  extra_compile_args,
-                  extra_link_args,
-                  export_symbols,
-                  swig_opts,
-                  depends,
-                  language,
-                  f2py_options,
-                  module_dirs,
-                  )
+class fw_build_src(np_build_src):
 
-        self.pyrex_include_dirs = pyrex_include_dirs or []
-        self.pyrex_create_listing = pyrex_create_listing
-        self.pyrex_cplus = pyrex_cplus
-        self.pyrex_c_in_temp = pyrex_c_in_temp
-        self.pyrex_gen_pxi = pyrex_gen_pxi
+    def pyrex_sources(self, sources, extension):
+        cbe = cy_build_ext(self.distribution)
+        cbe.finalize_options()
+        return cbe.cython_sources(sources, extension)
 
-        self.fwrap_config_sources = fwrap_config_sources
-        self.fwrap_cython_sources = fwrap_cython_sources or []
+    def f2py_sources(self, sources, extension):
+        # intercept to disable calling f2py
+        return sources
 
+fwrap_cmdclass = {'build_src' : fw_build_src}
+    
+def configuration(projname, extra_sources=None):
+    def _configuration(parent_package='', top_path=None):
+        from numpy.distutils.misc_util import Configuration
+        config = Configuration(None, parent_package, top_path)
 
+        def generate_type_config(ext, build_dir):
+            source = 'genconfig.f90'
+            config_cmd = config.get_config_cmd()
+            fh = open(source,'r')
+            gc_src = fh.read()
+            fh.close()
+            config_cmd.try_run(body=gc_src, lang='f90')
+            # add in fwrap_numpy_intp type
+            gen_type_map_files()
 
-class fwrap_build_ext(np_build_ext, cy_build_ext):
+            return "fwrap_ktp_mod.f90"
 
-    def initialize_options(self):
-        np_build_ext.initialize_options(self)
-        self.pyrex_cplus = 0
-        self.pyrex_create_listing = 0
-        self.pyrex_include_dirs = None
-        self.pyrex_c_in_temp = 0
-        self.pyrex_gen_pxi = 0
+        sources = [generate_type_config] + (extra_sources or []) + \
+                ['%s_fc.f90' % projname,
+                 '%s.pyx' % projname]
 
-    def finalize_options (self):
-        np_build_ext.finalize_options(self)
-        if self.pyrex_include_dirs is None:
-            self.pyrex_include_dirs = []
-        elif type(self.pyrex_include_dirs) is StringType:
-            self.pyrex_include_dirs = \
-                self.pyrex_include_dirs.split(os.pathsep)
- 
-    def init_compilers(self):
+        config.add_extension(projname, sources=sources)
 
-        from distutils.ccompiler import new_compiler
-        from numpy.distutils.fcompiler import new_fcompiler
+        return config
 
-        compiler_type = self.compiler
-        # Initialize C compiler:
-        self.compiler = new_compiler(compiler=compiler_type,
-                                     verbose=self.verbose,
-                                     dry_run=self.dry_run,
-                                     force=self.force)
-        self.compiler.customize(self.distribution)
-        self.compiler.customize_cmd(self)
-        self.compiler.show_customization()
+    return _configuration
 
-        # Initialize Fortran compiler:
-        ctype = self.fcompiler
-        self._f90_compiler = new_fcompiler(compiler=self.fcompiler,
-                                           verbose=self.verbose,
-                                           dry_run=self.dry_run,
-                                           force=self.force,
-                                           requiref90=True,
-                                           c_compiler = self.compiler)
-        fcompiler = self._f90_compiler
-        if fcompiler:
-            ctype = fcompiler.compiler_type
-            fcompiler.customize(self.distribution)
-        if fcompiler and fcompiler.get_version():
-            fcompiler.customize_cmd(self)
-            fcompiler.show_customization()
-        else:
-            self.warn('f90_compiler=%s is not available.' %
-                      (ctype))
-            self._f90_compiler = None
+def gen_type_map_files():
+    fw2c = get_type_map('fwrap_type_map.out')
+    write_f_mod('fwrap_ktp_mod.f90', fw2c)
+    write_header('fwrap_ktp_header.h', fw2c)
+    write_pxd('fwrap_ktp.pxd', 'fwrap_ktp_header.h', fw2c)
 
-        # don't need cxx compiler.
-        self._cxx_compiler = None
+def get_type_map(map_file_name):
+    fw2c = []
+    map_file = open(map_file_name, 'r')
+    try:
+        for line in map_file.readlines():
+            fw_name, c_type = line.split()
+            fw2c.append((fw_name, c_type))
+    finally:
+        map_file.close()
+    return fw2c
 
-    def run(self):
-
-        self.init_compilers()
-        fcompiler = self._f90_compiler
-
-        for ext in self.extensions:
-
-            fullname = self.get_ext_fullname(ext.name)
-
-            module_dirs = ext.module_dirs[:]
-            module_build_dir = os.path.join(
-                self.build_temp,os.path.dirname(
-                    self.get_ext_filename(fullname)))
-
-            extra_postargs = fcompiler.module_options(
-                module_dirs,module_build_dir)
-
-            # generate fortran config files.
-            config_source = ext.fwrap_config_sources['f_exe']
-            exname = os.path.splitext(config_source)[0]
-
-            onames = fcompiler.compile([config_source],
-                            output_dir=self.build_temp,
-                            extra_postargs=extra_postargs)
-            print fcompiler.link_executable(onames,
-                    exname,
-                    output_dir=self.build_temp,
-                    extra_postargs=extra_postargs)
-            # TODO: untested on windows, may not work.
-            fcompiler.spawn([os.path.join(self.build_temp,exname)])
-
-            self.gen_type_map_files(ext.fwrap_config_sources)
-
-            config_result = ext.fwrap_config_sources['f_out']
-            c_sources = cy_build_ext.cython_sources(self, ext.fwrap_cython_sources, ext)
-            ext.sources = c_sources + [config_result] + ext.sources
-            print ext.sources
-            np_build_ext.build_extension(self, ext)
-
-    def gen_type_map_files(self, map_srcs):
-        fw2c = self.get_type_map(map_srcs['map_out'])
-        self.write_f_mod(map_srcs['f_out'], fw2c)
-        self.write_header(map_srcs['h_out'], fw2c)
-        self.write_pxd(map_srcs['pxd_out'], map_srcs['h_out'], fw2c)
-
-    def get_type_map(self, map_file_name):
-        fw2c = []
-        map_file = open(map_file_name, 'r')
-        try:
-            for line in map_file.readlines():
-                fw_name, c_type = line.split()
-                fw2c.append((fw_name, c_type))
-        finally:
-            map_file.close()
-        return fw2c
-
-    def write_f_mod(self, fname, fw2c):
-        f_out = open(fname, 'w')
-        try:
-            f_out.write('''
+def write_f_mod(fname, fw2c):
+    f_out = open(fname, 'w')
+    try:
+        f_out.write('''
 module fwrap_ktp_mod
     use iso_c_binding
     implicit none
 ''')
-            for fw_name, c_type in fw2c:
-                f_out.write('    integer, parameter :: %s = %s\n' % (fw_name, c_type))
-            f_out.write('end module fwrap_ktp_mod\n')
-        finally:
-            f_out.close()
+        for fw_name, c_type in fw2c:
+            f_out.write('    integer, parameter :: %s = %s\n' % (fw_name, c_type))
+        f_out.write('end module fwrap_ktp_mod\n')
+    finally:
+        f_out.close()
 
-    def write_header(self, fname, fw2c):
-        h_out = open(fname, 'w')
-        try:
-            for fw_name, fc_type in fw2c:
-                c_type = f2c[fc_type]
-                h_out.write('typedef %s %s;\n' % (c_type, fw_name))
-        finally:
-            h_out.close()
+def write_header(fname, fw2c):
+    h_out = open(fname, 'w')
+    try:
+        h_out.write("#ifndef %s\n" % fname.upper())
+        h_out.write("#define %s\n" % fname.upper())
+        for fw_name, fc_type in fw2c:
+            c_type = f2c[fc_type]
+            h_out.write('typedef %s %s;\n' % (c_type, fw_name))
+        h_out.write("#endif")
+    finally:
+        h_out.close()
 
-    def write_pxd(self, fname, h_name, fw2c):
-        pxd_out = open(fname, 'w')
-        try:
-            pxd_out.write('cdef extern from "%s":\n' % h_name)
-            for fw_name, fc_type in fw2c:
-                c_type = f2c[fc_type]
-                pxd_out.write('    ctypedef %s %s\n' % (c_type, fw_name))
-        finally:
-            pxd_out.close()
+def write_pxd(fname, h_name, fw2c):
+    pxd_out = open(fname, 'w')
+    try:
+        pxd_out.write('cdef extern from "%s":\n' % h_name)
+        for fw_name, fc_type in fw2c:
+            c_type = f2c[fc_type]
+            pxd_out.write('    ctypedef %s %s\n' % (c_type, fw_name))
+    finally:
+        pxd_out.close()
 
 f2c = {
     'c_int' : 'int',
