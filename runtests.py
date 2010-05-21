@@ -211,11 +211,8 @@ class FwrapCompileTestCase(unittest.TestCase):
 
     def runCompileTest_distutils(self):
         import sys
-        CYTHON_DIR = os.path.abspath(os.path.curdir)
         FILENAME = self.filename
-        WRAPPED_FILENAME = self.wrapped_filename
         PROJNAME = self.projname
-        FWRAP_CYTHON_SOURCE = self.fwrap_cython_source
 
         setup_source = '''
 from fwrap_setup import setup, fwrap_cmdclass, configuration
@@ -226,21 +223,6 @@ setup(cmdclass=fwrap_cmdclass, configuration=cfg)
 ''' % {'PROJNAME': PROJNAME,
        'FILENAME': FILENAME}
 
-        # setup_source = '''
-# import os,sys
-# sys.path.insert(0, '%(CYTHON_DIR)s')
-
-# from fwrap_setup import FwrapExtension, fwrap_build_ext, setup
-
-# ext = FwrapExtension(
-            # '%(PROJNAME)s',
-            # sources= ['%(FILENAME)s', '%(WRAPPED_FILENAME)s'],
-            # fwrap_cython_sources=['%(FWRAP_CYTHON_SOURCE)s'],
-            # )
-
-# setup(cmdclass={'build_ext' : fwrap_build_ext},
-        # ext_modules = [ext])
-# ''' % locals()
 
         setup_fqpath = os.path.join(self.projdir, 'setup.py')
         f = open(setup_fqpath,'w')
