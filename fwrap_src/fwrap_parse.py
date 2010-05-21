@@ -18,7 +18,7 @@ def generate_ast(fsrcs):
                 ast.append(pyf.Function(name=proc.name, args=fargs,
                     return_type=pyf.default_integer))
             else:
-                raise FwrapParseError("unsupported Fortran construct %r." % proc)
+                raise RuntimeError("unsupported Fortran construct %r." % proc)
     return ast
 
 
