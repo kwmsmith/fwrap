@@ -1,22 +1,10 @@
 import os
 
 from numpy.distutils.command.build_src import build_src as np_build_src
+from numpy.distutils.command.scons import scons as npscons
 from Cython.Distutils import build_ext as cy_build_ext
 from numpy.distutils.core import setup
 
-class fw_build_src(np_build_src):
-
-    def pyrex_sources(self, sources, extension):
-        cbe = cy_build_ext(self.distribution)
-        cbe.finalize_options()
-        return cbe.cython_sources(sources, extension)
-
-    def f2py_sources(self, sources, extension):
-        # intercept to disable calling f2py
-        return sources
-
-fwrap_cmdclass = {'build_src' : fw_build_src}
-    
 def configuration(projname, extra_sources=None):
     def _configuration(parent_package='', top_path=None):
         from numpy.distutils.misc_util import Configuration
@@ -34,9 +22,10 @@ def configuration(projname, extra_sources=None):
 
             return "fwrap_ktp_mod.f90"
 
-        sources = [generate_type_config] + (extra_sources or []) + \
-                ['%s_fc.f90' % projname,
-                 '%s.pyx' % projname]
+        sources = [generate_type_config] + \
+                   (extra_sources or []) + \
+                   ['%s_fc.f90' % projname,
+                    '%s.pyx' % projname]
 
         config.add_extension(projname, sources=sources)
 
@@ -44,6 +33,24 @@ def configuration(projname, extra_sources=None):
 
     return _configuration
 
+class _dummy_scons(npscons):
+    def run(self):
+        pass
+
+class fw_build_src(np_build_src):
+
+    def pyrex_sources(self, sources, extension):
+        cbe = cy_build_ext(self.distribution)
+        cbe.finalize_options()
+        return cbe.cython_sources(sources, extension)
+
+    def f2py_sources(self, sources, extension):
+        # intercept to disable calling f2py
+        return sources
+
+fwrap_cmdclass = {'build_src' : fw_build_src,
+                  'scons' : _dummy_scons}
+    
 def gen_type_map_files():
     fw2c = get_type_map('fwrap_type_map.out')
     write_f_mod('fwrap_ktp_mod.f90', fw2c)

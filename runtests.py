@@ -197,17 +197,7 @@ class FwrapCompileTestCase(unittest.TestCase):
         options.projectname = self.projname
         options.outdir = self.projdir
         wrap([fq_fname], options)
-        # self.runCompileTest()
         self.runCompileTest_distutils()
-
-    def runCompileTest(self):
-        from subprocess import Popen, PIPE, STDOUT, CalledProcessError
-        p = Popen(['make'], cwd=self.projdir, close_fds=True,
-                stdout=PIPE, stderr=STDOUT)
-        output = p.communicate()[0]
-        if p.returncode:
-            raise CalledProcessError(p.returncode, "make")
-
 
     def runCompileTest_distutils(self):
         import sys
@@ -234,7 +224,6 @@ setup(cmdclass=fwrap_cmdclass, configuration=cfg)
         from distutils.core import run_setup
         thisdir = os.path.abspath(os.curdir)
         try:
-            # import pdb; pdb.set_trace()
             os.chdir(self.projdir)
             if self.projdir not in sys.path:
                 sys.path.insert(0, self.projdir)
@@ -243,11 +232,6 @@ setup(cmdclass=fwrap_cmdclass, configuration=cfg)
             if self.projdir in sys.path:
                 sys.path.remove(self.projdir)
             os.chdir(thisdir)
-
-    def build_target_filenames(self, filename):
-        fortran_wrapper = "wrap_%s" % filename
-        c_header = "wrap_%s.h" % os.path.splitext(filename)[0]
-        return (fortran_wrapper, c_header)
 
     def compile(self, directory, filename, workdir, incdir):
         self.run_wrapper(directory, filename, workdir, incdir)
