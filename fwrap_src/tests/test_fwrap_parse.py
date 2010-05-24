@@ -3,7 +3,7 @@ from fwrap_src import pyf_iface as pyf
 
 from cStringIO import StringIO
 
-from nose.tools import ok_, eq_
+from nose.tools import ok_, eq_, set_trace
 
 def test_parse_many():
     buf = '''\
@@ -61,3 +61,21 @@ def test_parse_array_args():
     eq_(subr.name, 'dgesdd')
     eq_([arg.name for arg in subr.args],
         "jobz m n a lda s u ldu vt ldvt work lwork iwork info".split())
+
+def test_parse_kind_args():
+    fcode = '''\
+function int_args_func(a,b,c,d)
+      integer(kind=8) :: int_args_func
+      integer(kind=1), intent(in) :: a
+      integer(kind=2), intent(in) :: b
+      integer(kind=4), intent(in) :: c
+      integer(kind=8), intent(out) :: d
+
+      d = a + b + c
+      int_args_func = 10
+
+end function int_args_func
+'''
+    func = fp.generate_ast([fcode])[0]
+    for arg in func.args:
+        ok_(int(arg.dtype.orig_ktp) in (1, 2, 4, 8))

@@ -78,6 +78,24 @@ name2type = {
         }
 
 def _get_dtype(typedecl):
-    if not typedecl.is_intrinsic() or typedecl.selector != ('',''):
-        raise RuntimeError("only intrinsic types supported ATM...")
-    return name2type[typedecl.name]
+    if not typedecl.is_intrinsic():
+        raise RuntimeError("only intrinsic types supported ATM... [%s]" % str(typedecl))
+    if typedecl.get_length() != 1:
+        raise RuntimeError("only kind specified types supported ATM, not length [%s]" % repr(typedecl))
+    if typedecl.selector == ('',''):
+        return name2type[typedecl.name]
+    knd = typedecl.get_kind()
+    try:
+        int(knd)
+    except ValueError:
+        raise RuntimeError("only integer constant kind parameters supported ATM, given '%s'" % knd)
+    int_kind_types = {
+            'integer' : pyf.IntegerType,
+            'real' : pyf.RealType,
+            'complex' : pyf.ComplexType,
+            'character' : pyf.CharacterType,
+            'logical' : pyf.LogicalType,
+            }
+    if typedecl.name == 'doubleprecision':
+        return pyf.default_dbl
+    return int_kind_types[typedecl.name](ktp="%s_%s" % (typedecl.name, knd), orig_ktp=knd)

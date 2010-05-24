@@ -39,6 +39,10 @@ class Dtype(object):
     def all_dtypes(cls):
         return list(cls._all_dtypes.values())
 
+    def __str__(self):
+        import pdb; pdb.set_trace()
+        return "%s(ktp=%s, orig_ktp=%s)" % (type(self), self.ktp, self.orig_ktp)
+
 class CharacterType(Dtype):
     def __init__(self, ktp, orig_ktp=None):
         super(CharacterType, self).__init__(ktp, orig_ktp)
