@@ -93,6 +93,15 @@ end function empty_func
         fname, buf = main.generate_genconfig(self.ast, self.options)
         ok_(genconfig_code in buf.getvalue(), "'%s' \n\n not in \n\n '%s'" % (genconfig_code, buf.getvalue()))
 
+    def test_generate_type_specs(self):
+        from cPickle import loads
+        fname, buf = main.generate_type_specs(self.ast, self.options)
+        ctps = loads(buf.getvalue())
+        for ctp in ctps:
+            ok_(isinstance(ctp, dict))
+            eq_(sorted(ctp.keys()), ['basetype', 'fwrap_name', 'kind', 'type_decl'])
+        
+
 genconfig_code = '''\
 program genconfig
     use fc_type_map

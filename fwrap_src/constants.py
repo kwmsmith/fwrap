@@ -13,4 +13,5 @@ CY_PXD_TMPL = "%s.pxd"
 CY_PYX_TMPL = "%s.pyx"
 
 GENCONFIG_SRC = "genconfig.f90"
+TYPE_SPECS_SRC = "fwrap_type_specs.in"
 MAP_SRC = "fwrap_type_map.out"

@@ -1,18 +1,33 @@
+from cPickle import dumps
 from fwrap_src import pyf_iface
 import constants
 
 NON_ERR_LABEL = 200
 ERR_LABEL = 100
 
+def generate_type_specs(ast, buf):
+    ctps = extract_ctps(ast)
+    _generate_type_specs(ctps, buf)
+
+def _generate_type_specs(ctps, buf):
+    out_lst = []
+    for ctp in ctps:
+        type_decl = '%s(kind=%s)' % (ctp.basetype, ctp.kind)
+        out_lst.append(dict(basetype=ctp.basetype,
+                            kind=ctp.kind,
+                            type_decl=type_decl,
+                            fwrap_name=ctp.fwrap_name))
+    buf.write(dumps(out_lst))
+
 class ConfigTypeParam(object):
 
-    def __init__(self, basetype, ktp, fwrap_name):
+    def __init__(self, basetype, kind, fwrap_name):
         self.basetype = basetype
-        self.ktp = ktp
+        self.kind = kind
         self.fwrap_name = fwrap_name
 
     def generate_call(self, buf):
-        templ = 'call lookup_%(basetype)s(%(ktp)s, "%(fwrap_name)s", iserr)'
+        templ = 'call lookup_%(basetype)s(%(kind)s, "%(fwrap_name)s", iserr)'
         buf.putln(templ % self.__dict__)
 
     @classmethod
@@ -23,8 +38,13 @@ class ConfigTypeParam(object):
                 continue
             ret.append(cls(basetype=dtype.type,
                            fwrap_name=dtype.ktp,
-                           ktp=dtype.orig_ktp))
+                           kind=dtype.orig_ktp))
         return ret
+
+    def __eq__(self, other):
+        return self.basetype == other.basetype and \
+                self.kind == other.kind and \
+                self.fwrap_name == other.fwrap_name
 
 def put_preamble(buf):
     code = '''\
@@ -164,7 +184,7 @@ module fc_type_map
   save
 
   character(*), parameter :: NEG_KTP = &
-  "genconfig: ktp is negative."
+  "genconfig: kind is negative."
 
   character(*), parameter :: NO_C_TYPE = &
   "genconfig: no corresponding c type."
@@ -294,7 +314,7 @@ module fc_type_map
     endif
 
 !    if (log_kind .eq. c_bool) then
-!        fort_ktp_str = "c_bool"
+!        fort_kind_str = "c_bool"
 !        c_type_str = "_Bool"
 !        return
      if (log_kind .eq. c_signed_char) then

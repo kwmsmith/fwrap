@@ -23,7 +23,8 @@ def wrap(source_files, options):
     fc_ast = wrap_fc(f_ast)
     cy_ast = wrap_cy(fc_ast)
 
-    gens = [(generate_genconfig, f_ast),
+    # gens = [(generate_genconfig, f_ast),
+    gens = [(generate_type_specs, f_ast),
             (generate_fc_f, fc_ast),
             (generate_fc_h, fc_ast),
             (generate_fc_pxd, fc_ast),
@@ -72,6 +73,11 @@ def validate_args(options, args):
         os.makedirs(options.outdir)
 
     return options, args
+
+def generate_type_specs(f_ast, options):
+    buf = CodeBuffer()
+    gc.generate_type_specs(f_ast, buf)
+    return constants.TYPE_SPECS_SRC, buf
 
 def generate_genconfig(f_ast, options):
     buf = CodeBuffer()

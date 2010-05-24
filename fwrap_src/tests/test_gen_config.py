@@ -2,11 +2,50 @@ from fwrap_src import pyf_iface
 from fwrap_src import gen_config as gc
 from fwrap_src.code import CodeBuffer
 
-from nose.tools import assert_raises, ok_, eq_
+from nose.tools import assert_raises, ok_, eq_, set_trace
 
 from tutils import compare
 
 class test_genconfig(object):
+
+    def setup(self):
+        self.ctps = [
+            gc.ConfigTypeParam(basetype="integer",
+                    kind="kind(0)",
+                    fwrap_name="fwrap_default_integer"),
+            gc.ConfigTypeParam(basetype="real",
+                    kind="kind(0.0)",
+                    fwrap_name="fwrap_default_real"),
+            gc.ConfigTypeParam(basetype="logical",
+                    kind="kind(.true.)",
+                    fwrap_name="fwrap_default_logical"),
+            gc.ConfigTypeParam(basetype="complex",
+                    kind="kind((0.0,0.0))",
+                    fwrap_name="fwrap_default_complex"),
+            gc.ConfigTypeParam(basetype="character",
+                    kind="kind('a')",
+                    fwrap_name="fwrap_default_character")
+        ]
+
+    def test_gen_type_spec(self):
+
+        def _compare(ctp_dict, ctp):
+            cd = ctp_dict
+            x_ = gc.ConfigTypeParam(cd['basetype'], cd['kind'], cd['fwrap_name'])
+            eq_(x_,y)
+
+        from cPickle import loads
+        buf = CodeBuffer()
+        gc._generate_type_specs(self.ctps[:2], buf)
+        ctps = loads(buf.getvalue())
+        for x,y in zip(ctps, self.ctps[:2]):
+            _compare(x,y)
+
+        buf = CodeBuffer()
+        gc._generate_type_specs(self.ctps[2:], buf)
+        ctps = loads(buf.getvalue())
+        for x,y in zip(ctps, self.ctps[2:]):
+            _compare(x,y)
 
     def test_get_ctp_list(self):
         dtypes = pyf_iface.Dtype.all_dtypes()
@@ -22,7 +61,7 @@ class test_genconfig(object):
                     "fwrap_default_double_complex",
                     "fwrap_default_character",
                     ]))
-        ok_(set(map(lambda x: x.ktp, ctps))
+        ok_(set(map(lambda x: x.kind, ctps))
                 ==
                 set(["kind(0)",
                     "kind(0.0)",
@@ -34,25 +73,8 @@ class test_genconfig(object):
                     ]))
 
     def test_gen_genconfig_main(self):
-        ctps = [
-            gc.ConfigTypeParam(basetype="integer",
-                    ktp="kind(0)",
-                    fwrap_name="fwrap_default_integer"),
-            gc.ConfigTypeParam(basetype="real",
-                    ktp="kind(0.0)",
-                    fwrap_name="fwrap_default_real"),
-            gc.ConfigTypeParam(basetype="logical",
-                    ktp="kind(.true.)",
-                    fwrap_name="fwrap_default_logical"),
-            gc.ConfigTypeParam(basetype="complex",
-                    ktp="kind((0.0,0.0))",
-                    fwrap_name="fwrap_default_complex"),
-            gc.ConfigTypeParam(basetype="character",
-                    ktp="kind('a')",
-                    fwrap_name="fwrap_default_character")
-        ]
         buf = CodeBuffer()
-        gc.generate_genconfig_main(ctps, buf)
+        gc.generate_genconfig_main(self.ctps, buf)
         main_program = '''\
         program genconfig
             use fc_type_map
@@ -126,19 +148,19 @@ def test_raises():
 if __name__ == '__main__':
     ctps = [
         gc.ConfigTypeParam(basetype="integer",
-                ktp="kind(0)",
+                kind="kind(0)",
                 fwrap_name="fwrap_default_integer"),
         gc.ConfigTypeParam(basetype="real",
-                ktp="kind(0.0)",
+                kind="kind(0.0)",
                 fwrap_name="fwrap_default_real"),
         gc.ConfigTypeParam(basetype="logical",
-                ktp="kind(.true.)",
+                kind="kind(.true.)",
                 fwrap_name="fwrap_default_logical"),
         gc.ConfigTypeParam(basetype="complex",
-                ktp="kind((0.0,0.0))",
+                kind="kind((0.0,0.0))",
                 fwrap_name="fwrap_default_complex"),
         gc.ConfigTypeParam(basetype="character",
-                ktp="kind('a')",
+                kind="kind('a')",
                 fwrap_name="fwrap_default_character")
     ]
     buf = CodeBuffer()
