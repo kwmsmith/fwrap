@@ -74,6 +74,7 @@ name2type = {
         'doubleprecision' : pyf.default_dbl,
         'complex' : pyf.default_complex,
         'character' : pyf.default_character,
+        'logical' : pyf.default_logical,
         }
 
 def _get_dtype(typedecl):
