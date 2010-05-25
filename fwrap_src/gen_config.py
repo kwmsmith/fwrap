@@ -12,10 +12,8 @@ def generate_type_specs(ast, buf):
 def _generate_type_specs(ctps, buf):
     out_lst = []
     for ctp in ctps:
-        type_decl = '%s(odecl=%s)' % (ctp.basetype, ctp.odecl)
         out_lst.append(dict(basetype=ctp.basetype,
-                            odecl=ctp.odecl,
-                            type_decl=type_decl,
+                            type_decl=ctp.odecl,
                             fwrap_name=ctp.fwrap_name))
     buf.write(dumps(out_lst))
 
