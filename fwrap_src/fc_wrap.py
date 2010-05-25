@@ -1,6 +1,9 @@
 from fwrap_src import pyf_iface as pyf
 from fwrap_src import constants
 
+# TODO:
+#       separate out fortran/pxd/c header methods into classes
+
 def wrap_pyf_iface(ast):
     fc_wrapper = []
     for proc in ast:
@@ -204,7 +207,7 @@ class ArgWrapperManager(object):
 
     def post_call_code(self):
         all_pcc = []
-        wpprs = self.arg_wrappers
+        wpprs = self.arg_wrappers[:]
         if self.return_arg_wrapper:
             wpprs.append(self.return_arg_wrapper)
         for argw in wpprs:

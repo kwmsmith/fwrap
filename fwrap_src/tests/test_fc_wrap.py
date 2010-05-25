@@ -6,6 +6,53 @@ from tutils import compare
 
 from nose.tools import ok_, eq_, set_trace
 
+def test_generate_fc_h():
+    two_arg_func = pyf.Function(
+            name='two_arg',
+            args=[pyf.Argument(name='a',dtype=pyf.default_integer,
+                                intent='in'),
+                  pyf.Argument(name='b', dtype=pyf.default_integer,
+                                intent='in'),
+                  pyf.Argument(name='c', dtype=pyf.default_integer,
+                                intent='in'),
+                  pyf.Argument(name='d', dtype=pyf.default_integer,
+                                intent='in'),
+                  ],
+            return_type=pyf.default_real)
+    ta_wrp = fc_wrap.FunctionWrapper(wrapped=two_arg_func)
+    ast = [ta_wrp]
+    buf = CodeBuffer()
+    header_name = 'foobar'
+    fc_wrap.generate_fc_h(ast, header_name, buf)
+    code = '''\
+    #include "foobar"
+    
+    fwrap_default_real two_arg_c(fwrap_default_integer *a, fwrap_default_integer *b, fwrap_default_integer *c, fwrap_default_integer *d);
+    '''
+    compare(buf.getvalue(), code)
+
+def test_generate_fc_pxd():
+    two_arg_func = pyf.Function(
+            name='two_arg',
+            args=[pyf.Argument(name='a',dtype=pyf.default_integer,
+                                intent='in'),
+                  pyf.Argument(name='b', dtype=pyf.default_integer,
+                                intent='in')],
+            return_type=pyf.default_real)
+    ta_wrp = fc_wrap.FunctionWrapper(wrapped=two_arg_func)
+    ast = [ta_wrp]
+    buf = CodeBuffer()
+    header_name = 'foobar'
+    fc_wrap.generate_fc_pxd(ast, header_name, buf)
+    code = '''\
+    from fwrap_ktp cimport *
+
+    cdef extern from "foobar":
+        fwrap_default_real two_arg_c(fwrap_default_integer *a, fwrap_default_integer *b)
+    '''
+    compare(buf.getvalue(), code)
+
+
 def test_gen_fortran_one_arg_func():
     one_arg = pyf.Subroutine(
             name='one_arg',
