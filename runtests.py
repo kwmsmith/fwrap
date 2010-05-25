@@ -227,7 +227,7 @@ setup(cmdclass=fwrap_cmdclass, configuration=cfg)
             os.chdir(self.projdir)
             if self.projdir not in sys.path:
                 sys.path.insert(0, self.projdir)
-            run_setup(setup_fqpath, script_args=['build_ext', '--fcompiler=gnu95', '-lgfortran', '--inplace'])
+            run_setup(setup_fqpath, script_args=['config', '--fcompiler=gnu95', 'build_ext', '--fcompiler=gnu95', '-lgfortran', '--inplace'])
         finally:
             if self.projdir in sys.path:
                 sys.path.remove(self.projdir)
