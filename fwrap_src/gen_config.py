@@ -37,7 +37,7 @@ class ConfigTypeParam(object):
             if dtype.orig_ktp is None:
                 continue
             ret.append(cls(basetype=dtype.type,
-                           fwrap_name=dtype.ktp,
+                           fwrap_name=dtype.fw_ktp,
                            kind=dtype.orig_ktp))
         return ret
 

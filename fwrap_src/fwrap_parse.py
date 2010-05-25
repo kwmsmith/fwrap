@@ -68,7 +68,7 @@ def _get_intent(arg):
         raise RuntimeError("argument has multiple intents specified, '%s', %s" % (arg, intents))
     return intents[0]
 
-name2type = {
+name2default = {
         'integer' : pyf.default_integer,
         'real'    : pyf.default_real,
         'doubleprecision' : pyf.default_dbl,
@@ -77,25 +77,26 @@ name2type = {
         'logical' : pyf.default_logical,
         }
 
+name2type = {
+        'integer' : pyf.IntegerType,
+        'real' : pyf.RealType,
+        'complex' : pyf.ComplexType,
+        'character' : pyf.CharacterType,
+        'logical' : pyf.LogicalType,
+        }
+
 def _get_dtype(typedecl):
     if not typedecl.is_intrinsic():
         raise RuntimeError("only intrinsic types supported ATM... [%s]" % str(typedecl))
     if typedecl.get_length() != 1:
         raise RuntimeError("only kind specified types supported ATM, not length [%s]" % repr(typedecl))
     if typedecl.selector == ('',''):
-        return name2type[typedecl.name]
+        return name2default[typedecl.name]
     knd = typedecl.get_kind()
     try:
         int(knd)
     except ValueError:
         raise RuntimeError("only integer constant kind parameters supported ATM, given '%s'" % knd)
-    int_kind_types = {
-            'integer' : pyf.IntegerType,
-            'real' : pyf.RealType,
-            'complex' : pyf.ComplexType,
-            'character' : pyf.CharacterType,
-            'logical' : pyf.LogicalType,
-            }
     if typedecl.name == 'doubleprecision':
         return pyf.default_dbl
-    return int_kind_types[typedecl.name](ktp="%s_%s" % (typedecl.name, knd), orig_ktp=knd)
+    return name2type[typedecl.name](fw_ktp="%s_%s" % (typedecl.name, knd), orig_ktp=knd)

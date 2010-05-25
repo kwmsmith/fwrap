@@ -8,8 +8,8 @@ class InvalidNameException(Exception):
     pass
 
 # TODO: this should be collected together with the KTP_MOD_NAME constant
-def ktp_namer(ktp):
-    return "fwrap_%s" % ktp
+def ktp_namer(fw_ktp):
+    return "fwrap_%s" % fw_ktp
 
 _do_nothing = lambda x: x
 
@@ -17,23 +17,23 @@ class Dtype(object):
 
     _all_dtypes = {}
 
-    def __new__(cls, ktp, *args, **kwargs):
-        if not valid_fort_name(ktp):
+    def __new__(cls, fw_ktp, *args, **kwargs):
+        if not valid_fort_name(fw_ktp):
             raise InvalidNameException("%s is not a valid fortran parameter name.")
-        name = ktp_namer(ktp)
+        name = ktp_namer(fw_ktp)
         if name in cls._all_dtypes:
             return cls._all_dtypes[name]
         dt = super(Dtype, cls).__new__(cls)
         cls._all_dtypes[name] = dt
         return dt
 
-    def __init__(self, ktp, orig_ktp=None):
-        self.ktp = ktp_namer(ktp)
+    def __init__(self, fw_ktp, orig_ktp=None):
+        self.fw_ktp = ktp_namer(fw_ktp)
         self.orig_ktp = orig_ktp
         self.type = None
 
     def type_spec(self):
-        return '%s(%s)' % (self.type, self.ktp)
+        return '%s(%s)' % (self.type, self.fw_ktp)
 
     @classmethod
     def all_dtypes(cls):
@@ -41,50 +41,50 @@ class Dtype(object):
 
     def __str__(self):
         import pdb; pdb.set_trace()
-        return "%s(ktp=%s, orig_ktp=%s)" % (type(self), self.ktp, self.orig_ktp)
+        return "%s(fw_ktp=%s, orig_ktp=%s)" % (type(self), self.fw_ktp, self.orig_ktp)
 
 class CharacterType(Dtype):
-    def __init__(self, ktp, orig_ktp=None):
-        super(CharacterType, self).__init__(ktp, orig_ktp)
+    def __init__(self, fw_ktp, orig_ktp=None):
+        super(CharacterType, self).__init__(fw_ktp, orig_ktp)
         self.type = 'character'
 
-default_character = CharacterType(ktp="default_character", orig_ktp="kind('a')")
+default_character = CharacterType(fw_ktp="default_character", orig_ktp="kind('a')")
 
 class IntegerType(Dtype):
 
-    def __init__(self, ktp, orig_ktp=None):
-        super(IntegerType, self).__init__(ktp, orig_ktp)
+    def __init__(self, fw_ktp, orig_ktp=None):
+        super(IntegerType, self).__init__(fw_ktp, orig_ktp)
         self.type = 'integer'
 
-default_integer = IntegerType(ktp='default_integer', orig_ktp="kind(0)")
+default_integer = IntegerType(fw_ktp='default_integer', orig_ktp="kind(0)")
 
-dim_dtype = IntegerType(ktp="npy_intp", orig_ktp=None)
+dim_dtype = IntegerType(fw_ktp="npy_intp", orig_ktp=None)
 
 class LogicalType(Dtype):
 
-    def __init__(self, ktp, orig_ktp=None):
-        super(LogicalType, self).__init__(ktp, orig_ktp)
+    def __init__(self, fw_ktp, orig_ktp=None):
+        super(LogicalType, self).__init__(fw_ktp, orig_ktp)
         self.type = 'logical'
 
-default_logical = LogicalType(ktp='default_logical', orig_ktp="kind(.true.)")
+default_logical = LogicalType(fw_ktp='default_logical', orig_ktp="kind(.true.)")
 
 class RealType(Dtype):
 
-    def __init__(self, ktp, orig_ktp=None):
-        super(RealType, self).__init__(ktp, orig_ktp)
+    def __init__(self, fw_ktp, orig_ktp=None):
+        super(RealType, self).__init__(fw_ktp, orig_ktp)
         self.type = 'real'
 
-default_real = RealType(ktp='default_real', orig_ktp="kind(0.0)")
-default_dbl  = RealType(ktp='default_double', orig_ktp="kind(0.0D0)")
+default_real = RealType(fw_ktp='default_real', orig_ktp="kind(0.0)")
+default_dbl  = RealType(fw_ktp='default_double', orig_ktp="kind(0.0D0)")
 
 class ComplexType(Dtype):
 
-    def __init__(self, ktp, orig_ktp=None):
-        super(ComplexType, self).__init__(ktp, orig_ktp)
+    def __init__(self, fw_ktp, orig_ktp=None):
+        super(ComplexType, self).__init__(fw_ktp, orig_ktp)
         self.type = 'complex'
 
-default_complex = ComplexType(ktp='default_complex', orig_ktp="kind((0.0,0.0))")
-default_double_complex = ComplexType(ktp='default_double_complex', orig_ktp="kind((0.0D0,0.0D0))")
+default_complex = ComplexType(fw_ktp='default_complex', orig_ktp="kind((0.0,0.0))")
+default_double_complex = ComplexType(fw_ktp='default_double_complex', orig_ktp="kind((0.0D0,0.0D0))")
 
 class Parameter(object):
     
@@ -141,7 +141,7 @@ class Argument(object):
     dimension = property(_get_dimension)
 
     def _get_ktp(self):
-        return self._var.dtype.ktp
+        return self._var.dtype.fw_ktp
     ktp = property(_get_ktp)
 
     def _is_array(self):

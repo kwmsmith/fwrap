@@ -236,7 +236,7 @@ def _test_check():
 
 def test_logical_function():
     lgcl_fun = pyf.Function(name='lgcl_fun', args=[],
-                            return_type=pyf.LogicalType(ktp='lgcl'))
+                            return_type=pyf.LogicalType(fw_ktp='lgcl'))
     lgcl_fun_wrapped = fc_wrap.FunctionWrapper(wrapped=lgcl_fun)
     buf = CodeBuffer()
     lgcl_fun_wrapped.generate_wrapper(buf)
@@ -260,7 +260,7 @@ def test_logical_function():
 def test_logical_wrapper():
     lgcl_arg = pyf.Subroutine(name='lgcl_arg',
                            args=[pyf.Argument(name='lgcl',
-                                              dtype=pyf.LogicalType(ktp='lgcl_ktp'),
+                                              dtype=pyf.LogicalType(fw_ktp='lgcl_ktp'),
                                               intent="inout")])
     lgcl_arg_wrapped = fc_wrap.SubroutineWrapper(wrapped=lgcl_arg)
     buf = CodeBuffer()
@@ -515,7 +515,7 @@ class test_arg_wrapper_manager(object):
     
     def setup(self):
         dlgcl = pyf.default_logical
-        dint = pyf.IntegerType(ktp='int')
+        dint = pyf.IntegerType(fw_ktp='int')
         self.lgcl1 = pyf.Argument(name='lgcl1', dtype=dlgcl, intent='inout')
         self.lgcl2 = pyf.Argument(name='lgcl2', dtype=dlgcl, intent='inout')
         self.intarg = pyf.Argument(name='int', dtype=dint, intent='inout')
@@ -574,7 +574,7 @@ class test_arg_manager_return(object):
 
     def setup(self):
         dlgcl = pyf.default_logical
-        dint = pyf.IntegerType(ktp='int')
+        dint = pyf.IntegerType(fw_ktp='int')
         self.lgcl = pyf.Argument(name='ll', dtype=dlgcl, intent='out', is_return_arg=True)
         self.int = pyf.Argument(name='int', dtype=dint, intent='out', is_return_arg=True)
         self.am_lgcl = fc_wrap.ArgWrapperManager([], self.lgcl)
@@ -610,7 +610,7 @@ class test_c_proto_generation(object):
         for dtype in (pyf.default_real, pyf.default_integer):
             return_arg = pyf.Argument(name='ret_arg', dtype=dtype, is_return_arg=True)
             am = fc_wrap.ArgWrapperManager([], return_arg)
-            eq_(am.c_proto_return_type(), dtype.ktp)
+            eq_(am.c_proto_return_type(), dtype.fw_ktp)
 
         am_subr = fc_wrap.ArgWrapperManager([])
         eq_(am_subr.c_proto_return_type(), 'void')
