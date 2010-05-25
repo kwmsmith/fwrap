@@ -17,9 +17,11 @@ class Dtype(object):
 
     _all_dtypes = {}
 
-    def __new__(cls, fw_ktp, *args, **kwargs):
+    def __new__(cls, fw_ktp, odecl=None, **kwargs):
         if not valid_fort_name(fw_ktp):
             raise InvalidNameException("%s is not a valid fortran parameter name.")
+        if odecl is None:
+            return super(Dtype, cls).__new__(cls)
         name = ktp_namer(fw_ktp)
         if name in cls._all_dtypes:
             return cls._all_dtypes[name]
