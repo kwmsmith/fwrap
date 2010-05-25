@@ -20,7 +20,6 @@ class Dtype(object):
     def __new__(cls, fw_ktp, *args, **kwargs):
         if not valid_fort_name(fw_ktp):
             raise InvalidNameException("%s is not a valid fortran parameter name.")
-        # import pdb; pdb.set_trace()
         name = ktp_namer(fw_ktp)
         if name in cls._all_dtypes:
             return cls._all_dtypes[name]
@@ -30,7 +29,6 @@ class Dtype(object):
 
     def __init__(self, fw_ktp, odecl=None):
         self.fw_ktp = ktp_namer(fw_ktp)
-        # import pdb; pdb.set_trace()
         self.odecl = odecl
         self.type = None
 

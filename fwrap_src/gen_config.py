@@ -34,7 +34,6 @@ class ConfigTypeParam(object):
     def from_dtypes(cls, dtypes):
         ret = []
         for dtype in dtypes:
-            # import pdb; pdb.set_trace()
             if dtype.odecl is None:
                 continue
             ret.append(cls(basetype=dtype.type,

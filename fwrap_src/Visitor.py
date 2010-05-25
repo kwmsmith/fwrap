@@ -712,10 +712,6 @@ class CyImplGenerator(GeneratorBase):
         py_func = CySuiteCode(level=0)
         args = []; call_args = []; ret_lst = []
         for varw in arg_varws(node):
-            # no pointer types in python function argument list.
-            # if varw.is_array:
-                # import pdb; pdb.set_trace()
-            # else:
             for type_name, arg_name in varw.get_py_arg_declarations():
                 if varw.is_array:
                     args.append(arg_name)
