@@ -72,51 +72,6 @@ class test_genconfig(object):
                     "character(kind=kind('a'))",
                     ]))
 
-    def _test_gen_genconfig_main(self):
-        buf = CodeBuffer()
-        gc.generate_genconfig_main(self.ctps, buf)
-        main_program = '''\
-        program genconfig
-            use fc_type_map
-            implicit none
-            integer :: iserr
-            iserr = 0
-
-            call open_map_file(iserr)
-            if (iserr .ne. 0) then
-                print *, errmsg
-                stop 1
-            endif
-            call lookup_integer(kind(0), "fwrap_default_integer", iserr)
-            if (iserr .ne. 0) then
-                goto 100
-            endif
-            call lookup_real(kind(0.0), "fwrap_default_real", iserr)
-            if (iserr .ne. 0) then
-                goto 100
-            endif
-            call lookup_logical(kind(.true.), "fwrap_default_logical", iserr)
-            if (iserr .ne. 0) then
-                goto 100
-            endif
-            call lookup_complex(kind((0.0,0.0)), "fwrap_default_complex", iserr)
-            if (iserr .ne. 0) then
-                goto 100
-            endif
-            call lookup_character(kind('a'), "fwrap_default_character", iserr)
-            if (iserr .ne. 0) then
-                goto 100
-            endif
-            goto 200
-            100 print *, errmsg
-            call close_map_file(iserr)
-            stop 1
-            200 call close_map_file(iserr)
-        end program genconfig
-        '''
-        compare(buf.getvalue(), main_program)
-
-
 def test_gen_many():
     spec = {
             'fwrap_default_double_precision' : 'c_double',

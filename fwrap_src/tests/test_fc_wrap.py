@@ -182,57 +182,6 @@ def test_intent_hide():
     end subroutine hide_subr_c
 '''
     compare(check, buf.getvalue())
-def _test_check():
-    # this gets complicated...
-    check_subr = pyf.Subroutine('check_subr',
-                        args=[pyf.Argument('arr',
-                                        dtype=pyf.default_integer,
-                                        intent='in',
-                                        dimension=('d1','d2')),
-                              pyf.Argument('d1',
-                                        dtype=pyf.default_integer,
-                                        intent='in'),
-                              pyf.Argument('d2',
-                                        dtype=pyf.default_integer,
-                                        intent='in')],
-                        check=['d1 == size(arr, 1)',
-                               'd2 == size(arr, 2)'])
-
-    wppr = fc_wrap.SubroutineWrapper(wrapped=check_subr)
-    buf = CodeBuffer()
-    wppr.generate_wrapper(buf)
-    check = '''\
-    subroutine check_subr_c(arr_d1, arr_d2, arr, d1, d2, fw_error)
-        use fwrap_ktp_mod
-        implicit none
-        integer, intent(in) :: arr_d1
-        integer, intent(in) :: arr_d2
-        integer, dimension(arr_d1, arr_d2), intent(in) :: arr
-        integer, intent(in) :: d1
-        integer, intent(in) :: d2
-        integer, intent(out) :: fw_error
-        interface
-            subroutine check_subr(arr, d1, d2)
-                use fwrap_ktp_mod
-                implicit none
-                integer(fwrap_default_integer), intent(in) :: d1
-                integer(fwrap_default_integer), intent(in) :: d2
-                integer(fwrap_default_integer), dimension(d1, d2), intent(in) :: arr
-            end subroutine check_subr
-        end interface
-        fw_error = 0
-        if(.not. (d1 == size(arr, 1))) then
-            fw_error = 1
-            return
-        endif
-        if(.not. (d2 == size(arr, 2))) then
-            fw_error = 2
-            return
-        endif
-        call check_subr(arr, d1, d2)
-    end subroutine check_subr_c
-'''
-    compare(check, buf.getvalue())
 
 def test_logical_function():
     lgcl_fun = pyf.Function(name='lgcl_fun', args=[],
@@ -363,37 +312,6 @@ def test_many_arrays():
     arr_args_wrapped.generate_wrapper(buf)
     compare(many_arrays_text, buf.getvalue())
 
-def _test_parameters():
-    param_func = pyf.Function(name='param_func',
-                              params=[pyf.Parameter(name='FOO', dtype=pyf.default_integer, value='kind(1.0D0)'),
-                                      pyf.Parameter(name='dim', dtype=pyf.default_integer, value='100')],
-                              args=[pyf.Argument(name='arg', dtype=pyf.RealType('FOO')),
-                                    pyf.Argument(name='array', dtype=pyf.RealType('FOO'), dimension=('dim', 'dim'))],
-                              return_type=pyf.RealType('FOO'))
-    param_func_wrapped = fc_wrap.FunctionWrapper(wrapped=param_func)
-    buf = CodeBuffer()
-    param_func_wrapped.generate_wrapper(buf)
-    wrapped = '''\
-    function param_func_c(arg, array_d1, array_d2, array) bind(c, name="param_func_c")
-        use fwrap_ktp_mod
-        implicit none
-        real(fwrap_FOO) :: arg
-        integer(fwrap_npy_intp), intent(in) :: array_d1
-        integer(fwrap_npy_intp), intent(in) :: array_d2
-        real(fwrap_FOO), dimension(array_d1, array_d2) :: array
-        interface
-            function param_func(arg, array)
-                use fwrap_ktp_mod
-                implicit none
-
-            end function param_func
-        end interface
-
-        param_func_c = param_func(arg, array)
-    end function param_func_c
-'''
-    # compare(
-
 def test_declaration_order():
     arr_arg = pyf.Subroutine(name='arr_arg',
                         args=[
@@ -483,30 +401,6 @@ class test_arg_wrapper(object):
         eq_(self.lgcl_arg_wrap.intern_declarations(), [])
         eq_(self.lgcl_arg_in_wrap.intern_declarations(), [])
 
-    def _test_pre_call_code(self):
-        for argw in (self.lgcl_arg_wrap, self.lgcl_arg_in_wrap):
-            pcc = '''\
-if(%(extern_arg)s .ne. 0) then
-    %(intern_var)s = .true.
-else
-    %(intern_var)s = .false.
-end if
-''' % {'extern_arg' : argw._extern_arg.name,
-       'intern_var' : argw._intern_var.name}
-            eq_(argw.pre_call_code(), pcc.splitlines())
-
-    def _test_post_call_code_convert(self):
-        for argw in (self.lgcl_arg_wrap, self.lgcl_arg_in_wrap):
-            pcc = '''\
-if(%(intern_var)s) then
-    %(extern_arg)s = 1
-else
-    %(extern_arg)s = 0
-end if
-''' % {'extern_arg' : argw._extern_arg.name,
-       'intern_var' : argw._intern_var.name}
-            eq_(argw.post_call_code(), pcc.splitlines())
-
     def test_post_call_code(self):
         for argw in (self.lgcl_arg_wrap, self.lgcl_arg_in_wrap):
             eq_(argw.post_call_code(), [])
@@ -532,21 +426,6 @@ integer(fwrap_int), intent(inout) :: int
 '''.splitlines()
         eq_(self.am.arg_declarations(), decls)
 
-    def _test_arg_declarations_convert(self):
-        decls = '''\
-integer(fwrap_default_integer), intent(inout) :: lgcl1
-integer(fwrap_default_integer), intent(inout) :: lgcl2
-integer(fwrap_int), intent(inout) :: int
-'''.splitlines()
-        eq_(self.am.arg_declarations(), decls)
-
-    def _test_temp_declarations(self):
-        decls = '''\
-logical(fwrap_default_logical) :: lgcl1_tmp
-logical(fwrap_default_logical) :: lgcl2_tmp
-'''.splitlines()
-        eq_(self.am.temp_declarations(), decls)
-
     def test_pre_call_code(self):
         pcc = self.l1wrap.pre_call_code() + self.l2wrap.pre_call_code()
         eq_(self.am.pre_call_code(), pcc)
@@ -562,13 +441,6 @@ logical(fwrap_default_logical) :: lgcl2_tmp
     def test_call_arg_list(self):
         cl = 'lgcl1 lgcl2 int'.split()
         eq_(self.am.call_arg_list(), cl)
-
-    #TODO
-    def _test_arg_mangle_collision(self):
-        # when two passed logical arguments have the name 'lgcl' and 'lgcl_tmp'
-        # the intern_var for lgcl can't be named 'lgcl_tmp'
-        # this needs to be detected and resolved.
-        pass
 
 class test_arg_manager_return(object):
 

@@ -89,10 +89,6 @@ end function empty_func
         self.cy_wrap[0].generate_wrapper(buf2)
         compare(buf2.getvalue(), buf.getvalue())
 
-    def _test_generate_genconfig(self):
-        fname, buf = main.generate_genconfig(self.ast, self.options)
-        ok_(genconfig_code in buf.getvalue(), "'%s' \n\n not in \n\n '%s'" % (genconfig_code, buf.getvalue()))
-
     def test_generate_type_specs(self):
         from cPickle import loads
         fname, buf = main.generate_type_specs(self.ast, self.options)
