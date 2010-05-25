@@ -31,7 +31,7 @@ class test_genconfig(object):
 
         def _compare(ctp_dict, ctp):
             cd = ctp_dict
-            x_ = gc.ConfigTypeParam(cd['basetype'], cd['odecl'], cd['fwrap_name'])
+            x_ = gc.ConfigTypeParam(cd['basetype'], cd['type_decl'], cd['fwrap_name'])
             eq_(x_,y)
 
         from cPickle import loads
