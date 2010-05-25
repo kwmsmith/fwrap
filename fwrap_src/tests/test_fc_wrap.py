@@ -6,39 +6,6 @@ from tutils import compare
 
 from nose.tools import ok_, eq_, set_trace
 
-class test_empty_func(object):
-
-    def setup(self):
-        self.empty_func = pyf.Function(name='empty_func',
-                        args=(),
-                        return_type=pyf.default_integer)
-        self.buf = CodeBuffer()
-
-    def teardown(self):
-        del self.empty_func
-        del self.buf
-
-    def test_generate_header_empty_func(self):
-        pname = "DP"
-        fc_wrap.GenCHeader(pname).generate([self.empty_func], self.buf)
-        header_file = '''
-#include "config.h"
-fwrap_default_integer empty_func_c();
-'''.splitlines()
-        eq_(header_file, self.buf.getvalue().splitlines())
-
-    def test_generate_pxd_empty_func(self):
-        pname = "DP"
-        fc_wrap.GenPxd(pname).generate([self.empty_func], self.buf)
-        pxd_file = '''
-cdef extern from "config.h":
-    ctypedef int fwrap_default_integer
-
-cdef extern:
-    fwrap_default_integer empty_func_c()
-'''.splitlines()
-        eq_(pxd_file, self.buf.getvalue().splitlines())
-
 def test_gen_fortran_one_arg_func():
     one_arg = pyf.Subroutine(
             name='one_arg',
