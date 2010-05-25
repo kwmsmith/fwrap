@@ -20,6 +20,7 @@ class Dtype(object):
     def __new__(cls, fw_ktp, *args, **kwargs):
         if not valid_fort_name(fw_ktp):
             raise InvalidNameException("%s is not a valid fortran parameter name.")
+        # import pdb; pdb.set_trace()
         name = ktp_namer(fw_ktp)
         if name in cls._all_dtypes:
             return cls._all_dtypes[name]
@@ -27,9 +28,10 @@ class Dtype(object):
         cls._all_dtypes[name] = dt
         return dt
 
-    def __init__(self, fw_ktp, orig_ktp=None):
+    def __init__(self, fw_ktp, odecl=None):
         self.fw_ktp = ktp_namer(fw_ktp)
-        self.orig_ktp = orig_ktp
+        # import pdb; pdb.set_trace()
+        self.odecl = odecl
         self.type = None
 
     def type_spec(self):
@@ -40,51 +42,50 @@ class Dtype(object):
         return list(cls._all_dtypes.values())
 
     def __str__(self):
-        import pdb; pdb.set_trace()
-        return "%s(fw_ktp=%s, orig_ktp=%s)" % (type(self), self.fw_ktp, self.orig_ktp)
+        return "%s(fw_ktp=%s, odecl=%s)" % (type(self), self.fw_ktp, self.odecl)
 
 class CharacterType(Dtype):
-    def __init__(self, fw_ktp, orig_ktp=None):
-        super(CharacterType, self).__init__(fw_ktp, orig_ktp)
+    def __init__(self, fw_ktp, odecl=None):
+        super(CharacterType, self).__init__(fw_ktp, odecl)
         self.type = 'character'
 
-default_character = CharacterType(fw_ktp="default_character", orig_ktp="kind('a')")
+default_character = CharacterType(fw_ktp="default_character", odecl="character(kind=kind('a'))")
 
 class IntegerType(Dtype):
 
-    def __init__(self, fw_ktp, orig_ktp=None):
-        super(IntegerType, self).__init__(fw_ktp, orig_ktp)
+    def __init__(self, fw_ktp, odecl=None):
+        super(IntegerType, self).__init__(fw_ktp, odecl)
         self.type = 'integer'
 
-default_integer = IntegerType(fw_ktp='default_integer', orig_ktp="kind(0)")
+default_integer = IntegerType(fw_ktp='default_integer', odecl="integer(kind(0))")
 
-dim_dtype = IntegerType(fw_ktp="npy_intp", orig_ktp=None)
+dim_dtype = IntegerType(fw_ktp="npy_intp", odecl=None)
 
 class LogicalType(Dtype):
 
-    def __init__(self, fw_ktp, orig_ktp=None):
-        super(LogicalType, self).__init__(fw_ktp, orig_ktp)
+    def __init__(self, fw_ktp, odecl=None):
+        super(LogicalType, self).__init__(fw_ktp, odecl)
         self.type = 'logical'
 
-default_logical = LogicalType(fw_ktp='default_logical', orig_ktp="kind(.true.)")
+default_logical = LogicalType(fw_ktp='default_logical', odecl="logical(kind(.true.))")
 
 class RealType(Dtype):
 
-    def __init__(self, fw_ktp, orig_ktp=None):
-        super(RealType, self).__init__(fw_ktp, orig_ktp)
+    def __init__(self, fw_ktp, odecl=None):
+        super(RealType, self).__init__(fw_ktp, odecl)
         self.type = 'real'
 
-default_real = RealType(fw_ktp='default_real', orig_ktp="kind(0.0)")
-default_dbl  = RealType(fw_ktp='default_double', orig_ktp="kind(0.0D0)")
+default_real = RealType(fw_ktp='default_real', odecl="real(kind(0.0))")
+default_dbl  = RealType(fw_ktp='default_double', odecl="real(kind(0.0D0))")
 
 class ComplexType(Dtype):
 
-    def __init__(self, fw_ktp, orig_ktp=None):
-        super(ComplexType, self).__init__(fw_ktp, orig_ktp)
+    def __init__(self, fw_ktp, odecl=None):
+        super(ComplexType, self).__init__(fw_ktp, odecl)
         self.type = 'complex'
 
-default_complex = ComplexType(fw_ktp='default_complex', orig_ktp="kind((0.0,0.0))")
-default_double_complex = ComplexType(fw_ktp='default_double_complex', orig_ktp="kind((0.0D0,0.0D0))")
+default_complex = ComplexType(fw_ktp='default_complex', odecl="complex(kind((0.0,0.0)))")
+default_double_complex = ComplexType(fw_ktp='default_double_complex', odecl="complex(kind((0.0D0,0.0D0)))")
 
 class Parameter(object):
     

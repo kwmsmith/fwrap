@@ -89,7 +89,7 @@ end function empty_func
         self.cy_wrap[0].generate_wrapper(buf2)
         compare(buf2.getvalue(), buf.getvalue())
 
-    def test_generate_genconfig(self):
+    def _test_generate_genconfig(self):
         fname, buf = main.generate_genconfig(self.ast, self.options)
         ok_(genconfig_code in buf.getvalue(), "'%s' \n\n not in \n\n '%s'" % (genconfig_code, buf.getvalue()))
 
@@ -99,7 +99,7 @@ end function empty_func
         ctps = loads(buf.getvalue())
         for ctp in ctps:
             ok_(isinstance(ctp, dict))
-            eq_(sorted(ctp.keys()), ['basetype', 'fwrap_name', 'kind', 'type_decl'])
+            eq_(sorted(ctp.keys()), ['basetype', 'fwrap_name', 'odecl', 'type_decl'])
         
 
 genconfig_code = '''\

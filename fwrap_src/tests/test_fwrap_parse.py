@@ -77,5 +77,4 @@ function int_args_func(a,b,c,d)
 end function int_args_func
 '''
     func = fp.generate_ast([fcode])[0]
-    for arg in func.args:
-        ok_(int(arg.dtype.orig_ktp) in (1, 2, 4, 8))
+    eq_([arg.dtype.odecl for arg in func.args], ["integer(kind=%d)" % i for i in (1,2,4,8)])

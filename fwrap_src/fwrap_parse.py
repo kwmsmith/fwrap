@@ -99,4 +99,4 @@ def _get_dtype(typedecl):
         raise RuntimeError("only integer constant kind parameters supported ATM, given '%s'" % knd)
     if typedecl.name == 'doubleprecision':
         return pyf.default_dbl
-    return name2type[typedecl.name](fw_ktp="%s_%s" % (typedecl.name, knd), orig_ktp=knd)
+    return name2type[typedecl.name](fw_ktp="%s_%s" % (typedecl.name, knd), odecl=knd)

@@ -12,38 +12,39 @@ def generate_type_specs(ast, buf):
 def _generate_type_specs(ctps, buf):
     out_lst = []
     for ctp in ctps:
-        type_decl = '%s(kind=%s)' % (ctp.basetype, ctp.kind)
+        type_decl = '%s(odecl=%s)' % (ctp.basetype, ctp.odecl)
         out_lst.append(dict(basetype=ctp.basetype,
-                            kind=ctp.kind,
+                            odecl=ctp.odecl,
                             type_decl=type_decl,
                             fwrap_name=ctp.fwrap_name))
     buf.write(dumps(out_lst))
 
 class ConfigTypeParam(object):
 
-    def __init__(self, basetype, kind, fwrap_name):
+    def __init__(self, basetype, odecl, fwrap_name):
         self.basetype = basetype
-        self.kind = kind
+        self.odecl = odecl
         self.fwrap_name = fwrap_name
 
     def generate_call(self, buf):
-        templ = 'call lookup_%(basetype)s(%(kind)s, "%(fwrap_name)s", iserr)'
+        templ = 'call lookup_%(basetype)s(%(odecl)s, "%(fwrap_name)s", iserr)'
         buf.putln(templ % self.__dict__)
 
     @classmethod
     def from_dtypes(cls, dtypes):
         ret = []
         for dtype in dtypes:
-            if dtype.orig_ktp is None:
+            # import pdb; pdb.set_trace()
+            if dtype.odecl is None:
                 continue
             ret.append(cls(basetype=dtype.type,
                            fwrap_name=dtype.fw_ktp,
-                           kind=dtype.orig_ktp))
+                           odecl=dtype.odecl))
         return ret
 
     def __eq__(self, other):
         return self.basetype == other.basetype and \
-                self.kind == other.kind and \
+                self.odecl == other.odecl and \
                 self.fwrap_name == other.fwrap_name
 
 def put_preamble(buf):
