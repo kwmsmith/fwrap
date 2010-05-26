@@ -86,13 +86,14 @@ class FwrapOptions(object):
 
 class FwrapTestBuilder(object):
     def __init__(self, rootdir, workdir, selectors, exclude_selectors,
-            cleanup_workdir, cleanup_sharedlibs):
+            cleanup_workdir, cleanup_sharedlibs, fcompiler):
         self.rootdir = rootdir
         self.workdir = workdir
         self.selectors = selectors
         self.exclude_selectors = exclude_selectors
         self.cleanup_workdir = cleanup_workdir
         self.cleanup_sharedlibs = cleanup_sharedlibs
+        self.fcompiler = fcompiler
 
     def build_suite(self):
         suite = unittest.TestSuite()
@@ -136,7 +137,8 @@ class FwrapTestBuilder(object):
     def build_test(self, test_class, path, workdir, filename):
         return test_class(path, workdir, filename,
                 cleanup_workdir=self.cleanup_workdir,
-                cleanup_sharedlibs=self.cleanup_sharedlibs)
+                cleanup_sharedlibs=self.cleanup_sharedlibs,
+                fcompiler=self.fcompiler)
 
 class _devnull(object):
 
@@ -148,12 +150,13 @@ class _devnull(object):
 
 class FwrapCompileTestCase(unittest.TestCase):
     def __init__(self, directory, workdir, filename,
-            cleanup_workdir=True, cleanup_sharedlibs=True):
+            cleanup_workdir=True, cleanup_sharedlibs=True, fcompiler=None):
         self.directory = directory
         self.workdir = workdir
         self.filename = filename
         self.cleanup_workdir = cleanup_workdir
         self.cleanup_sharedlibs = cleanup_sharedlibs
+        self.fcompiler = fcompiler
         unittest.TestCase.__init__(self)
 
     def shortDescription(self):
@@ -223,11 +226,12 @@ setup(cmdclass=fwrap_cmdclass, configuration=cfg)
         shutil.copy(os.path.join(self.directory, self.filename), self.projdir)
         from distutils.core import run_setup
         thisdir = os.path.abspath(os.curdir)
+        fcomp_arg = '--fcompiler=%s' % (self.fcompiler or 'gnu95')
         try:
             os.chdir(self.projdir)
             if self.projdir not in sys.path:
                 sys.path.insert(0, self.projdir)
-            run_setup(setup_fqpath, script_args=['config', '--fcompiler=gnu95', 'build_ext', '--fcompiler=gnu95', '-lgfortran', '--inplace'])
+            run_setup(setup_fqpath, script_args=['config', fcomp_arg, 'build_ext', fcomp_arg, '--inplace'])
         finally:
             if self.projdir in sys.path:
                 sys.path.remove(self.projdir)
@@ -727,6 +731,9 @@ if __name__ == '__main__':
     parser.add_option("-T", "--ticket", dest="tickets",
                       action="append",
                       help="a bug ticket number to run the respective test in 'tests/bugs'")
+    parser.add_option('--fcompiler', dest="fcompiler",
+                      default="gnu95",
+                      help="specify the fortran compiler to use in tests")
 
     options, cmd_args = parser.parse_args()
 
@@ -847,7 +854,7 @@ if __name__ == '__main__':
     # if 0
 
     filetests = FwrapTestBuilder(ROOTDIR, WORKDIR, selectors, exclude_selectors,
-            options.cleanup_workdir, options.cleanup_sharedlibs)
+            options.cleanup_workdir, options.cleanup_sharedlibs, options.fcompiler)
     test_suite.addTest(filetests.build_suite())
 
     if 0:
