@@ -106,9 +106,10 @@ def generate_genconfig(ast, buf):
     generate_genconfig_main(ctps, buf)
 
 def extract_ctps(ast):
-    dtypes = []
+    dtypes = set()
     for proc in ast:
-        dtypes.extend(proc.all_dtypes())
+        dtypes.update(proc.all_dtypes())
+    dtypes = list(dtypes)
     return ConfigTypeParam.from_dtypes(dtypes)
 
 class GenConfigException(Exception):
