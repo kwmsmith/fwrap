@@ -138,8 +138,8 @@ module fwrap_ktp_mod
 def write_header(fname, fw2c):
     h_out = open(fname, 'w')
     try:
-        h_out.write("#ifndef %s\n" % fname.upper())
-        h_out.write("#define %s\n" % fname.upper())
+        h_out.write("#ifndef %s\n" % fname.upper().replace('.','_'))
+        h_out.write("#define %s\n" % fname.upper().replace('.', '_'))
         for fw_name, fc_type in fw2c:
             c_type = f2c[fc_type]
             h_out.write('typedef %s %s;\n' % (c_type, fw_name))
