@@ -47,30 +47,6 @@ class test_genconfig(object):
         for x,y in zip(ctps, self.ctps[2:]):
             _compare(x,y)
 
-    def test_get_ctp_list(self):
-        dtypes = pyf_iface.Dtype.all_dtypes()
-        ok_(dtypes)
-        ctps = gc.ConfigTypeParam.from_dtypes(dtypes)
-        ok_(set(map(lambda x: x.fwrap_name, ctps))
-                >
-                set(["fwrap_default_integer",
-                    "fwrap_default_real",
-                    "fwrap_default_logical",
-                    "fwrap_default_double",
-                    "fwrap_default_complex",
-                    "fwrap_default_double_complex",
-                    "fwrap_default_character",
-                    ]))
-        ok_(set(map(lambda x: x.odecl, ctps))
-                >
-                set(["integer(kind(0))",
-                    "real(kind(0.0))",
-                    "real(kind(0.0D0))",
-                    "complex(kind((0.0,0.0)))",
-                    "complex(kind((0.0D0,0.0D0)))",
-                    "logical(kind(.true.))",
-                    "character(kind=kind('a'))",
-                    ]))
 
 def test_gen_many():
     spec = {

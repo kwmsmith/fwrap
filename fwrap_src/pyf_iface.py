@@ -15,31 +15,23 @@ _do_nothing = lambda x: x
 
 class Dtype(object):
 
-    _all_dtypes = {}
+    def __hash__(self):
+        return hash(self.fw_ktp + (self.odecl or '') + self.type)
 
-    def __new__(cls, fw_ktp, odecl=None, **kwargs):
-        if not valid_fort_name(fw_ktp):
-            raise InvalidNameException("%s is not a valid fortran parameter name.")
-        if odecl is None:
-            return super(Dtype, cls).__new__(cls)
-        name = ktp_namer(fw_ktp)
-        if name in cls._all_dtypes:
-            return cls._all_dtypes[name]
-        dt = super(Dtype, cls).__new__(cls)
-        cls._all_dtypes[name] = dt
-        return dt
+    def __eq__(self, other):
+        return self.fw_ktp == other.fw_ktp and \
+                self.odecl == other.odecl and \
+                self.type == other.type
 
     def __init__(self, fw_ktp, odecl=None):
+        if not valid_fort_name(fw_ktp):
+            raise InvalidNameException("%s is not a valid fortran parameter name.")
         self.fw_ktp = ktp_namer(fw_ktp)
         self.odecl = odecl
         self.type = None
 
     def type_spec(self):
         return '%s(%s)' % (self.type, self.fw_ktp)
-
-    @classmethod
-    def all_dtypes(cls):
-        return list(cls._all_dtypes.values())
 
     def __str__(self):
         return "%s(fw_ktp=%s, odecl=%s)" % (type(self), self.fw_ktp, self.odecl)
