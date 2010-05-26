@@ -112,6 +112,7 @@ def find_fc_type(base_type, decl, config_cmd):
         test_decl = '%s(kind=%s)' % (base_type, ctype)
         fsrc = fsrc_tmpl % {'TYPE_DECL' : decl,
                             'TEST_DECL' : test_decl}
+        print fsrc
         if config_cmd.try_compile(body=fsrc, lang='f90'):
             res = ctype
             break
@@ -160,12 +161,12 @@ fsrc_tmpl = '''
 subroutine outer(a)
   use, intrinsic :: iso_c_binding
   implicit none
-  %(TEST_DECL)s :: a
+  %(TEST_DECL)s, intent(inout) :: a
   interface
     subroutine inner(a)
       use, intrinsic :: iso_c_binding
       implicit none
-      %(TYPE_DECL)s :: a
+      %(TYPE_DECL)s, intent(inout) :: a
     end subroutine inner
   end interface
   call inner(a)
