@@ -23,7 +23,7 @@ class CyArgWrapper(object):
         self.arg = arg
 
     def extern_declarations(self):
-        if self.arg.intent in ('in', 'inout'):
+        if self.arg.intent in ('in', 'inout', None):
             return ["%s %s" % (self.arg.get_ktp(), self.arg.get_name())]
         return []
 
@@ -48,7 +48,7 @@ class CyArgWrapper(object):
         return []
 
     def return_tuple_list(self):
-        if self.arg.intent in ('out', 'inout'):
+        if self.arg.intent in ('out', 'inout', None):
             return [self.arg.get_name()]
         return []
 
@@ -109,8 +109,20 @@ class CyArgWrapperManager(object):
             decls.extend(arg.extern_declarations())
         return decls
 
+    def intern_declarations(self):
+        decls = []
+        for arg in self.args:
+            decls.extend(arg.intern_declarations())
+        return decls
+
     def return_arg_declaration(self):
         return ["cdef %s %s" % (self.return_type_name, FW_RETURN_VAR_NAME)]
+
+    def return_tuple_list(self):
+        rtl = []
+        for arg in self.args:
+            rtl.extend(arg.return_tuple_list())
+        return rtl
 
 def wrap_fc(ast):
     ret = []
@@ -155,14 +167,17 @@ class ProcWrapper(object):
             return '%s = %s' % (FW_RETURN_VAR_NAME, proc_call)
 
     def temp_declarations(self):
+        decls = self.arg_mgr.intern_declarations()
         if self.wrapped.kind == 'function':
-            return self.arg_mgr.return_arg_declaration()
-        else:
-            return []
+            decls.extend(self.arg_mgr.return_arg_declaration())
+        return decls
 
-    def return_statement(self):
+    def return_tuple(self):
+        ret_arg_list = []
         if self.wrapped.kind == 'function':
-            return 'return (%s,)' % FW_RETURN_VAR_NAME
+            ret_arg_list.append(FW_RETURN_VAR_NAME)
+        ret_arg_list.extend(self.arg_mgr.return_tuple_list())
+        return "return (%s,)" % ", ".join(ret_arg_list)
 
     def generate_wrapper(self, buf):
         buf.putln(self.proc_declaration())
@@ -170,6 +185,5 @@ class ProcWrapper(object):
         for decl in self.temp_declarations():
             buf.putln(decl)
         buf.putln(self.proc_call())
-        if self.wrapped.kind == 'function':
-            buf.putln(self.return_statement())
+        buf.putln(self.return_tuple())
         buf.dedent()

@@ -56,12 +56,15 @@ def _get_args(proc):
 
 def _get_intent(arg):
     intents = []
-    if arg.is_intent_in():
-        intents.append("in")
-    if arg.is_intent_inout():
+    if not arg.intent:
         intents.append("inout")
-    if arg.is_intent_out():
-        intents.append("out")
+    else:
+        if arg.is_intent_in():
+            intents.append("in")
+        if arg.is_intent_inout():
+            intents.append("inout")
+        if arg.is_intent_out():
+            intents.append("out")
     if not intents:
         raise RuntimeError("argument has no intent specified, '%s'" % arg)
     if len(intents) > 1:

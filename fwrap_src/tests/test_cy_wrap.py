@@ -87,6 +87,26 @@ class test_cy_arg_intents(object):
         eq_(self.intent_inout.return_tuple_list(), ['name'])
         eq_(self.intent_out.return_tuple_list(), ['name'])
 
+class test_cy_mgr_intents(object):
+
+    def setup(self):
+        self.dts = ('default_integer', 'default_real', 'default_logical')
+        self.intents = ('in', 'out', 'inout')
+        names = ['name'+str(i) for i in range(3)]
+        self.caws = make_caws(self.dts, names, self.intents)
+        self.mgr = cy_wrap.CyArgWrapperManager(args=self.caws,
+                                    return_type_name='fwrap_default_integer')
+
+    def test_arg_declarations(self):
+        eq_(self.mgr.arg_declarations(), ['fwrap_default_integer name0',
+                                          'fwrap_default_logical name2'])
+
+    def test_intern_declarations(self):
+        eq_(self.mgr.intern_declarations(), ['cdef fwrap_default_real name1'])
+
+    def test_return_tuple_list(self):
+        eq_(self.mgr.return_tuple_list(), ['name1', 'name2'])
+
 class test_cy_arg_wrapper(object):
 
     def setup(self):
@@ -167,12 +187,15 @@ class test_cy_arg_wrapper_mgr(object):
 class test_cy_proc_wrapper(object):
 
     def setup(self):
-        int_arg = pyf.Argument("int_arg", pyf.default_integer, 'in')
-        real_arg = pyf.Argument("real_arg", pyf.default_real, 'in')
+        int_arg_in = pyf.Argument("int_arg_in", pyf.default_integer, 'in')
+        int_arg_inout = pyf.Argument("int_arg_inout", pyf.default_integer, 'inout')
+        int_arg_out = pyf.Argument("int_arg_out", pyf.default_integer, 'out')
+        real_arg = pyf.Argument("real_arg", pyf.default_real)
+        all_args = [int_arg_in, int_arg_inout, int_arg_out, real_arg]
 
         pyf_func = pyf.Function(
                                 name="fort_func",
-                                args=[int_arg, real_arg],
+                                args=all_args,
                                 return_type=pyf.default_integer)
         func_wrapper = fc_wrap.FunctionWrapper(
                                 wrapped=pyf_func)
@@ -181,7 +204,7 @@ class test_cy_proc_wrapper(object):
 
         pyf_subr = pyf.Subroutine(
                             name="fort_subr",
-                            args=[real_arg, int_arg])
+                            args=all_args)
         subr_wrapper = fc_wrap.SubroutineWrapper(
                             wrapped=pyf_subr)
         self.cy_subr_wrapper = cy_wrap.ProcWrapper(
@@ -189,47 +212,59 @@ class test_cy_proc_wrapper(object):
 
     def test_func_proc_declaration(self):
         eq_(self.cy_func_wrapper.proc_declaration(),
-            "cpdef api object"
-            " fort_func(fwrap_default_integer int_arg,"
-            " fwrap_default_real real_arg):")
+            'cpdef api object'
+            ' fort_func(fwrap_default_integer int_arg_in,'
+            ' fwrap_default_integer int_arg_inout,'
+            ' fwrap_default_real real_arg):')
 
     def test_subr_proc_declaration(self):
         eq_(self.cy_subr_wrapper.proc_declaration(),
-            "cpdef api object"
-            " fort_subr(fwrap_default_real real_arg,"
-            " fwrap_default_integer int_arg):")
+            'cpdef api object'
+            ' fort_subr(fwrap_default_integer int_arg_in,'
+            ' fwrap_default_integer int_arg_inout,'
+            ' fwrap_default_real real_arg):')
 
     def test_subr_call(self):
         eq_(self.cy_subr_wrapper.proc_call(),
-                "fort_subr_c(&real_arg, &int_arg)")
+                'fort_subr_c(&int_arg_in,'
+                ' &int_arg_inout, &int_arg_out,'
+                ' &real_arg)')
 
     def test_func_call(self):
         eq_(self.cy_func_wrapper.proc_call(),
-                "fwrap_return_var = fort_func_c(&int_arg, &real_arg)")
+                'fwrap_return_var = '
+                'fort_func_c(&int_arg_in,'
+                ' &int_arg_inout, &int_arg_out,'
+                ' &real_arg)')
 
     def test_subr_declarations(self):
-        eq_(self.cy_subr_wrapper.temp_declarations(), [])
+        eq_(self.cy_subr_wrapper.temp_declarations(),
+                    ['cdef fwrap_default_integer int_arg_out'])
 
     def test_func_declarations(self):
         eq_(self.cy_func_wrapper.temp_declarations(),
-                ["cdef fwrap_default_integer fwrap_return_var"])
+                    ['cdef fwrap_default_integer int_arg_out',
+                     "cdef fwrap_default_integer fwrap_return_var"])
 
     def test_subr_generate_wrapper(self):
         buf = CodeBuffer()
         self.cy_subr_wrapper.generate_wrapper(buf)
         cy_wrapper = '''\
-        cpdef api object fort_subr(fwrap_default_real real_arg, fwrap_default_integer int_arg):
-            fort_subr_c(&real_arg, &int_arg)
-        '''
+        cpdef api object fort_subr(fwrap_default_integer int_arg_in, fwrap_default_integer int_arg_inout, fwrap_default_real real_arg):
+            cdef fwrap_default_integer int_arg_out
+            fort_subr_c(&int_arg_in, &int_arg_inout, &int_arg_out, &real_arg)
+            return (int_arg_inout, int_arg_out, real_arg,)
+'''
         compare(cy_wrapper, buf.getvalue())
 
     def test_func_generate_wrapper(self):
         buf = CodeBuffer()
         self.cy_func_wrapper.generate_wrapper(buf)
         cy_wrapper = '''\
-        cpdef api object fort_func(fwrap_default_integer int_arg, fwrap_default_real real_arg):
+        cpdef api object fort_func(fwrap_default_integer int_arg_in, fwrap_default_integer int_arg_inout, fwrap_default_real real_arg):
+            cdef fwrap_default_integer int_arg_out
             cdef fwrap_default_integer fwrap_return_var
-            fwrap_return_var = fort_func_c(&int_arg, &real_arg)
-            return (fwrap_return_var,)
+            fwrap_return_var = fort_func_c(&int_arg_in, &int_arg_inout, &int_arg_out, &real_arg)
+            return (fwrap_return_var, int_arg_inout, int_arg_out, real_arg,)
         '''
         compare(cy_wrapper, buf.getvalue())
