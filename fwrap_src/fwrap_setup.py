@@ -1,10 +1,24 @@
-import os
+import os, sys
 
 from numpy.distutils.command.config import config as np_config, old_config
 from numpy.distutils.command.build_src import build_src as np_build_src
 from numpy.distutils.command.scons import scons as npscons
 from Cython.Distutils import build_ext as cy_build_ext
-from numpy.distutils.core import setup
+from numpy.distutils.core import setup as np_setup
+
+def setup(log='fwrap_setup.log', *args, **kwargs):
+    if log:
+        _old_stdout, _old_stderr = sys.stdout, sys.stderr
+        log = open(log, 'w')
+        sys.stdout = log
+        sys.stderr = log
+    try:
+        np_setup(*args, **kwargs)
+    finally:
+        if log:
+            log.flush()
+            log.close()
+            sys.stdout, sys.stderr = _old_stdout, _old_stderr
 
 def configuration(projname, extra_sources=None):
     def _configuration(parent_package='', top_path=None):
