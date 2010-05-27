@@ -23,9 +23,13 @@ class CyArgWrapper(object):
         self.arg = arg
 
     def extern_declarations(self):
-        return ["%s %s" % (self.arg.get_ktp(), self.arg.get_name())]
+        if self.arg.intent in ('in', 'inout'):
+            return ["%s %s" % (self.arg.get_ktp(), self.arg.get_name())]
+        return []
 
     def intern_declarations(self):
+        if self.arg.intent == 'out':
+            return ["cdef %s %s" % (self.arg.get_ktp(), self.arg.get_name())]
         return []
 
     def intern_name(self):
@@ -33,6 +37,21 @@ class CyArgWrapper(object):
 
     def call_arg_list(self):
         return ["&%s" % self.arg.get_name()]
+
+    def get_name(self):
+        return self.arg.get_name()
+
+    def post_call_code(self):
+        return []
+
+    def pre_call_code(self):
+        return []
+
+    def return_tuple_list(self):
+        if self.arg.intent in ('out', 'inout'):
+            return [self.arg.get_name()]
+        return []
+
 
 class CyArrayArgWrapper(object):
 

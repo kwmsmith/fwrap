@@ -36,19 +36,62 @@ cpdef api DP_c.fwrap_default_int empty_func()
 '''.splitlines()
         eq_(pxd_wrapper, self.buf.getvalue().splitlines())
 
+def make_caws(dts, names, intents=None):
+    if intents is None:
+        intents = ('in',)*len(dts)
+    caws = []
+    for dt, name, intent in zip(dts, names, intents):
+        arg = pyf.Argument(
+                    name,
+                    dtype=getattr(pyf, dt),
+                    intent=intent)
+        fc_arg = fc_wrap.ArgWrapper(arg)
+        caws.append(cy_wrap.CyArgWrapper(fc_arg))
+    return caws
+
+class test_cy_arg_intents(object):
+
+    def setup(self):
+        self.dts = ('default_integer', 'default_real', 'default_logical')
+        self.intents = ('in', 'out', 'inout')
+        self.caws = make_caws(self.dts, ['name']*len(self.dts), self.intents)
+        self.intent_in, self.intent_out, self.intent_inout = self.caws
+
+    def test_pre_call_code(self):
+        eq_(self.intent_in.pre_call_code(), [])
+        eq_(self.intent_inout.pre_call_code(), [])
+        eq_(self.intent_out.pre_call_code(), [])
+
+    def test_post_call_code(self):
+        eq_(self.intent_in.post_call_code(), [])
+        eq_(self.intent_out.post_call_code(), [])
+        eq_(self.intent_inout.post_call_code(), [])
+
+    def test_call_arg_list(self):
+        eq_(self.intent_in.call_arg_list(), ['&name'])
+        eq_(self.intent_inout.call_arg_list(), ['&name'])
+        eq_(self.intent_out.call_arg_list(), ['&name'])
+
+    def test_extern_declarations(self):
+        eq_(self.intent_in.extern_declarations(), ['fwrap_default_integer name'])
+        eq_(self.intent_inout.extern_declarations(), ['fwrap_default_logical name'])
+        eq_(self.intent_out.extern_declarations(), [])
+
+    def test_intern_declarations(self):
+        eq_(self.intent_in.intern_declarations(), [])
+        eq_(self.intent_inout.intern_declarations(), [])
+        eq_(self.intent_out.intern_declarations(), ['cdef fwrap_default_real name'])
+
+    def test_return_tuple_list(self):
+        eq_(self.intent_in.return_tuple_list(), [])
+        eq_(self.intent_inout.return_tuple_list(), ['name'])
+        eq_(self.intent_out.return_tuple_list(), ['name'])
 
 class test_cy_arg_wrapper(object):
 
     def setup(self):
         self.dts = ('default_integer', 'default_real')
-        self.caws = []
-        for dt in self.dts:
-            arg = pyf.Argument(
-                        'foo',
-                        dtype=getattr(pyf, dt),
-                        intent='in')
-            fc_arg = fc_wrap.ArgWrapper(arg)
-            self.caws.append(cy_wrap.CyArgWrapper(fc_arg))
+        self.caws = make_caws(self.dts, ['foo']*len(self.dts))
 
     def test_extern_declarations(self):
         for dt, caw in zip(self.dts, self.caws):

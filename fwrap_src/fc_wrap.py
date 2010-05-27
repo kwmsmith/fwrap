@@ -277,6 +277,11 @@ class ArgWrapper(ArgWrapperBase):
     def c_declarations(self):
         return [self._extern_arg.c_declaration()]
 
+    def _get_intent(self):
+        return self._extern_arg.intent
+
+    intent = property(_get_intent)
+
 class HideArgWrapper(ArgWrapperBase):
 
     def __init__(self, arg):
