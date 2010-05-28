@@ -1,4 +1,28 @@
+# The monkey patches, method overrides, etc. in this file are here to patch
+# numpy.distutils for fwrap's purposes.
+
 import os, sys
+
+from numpy.distutils import exec_command as np_exec_command
+orig_exec_command = np_exec_command.exec_command
+
+def fw_exec_command( command,
+                  execute_in='', use_shell=None, use_tee = None,
+                  _with_python = 1,
+                  **env ):
+    return orig_exec_command(command,
+            execute_in=execute_in,
+            use_shell=use_shell,
+            use_tee=0, # we override this to control output.
+            _with_python=_with_python,
+            **env)
+
+np_exec_command.exec_command = fw_exec_command
+
+from numpy.distutils import ccompiler
+ccompiler.exec_command = fw_exec_command
+from numpy.distutils import unixccompiler
+unixccompiler.exec_command = fw_exec_command
 
 from numpy.distutils.command.config import config as np_config, old_config
 from numpy.distutils.command.build_src import build_src as np_build_src
@@ -28,17 +52,6 @@ def configuration(projname, extra_sources=None):
         def generate_type_config(ext, build_dir):
             config_cmd = config.get_config_cmd()
             return gen_type_map_files(config_cmd)
-
-        def _generate_type_config(ext, build_dir):
-            source = 'genconfig.f90'
-            config_cmd = config.get_config_cmd()
-            fh = open(source,'r')
-            gc_src = fh.read()
-            fh.close()
-            config_cmd.try_run(body=gc_src, lang='f90')
-            # add in fwrap_numpy_intp type
-
-            return "fwrap_ktp_mod.f90"
 
         sources = [generate_type_config] + \
                    (extra_sources or []) + \
