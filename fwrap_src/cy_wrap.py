@@ -1,3 +1,4 @@
+import pyf_iface
 import constants
 
 def generate_pyx(program_unit_list, buf):
@@ -17,19 +18,27 @@ cpdef api DP_c.fwrap_default_int empty_func()
 '''
 )
 
-class CyArgWrapper(object):
+def CyArgWrapper(arg):
+    if isinstance(arg.dtype, pyf_iface.ComplexType):
+        return _CyCmplxArg(arg)
+    return _CyArgWrapper(arg)
+
+class _CyArgWrapper(object):
 
     def __init__(self, arg):
         self.arg = arg
 
+    def cy_dtype_name(self):
+        return self.arg.get_ktp()
+
     def extern_declarations(self):
         if self.arg.intent in ('in', 'inout', None):
-            return ["%s %s" % (self.arg.get_ktp(), self.arg.get_name())]
+            return ["%s %s" % (self.cy_dtype_name(), self.arg.get_name())]
         return []
 
     def intern_declarations(self):
         if self.arg.intent == 'out':
-            return ["cdef %s %s" % (self.arg.get_ktp(), self.arg.get_name())]
+            return ["cdef %s %s" % (self.cy_dtype_name(), self.arg.get_name())]
         return []
 
     def intern_name(self):
@@ -52,6 +61,17 @@ class CyArgWrapper(object):
             return [self.arg.get_name()]
         return []
 
+class _CyCmplxArg(_CyArgWrapper):
+
+    def __init__(self, arg):
+        super(_CyCmplxArg, self).__init__(arg)
+    
+    def cy_dtype_name(self):
+        return "cy_%s" % self.arg.get_ktp()
+
+    def intern_declarations(self):
+        ids = super(_CyCmplxArg, self).intern_declarations()
+        return ids + ['cdef %s fw_%s' % (self.arg.get_ktp(), self.arg.get_name())]
 
 class CyArrayArgWrapper(object):
 

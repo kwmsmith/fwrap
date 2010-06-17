@@ -249,6 +249,7 @@ class ArgWrapper(ArgWrapperBase):
         self._orig_arg = arg
         self._extern_arg = arg
         self._intern_var = None
+        self.dtype = self._extern_arg.dtype
 
     def intern_name(self):
         if self._intern_var:

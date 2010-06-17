@@ -156,6 +156,39 @@ class test_cy_array_arg_wrapper(object):
                  ['&int_array_.shape[0]',
                  '<fwrap_default_integer*>int_array_.data'])
 
+class test_cmplx_args(object):
+
+    def setup(self):
+        self.intents = ('in', 'out', 'inout', None)
+        self.dts = ('default_complex',)*len(self.intents)
+        self.caws = make_caws(self.dts, ['name']*len(self.intents), self.intents)
+        self.intent_in, self.intent_out, self.intent_inout, \
+                self.intent_none = self.caws
+
+    def test_extern_declarations(self):
+        eq_(self.intent_in.extern_declarations(),
+                ['cy_fwrap_default_complex name'])
+        eq_(self.intent_inout.extern_declarations(),
+                ['cy_fwrap_default_complex name'])
+        eq_(self.intent_none.extern_declarations(),
+                ['cy_fwrap_default_complex name'])
+
+    def test_intern_declarations(self):
+        eq_(self.intent_out.intern_declarations(),
+                ['cdef cy_fwrap_default_complex name',
+                 'cdef fwrap_default_complex fw_name'])
+        eq_(self.intent_in.intern_declarations(),
+                ['cdef fwrap_default_complex fw_name'])
+        eq_(self.intent_inout.intern_declarations(),
+                ['cdef fwrap_default_complex fw_name'])
+        eq_(self.intent_none.intern_declarations(),
+                ['cdef fwrap_default_complex fw_name'])
+
+    def test_pre_call_code(self):
+        eq_(self.intent_in.pre_call_code(),
+                [])
+        
+
 class test_cy_arg_wrapper_mgr(object):
 
     def setup(self):
