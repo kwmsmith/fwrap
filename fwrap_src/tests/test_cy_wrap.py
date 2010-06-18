@@ -186,8 +186,20 @@ class test_cmplx_args(object):
 
     def test_pre_call_code(self):
         eq_(self.intent_in.pre_call_code(),
+                ['CyComplex2fwrap_default_complex(name, fw_name)'])
+        eq_(self.intent_out.pre_call_code(),
                 [])
-        
+
+    def test_post_call_code(self):
+        eq_(self.intent_out.post_call_code(),
+                ['fwrap_default_complex2CyComplex(fw_name, name)'])
+        eq_(self.intent_in.post_call_code(),
+                [])
+
+    def test_call_arg_list(self):
+        eq_(self.intent_in.call_arg_list(), ['&fw_name'])
+        eq_(self.intent_out.call_arg_list(), ['&fw_name'])
+        eq_(self.intent_none.call_arg_list(), ['&fw_name'])
 
 class test_cy_arg_wrapper_mgr(object):
 

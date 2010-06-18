@@ -65,13 +65,31 @@ class _CyCmplxArg(_CyArgWrapper):
 
     def __init__(self, arg):
         super(_CyCmplxArg, self).__init__(arg)
+        self.intern_name = 'fw_%s' % self.arg.get_name()
     
     def cy_dtype_name(self):
         return "cy_%s" % self.arg.get_ktp()
 
     def intern_declarations(self):
         ids = super(_CyCmplxArg, self).intern_declarations()
-        return ids + ['cdef %s fw_%s' % (self.arg.get_ktp(), self.arg.get_name())]
+        return ids + ['cdef %s %s' % (self.arg.get_ktp(), self.intern_name)]
+
+    def pre_call_code(self):
+        if self.arg.intent in ('in', 'inout', None):
+            return ['CyComplex2%s(%s, %s)' % (self.arg.get_ktp(),
+                                              self.arg.get_name(),
+                                              self.intern_name)]
+        return []
+
+    def post_call_code(self):
+        if self.arg.intent in ('out', 'inout', None):
+            return ['%s2CyComplex(%s, %s)' % (self.arg.get_ktp(),
+                                              self.intern_name,
+                                              self.arg.get_name())]
+        return []
+
+    def call_arg_list(self):
+        return ['&%s' % self.intern_name]
 
 class CyArrayArgWrapper(object):
 
