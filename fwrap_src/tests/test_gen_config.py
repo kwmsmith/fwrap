@@ -6,6 +6,16 @@ from nose.tools import assert_raises, ok_, eq_, set_trace
 
 from tutils import compare
 
+def mock_f2c_types(ctps, *args):
+    mp = {'fwrap_default_integer' : 'c_int',
+          'fwrap_default_real' : 'c_float',
+          'fwrap_default_logical' : 'c_int',
+          'fwrap_default_complex' : 'c_float_complex',
+          'fwrap_default_character' : 'c_char'
+          }
+    for ctp in ctps:
+        ctp.c_type = mp[ctp.fwrap_name]
+
 class test_genconfig(object):
 
     def setup(self):
@@ -26,12 +36,18 @@ class test_genconfig(object):
                     odecl="character(kind=kind('a'))",
                     fwrap_name="fwrap_default_character")
         ]
+        self.int, self.real, self.log, self.cmplx, self.char = self.ctps
+
+    def test_gen_f_mod(self):
+        mock_f2c_types(self.ctps)
+        eq_(self.int.gen_f_mod(), ['integer, parameter :: fwrap_default_integer = c_int'])
+        eq_(self.cmplx.gen_f_mod(), ['integer, parameter :: fwrap_default_complex = c_float_complex'])
 
     def test_gen_type_spec(self):
 
         def _compare(ctp_dict, ctp):
             cd = ctp_dict
-            x_ = gc.ConfigTypeParam(cd['basetype'], cd['type_decl'], cd['fwrap_name'])
+            x_ = gc.ConfigTypeParam(cd['basetype'], cd['odecl'], cd['fwrap_name'])
             eq_(x_,y)
 
         from cPickle import loads

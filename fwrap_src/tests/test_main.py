@@ -95,7 +95,7 @@ end function empty_func
         ctps = loads(buf.getvalue())
         for ctp in ctps:
             ok_(isinstance(ctp, dict))
-            eq_(sorted(ctp.keys()), ['basetype', 'fwrap_name', 'type_decl'])
+            eq_(sorted(ctp.keys()), ['basetype', 'fwrap_name', 'odecl'])
         
 
 genconfig_code = '''\

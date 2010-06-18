@@ -13,7 +13,7 @@ def _generate_type_specs(ctps, buf):
     out_lst = []
     for ctp in ctps:
         out_lst.append(dict(basetype=ctp.basetype,
-                            type_decl=ctp.odecl,
+                            odecl=ctp.odecl,
                             fwrap_name=ctp.fwrap_name))
     buf.write(dumps(out_lst))
 
@@ -23,6 +23,7 @@ class ConfigTypeParam(object):
         self.basetype = basetype
         self.odecl = odecl
         self.fwrap_name = fwrap_name
+        self.c_type = None
 
     @classmethod
     def from_dtypes(cls, dtypes):
@@ -39,6 +40,11 @@ class ConfigTypeParam(object):
         return self.basetype == other.basetype and \
                 self.odecl == other.odecl and \
                 self.fwrap_name == other.fwrap_name
+
+    def gen_f_mod(self):
+        if self.c_type is None:
+            raise RuntimeError("c_type is None, unable to generate fortran type information.")
+        return ['integer, parameter :: %s = %s' % (self.fwrap_name, self.c_type)]
 
 def extract_ctps(ast):
     dtypes = set()
