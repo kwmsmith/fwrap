@@ -201,6 +201,11 @@ class test_cmplx_args(object):
         eq_(self.intent_out.call_arg_list(), ['&fw_name'])
         eq_(self.intent_none.call_arg_list(), ['&fw_name'])
 
+    def test_return_tuple_list(self):
+        eq_(self.intent_inout.return_tuple_list(), ['name'])
+        eq_(self.intent_out.return_tuple_list(), ['name'])
+        eq_(self.intent_in.return_tuple_list(), [])
+
 class test_cy_arg_wrapper_mgr(object):
 
     def setup(self):
