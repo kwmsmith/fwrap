@@ -288,13 +288,18 @@ class test_cy_proc_wrapper(object):
                 ' &real_arg)')
 
     def test_subr_declarations(self):
-        eq_(self.cy_subr_wrapper.temp_declarations(),
-                    ['cdef fwrap_default_integer int_arg_out'])
+        buf = CodeBuffer()
+        self.cy_subr_wrapper.temp_declarations(buf)
+        compare(buf.getvalue(), 'cdef fwrap_default_integer int_arg_out')
 
     def test_func_declarations(self):
-        eq_(self.cy_func_wrapper.temp_declarations(),
-                    ['cdef fwrap_default_integer int_arg_out',
-                     "cdef fwrap_default_integer fwrap_return_var"])
+        buf = CodeBuffer()
+        self.cy_func_wrapper.temp_declarations(buf)
+        decls = '''\
+                cdef fwrap_default_integer int_arg_out
+                cdef fwrap_default_integer fwrap_return_var
+                '''
+        compare(buf.getvalue(), decls)
 
     def test_subr_generate_wrapper(self):
         buf = CodeBuffer()
