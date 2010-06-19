@@ -162,6 +162,18 @@ class CyArgWrapperManager(object):
             rtl.extend(arg.return_tuple_list())
         return rtl
 
+    def pre_call_code(self):
+        pcc = []
+        for arg in self.args:
+            pcc.extend(arg.pre_call_code())
+        return pcc
+
+    def post_call_code(self):
+        pcc = []
+        for arg in self.args:
+            pcc.extend(arg.post_call_code())
+        return pcc
+
 def wrap_fc(ast):
     ret = []
     for proc in ast:
@@ -204,11 +216,12 @@ class ProcWrapper(object):
         else:
             return '%s = %s' % (FW_RETURN_VAR_NAME, proc_call)
 
-    def temp_declarations(self):
+    def temp_declarations(self, buf):
         decls = self.arg_mgr.intern_declarations()
         if self.wrapped.kind == 'function':
             decls.extend(self.arg_mgr.return_arg_declaration())
-        return decls
+        for line in decls:
+            buf.putln(line)
 
     def return_tuple(self):
         ret_arg_list = []
@@ -217,11 +230,20 @@ class ProcWrapper(object):
         ret_arg_list.extend(self.arg_mgr.return_tuple_list())
         return "return (%s,)" % ", ".join(ret_arg_list)
 
+    def pre_call_code(self, buf):
+        for line in self.arg_mgr.pre_call_code():
+            buf.putln(line)
+
+    def post_call_code(self, buf):
+        for line in self.arg_mgr.post_call_code():
+            buf.putln(line)
+
     def generate_wrapper(self, buf):
         buf.putln(self.proc_declaration())
         buf.indent()
-        for decl in self.temp_declarations():
-            buf.putln(decl)
+        self.temp_declarations(buf)
+        self.pre_call_code(buf)
         buf.putln(self.proc_call())
+        self.post_call_code(buf)
         buf.putln(self.return_tuple())
         buf.dedent()

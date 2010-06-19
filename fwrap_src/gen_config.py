@@ -2,8 +2,62 @@ from cPickle import dumps
 from fwrap_src import pyf_iface
 import constants
 
-NON_ERR_LABEL = 200
-ERR_LABEL = 100
+def read_type_spec(fname):
+    from cPickle import loads
+    fh = open(fname, 'rb')
+    ds = loads(fh.read())
+    fh.close()
+    return [ConfigTypeParam(**d) for d in ds]
+
+def write_f_mod(fname, ctps):
+    f_out = open(fname, 'w')
+    try:
+        f_out.write('''
+module fwrap_ktp_mod
+    use iso_c_binding
+    implicit none
+''')
+        for ctp in ctps:
+            for line in ctp.gen_f_mod():
+                f_out.write('    %s\n' % line)
+        f_out.write('end module fwrap_ktp_mod\n')
+    finally:
+        f_out.close()
+
+def write_header(fname, ctps):
+    h_out = open(fname, 'w')
+    try:
+        h_out.write("#ifndef %s\n" % fname.upper().replace('.','_'))
+        h_out.write("#define %s\n" % fname.upper().replace('.', '_'))
+        for ctp in ctps:
+            for line in ctp.gen_c_includes():
+                h_out.write(line+'\n')
+        for ctp in ctps:
+            for line in ctp.gen_c_typedef():
+                h_out.write(line+'\n')
+        for ctp in ctps:
+            for line in ctp.gen_c_extra():
+                h_out.write(line+'\n')
+
+        h_out.write("#endif")
+    finally:
+        h_out.close()
+
+def write_pxd(fname, h_name, ctps):
+    pxd_out = open(fname, 'w')
+    try:
+        for ctp in ctps:
+            for line in ctp.gen_pxd_intern_typedef():
+                pxd_out.write(line+'\n')
+        pxd_out.write('cdef extern from "%s":\n' % h_name)
+        for ctp in ctps:
+            for line in ctp.gen_pxd_extern_typedef():
+                pxd_out.write('    '+line+'\n')
+        for ctp in ctps:
+            for line in ctp.gen_pxd_extern_extra():
+                pxd_out.write('    '+line+'\n')
+    finally:
+        pxd_out.close()
 
 def generate_type_specs(ast, buf):
     ctps = extract_ctps(ast)
@@ -46,7 +100,7 @@ class _ConfigTypeParam(object):
         self.basetype = basetype
         self.odecl = odecl
         self.fwrap_name = fwrap_name
-        self.c_type = None
+        self.fc_type = None
 
     def __eq__(self, other):
         return self.basetype == other.basetype and \
@@ -57,13 +111,13 @@ class _ConfigTypeParam(object):
         return self.fwrap_name
 
     def check_init(self):
-        if self.c_type is None:
-            raise RuntimeError("c_type is None, unable to "
+        if self.fc_type is None:
+            raise RuntimeError("fc_type is None, unable to "
                                "generate fortran type information.")
 
     def gen_f_mod(self):
         self.check_init()
-        return ['integer, parameter :: %s = %s' % (self.fwrap_name, self.c_type)]
+        return ['integer, parameter :: %s = %s' % (self.fwrap_name, self.fc_type)]
 
     def gen_c_extra(self):
         return []
@@ -73,14 +127,14 @@ class _ConfigTypeParam(object):
 
     def gen_c_typedef(self):
         self.check_init()
-        return ['typedef %s %s;' % (f2c[self.c_type], self.fwrap_name)]
+        return ['typedef %s %s;' % (f2c[self.fc_type], self.fwrap_name)]
 
     def gen_pxd_extern_extra(self):
         return []
 
     def gen_pxd_extern_typedef(self):
         self.check_init()
-        return ['ctypedef %s %s' % (f2c[self.c_type], self.fwrap_name)]
+        return ['ctypedef %s %s' % (f2c[self.fc_type], self.fwrap_name)]
 
     def gen_pxd_intern_typedef(self):
         return []
@@ -111,7 +165,7 @@ class _CmplxTypeParam(_ConfigTypeParam):
 """ % {'ktp' : self.fwrap_name}]
 
     def gen_pxd_extern_extra(self):
-        ctype = f2c[self._c2r_map[self.c_type]]
+        ctype = f2c[self._c2r_map[self.fc_type]]
         fktp = self.fwrap_name
         cyktp = self.cy_name()
         d = {'fktp' : fktp,
@@ -124,11 +178,11 @@ class _CmplxTypeParam(_ConfigTypeParam):
 
     def gen_pxd_extern_typedef(self):
         self.check_init()
-        return ['ctypedef %s %s' % (f2c[self._c2r_map[self.c_type]], self.fwrap_name)]
+        return ['ctypedef %s %s' % (f2c[self._c2r_map[self.fc_type]], self.fwrap_name)]
 
     def gen_pxd_intern_typedef(self):
         self.check_init()
-        return ['ctypedef %s %s' % (self._c2cy_map[self.c_type], self.cy_name())]
+        return ['ctypedef %s %s' % (self._c2cy_map[self.fc_type], self.cy_name())]
 
     def cy_name(self):
         return "cy_%s" % self.fwrap_name

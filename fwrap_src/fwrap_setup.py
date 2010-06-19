@@ -3,6 +3,8 @@
 
 import os, sys
 
+from fwrap_src import gen_config as gc
+
 from numpy.distutils import exec_command as np_exec_command
 orig_exec_command = np_exec_command.exec_command
 
@@ -66,37 +68,28 @@ def configuration(projname, extra_sources=None):
     return _configuration
 
 def gen_type_map_files(config_cmd):
-    ctps = read_type_spec('fwrap_type_specs.in')
-    fw2c = get_fw2c(ctps, config_cmd)
-    write_f_mod('fwrap_ktp_mod.f90', fw2c)
-    write_header('fwrap_ktp_header.h', fw2c)
-    write_pxd('fwrap_ktp.pxd', 'fwrap_ktp_header.h', fw2c)
+    ctps = gc.read_type_spec('fwrap_type_specs.in')
+    find_fc_types(ctps, config_cmd)
+    gc.write_f_mod('fwrap_ktp_mod.f90', ctps)
+    gc.write_header('fwrap_ktp_header.h', ctps)
+    gc.write_pxd('fwrap_ktp.pxd', 'fwrap_ktp_header.h', ctps)
     return 'fwrap_ktp_mod.f90'
 
-def read_type_spec(fname):
-    from cPickle import loads
-    fh = open(fname, 'r')
-    ctps = loads(fh.read())
-    fh.close()
-    return ctps
-
-def get_fw2c(ctps, config_cmd):
-    fw2c = []
+def find_fc_types(ctps, config_cmd):
     for ctp in ctps:
-        fc_type = find_fc_type(ctp['basetype'],
-                    ctp['type_decl'], config_cmd)
+        fc_type = find_fc_type(ctp.basetype,
+                    ctp.odecl, config_cmd)
         if not fc_type:
             raise RuntimeError(
-                    "unable to find C type for type %s" % ctp['type_decl'])
-        fw2c.append((ctp['fwrap_name'], fc_type))
-    return fw2c
+                    "unable to find C type for type %s" % ctp.odecl)
+        ctp.fc_type = fc_type
 
 fc_type_memo = {}
 def find_fc_type(base_type, decl, config_cmd):
     res = fc_type_memo.get((base_type, decl), None)
     if res is not None:
         return res
-    for ctype in type_dict[base_type]:
+    for ctype in gc.type_dict[base_type]:
         test_decl = '%s(kind=%s)' % (base_type, ctype)
         fsrc = fsrc_tmpl % {'TYPE_DECL' : decl,
                             'TEST_DECL' : test_decl}
@@ -108,42 +101,6 @@ def find_fc_type(base_type, decl, config_cmd):
         res = ''
     fc_type_memo[base_type, decl] = res
     return res
-
-def write_f_mod(fname, fw2c):
-    f_out = open(fname, 'w')
-    try:
-        f_out.write('''
-module fwrap_ktp_mod
-    use iso_c_binding
-    implicit none
-''')
-        for fw_name, c_type in fw2c:
-            f_out.write('    integer, parameter :: %s = %s\n' % (fw_name, c_type))
-        f_out.write('end module fwrap_ktp_mod\n')
-    finally:
-        f_out.close()
-
-def write_header(fname, fw2c):
-    h_out = open(fname, 'w')
-    try:
-        h_out.write("#ifndef %s\n" % fname.upper().replace('.','_'))
-        h_out.write("#define %s\n" % fname.upper().replace('.', '_'))
-        for fw_name, fc_type in fw2c:
-            c_type = f2c[fc_type]
-            h_out.write('typedef %s %s;\n' % (c_type, fw_name))
-        h_out.write("#endif")
-    finally:
-        h_out.close()
-
-def write_pxd(fname, h_name, fw2c):
-    pxd_out = open(fname, 'w')
-    try:
-        pxd_out.write('cdef extern from "%s":\n' % h_name)
-        for fw_name, fc_type in fw2c:
-            c_type = f2c[fc_type]
-            pxd_out.write('    ctypedef %s %s\n' % (c_type, fw_name))
-    finally:
-        pxd_out.close()
 
 fsrc_tmpl = '''
 subroutine outer(a)

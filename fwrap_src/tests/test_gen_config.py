@@ -14,7 +14,7 @@ def mock_f2c_types(ctps, *args):
           'fwrap_default_character' : 'c_char'
           }
     for ctp in ctps:
-        ctp.c_type = mp[ctp.fwrap_name]
+        ctp.fc_type = mp[ctp.fwrap_name]
 
 class test_genconfig(object):
 
@@ -68,15 +68,11 @@ class test_genconfig(object):
 
         eq_(self.int.gen_pxd_extern_extra(), [])
         eq_(self.cmplx.gen_pxd_extern_extra(),
-                [
-                 'float fwrap_default_complex_creal(fwrap_default_complex fdc)',
+                [ 'float fwrap_default_complex_creal(fwrap_default_complex fdc)',
                  'float fwrap_default_complex_cimag(fwrap_default_complex fdc)',
                  'void CyComplex2fwrap_default_complex(cy_fwrap_default_complex cy, fwrap_default_complex fc)',
-                 'void fwrap_default_complex2CyComplex(fwrap_default_complex fc, cy_fwrap_default_complex cy)',
-                ]
+                 'void fwrap_default_complex2CyComplex(fwrap_default_complex fc, cy_fwrap_default_complex cy)', ]
             )
-
-                
 
     def test_gen_type_spec(self):
 
