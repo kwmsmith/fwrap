@@ -37,11 +37,46 @@ class test_genconfig(object):
                     fwrap_name="fwrap_default_character")
         ]
         self.int, self.real, self.log, self.cmplx, self.char = self.ctps
+        mock_f2c_types(self.ctps)
 
     def test_gen_f_mod(self):
-        mock_f2c_types(self.ctps)
         eq_(self.int.gen_f_mod(), ['integer, parameter :: fwrap_default_integer = c_int'])
         eq_(self.cmplx.gen_f_mod(), ['integer, parameter :: fwrap_default_complex = c_float_complex'])
+
+    def test_gen_header(self):
+        eq_(self.int.gen_c_includes(), [])
+        eq_(self.int.gen_c_typedef(), ['typedef int fwrap_default_integer;'])
+        eq_(self.int.gen_c_extra(), [])
+        eq_(self.cmplx.gen_c_typedef(),
+                ['typedef float _Complex fwrap_default_complex;'])
+        eq_(self.cmplx.gen_c_includes(), ['#include <complex.h>'])
+        eq_(self.cmplx.gen_c_extra(),
+                ["""\
+#define %(ktp)s_creal(x) (creal(x))
+#define %(ktp)s_cimag(x) (cimag(x))
+#define CyComplex2%(ktp)s(x, y) (y = (__Pyx_CREAL(x) + _Complex_I * __Pyx_CIMAG(x)))
+#define %(ktp)s2CyComplex(y, x) __Pyx_SET_CREAL(x, fwrap_default_complex_creal(y)); \
+                           __Pyx_SET_CIMAG(x, fwrap_default_complex_cimag(y))
+""" % {'ktp' : self.cmplx.fwrap_name}])
+
+    def test_gen_pxd(self):
+        eq_(self.int.gen_pxd_extern_typedef(), ['ctypedef int fwrap_default_integer'])
+        eq_(self.cmplx.gen_pxd_extern_typedef(), ['ctypedef float fwrap_default_complex'])
+
+        eq_(self.int.gen_pxd_intern_typedef(), [])
+        eq_(self.cmplx.gen_pxd_intern_typedef(), ['ctypedef float complex cy_fwrap_default_complex'])
+
+        eq_(self.int.gen_pxd_extern_extra(), [])
+        eq_(self.cmplx.gen_pxd_extern_extra(),
+                [
+                 'float fwrap_default_complex_creal(fwrap_default_complex fdc)',
+                 'float fwrap_default_complex_cimag(fwrap_default_complex fdc)',
+                 'void CyComplex2fwrap_default_complex(cy_fwrap_default_complex cy, fwrap_default_complex fc)',
+                 'void fwrap_default_complex2CyComplex(fwrap_default_complex fc, cy_fwrap_default_complex cy)',
+                ]
+            )
+
+                
 
     def test_gen_type_spec(self):
 

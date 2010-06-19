@@ -161,46 +161,6 @@ subroutine outer(a)
 end subroutine outer
 '''
 
-type_dict = {
-        'integer' : ('c_signed_char', 'c_short', 'c_int',
-                  'c_long', 'c_long_long'),
-        'real' : ('c_float', 'c_double', 'c_long_double'),
-        'complex' : ('c_float_complex', 'c_double_complex', 'c_long_double_complex'),
-        'character' : ('c_char',),
-        }
-type_dict['logical'] = type_dict['integer']
-
-f2c = {
-    'c_int'             : 'int',
-    'c_short'           : 'short int',
-    'c_long'            : 'long int',
-    'c_long_long'       : 'long long int',
-    'c_signed_char'     : 'signed char',
-    'c_size_t'          : 'size_t',
-    'c_int8_t'          : 'int8_t',
-    'c_int16_t'         : 'int16_t',
-    'c_int32_t'         : 'int32_t',
-    'c_int64_t'         : 'int64_t',
-    'c_int_least8_t'    : 'int_least8_t',
-    'c_int_least16_t'   : 'int_least16_t',
-    'c_int_least32_t'   : 'int_least32_t',
-    'c_int_least64_t'   : 'int_least64_t',
-    'c_int_fast8_t'     : 'int_fast8_t',
-    'c_int_fast16_t'    : 'int_fast16_t',
-    'c_int_fast32_t'    : 'int_fast32_t',
-    'c_int_fast64_t'    : 'int_fast64_t',
-    'c_intmax_t'        : 'intmax_t',
-    'c_intptr_t'        : 'intptr_t',
-    'c_float'           : 'float',
-    'c_double'          : 'double',
-    'c_long_double'     : 'long double',
-    'c_float_complex'   : 'float _Complex',
-    'c_double_complex'  : 'double _Complex',
-    'c_long_double_complex' : 'long double _Complex',
-    'c_bool'            : '_Bool',
-    'c_char'            : 'char',
-    }
-
 class fw_build_ext(np_build_ext):
 
     def build_extension(self, ext):
