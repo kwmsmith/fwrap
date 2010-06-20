@@ -13,6 +13,6 @@ subroutine bar(a,b,c,d,e,f,g)
     d = 3
     e = 4
     f = 5
-    g = 6
+    g = 'a'
 
 end subroutine bar

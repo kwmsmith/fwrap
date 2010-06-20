@@ -232,6 +232,9 @@ setup(cmdclass=fwrap_cmdclass, configuration=cfg)
             if self.projdir not in sys.path:
                 sys.path.insert(0, self.projdir)
             run_setup(setup_fqpath, script_args=['config', fcomp_arg, 'build_ext', fcomp_arg, '--inplace'])
+            if not (os.path.isfile('%s.so' % self.projname) or 
+                    os.path.isfile('%s.dll' % self.projname)):
+                raise RuntimeError("compilation failed for %s, see log for details." % self.projname)
         finally:
             if self.projdir in sys.path:
                 sys.path.remove(self.projdir)
