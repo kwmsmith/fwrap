@@ -142,9 +142,9 @@ class test_cy_array_arg_wrapper(object):
 
     def test_intern_declarations(self):
         eq_(self.cy_arg.intern_declarations(),
-                ["cdef np.ndarray[fwrap_default_real, ndim=3, mode='fortran'] array_ = array",])
+                ["cdef np.ndarray[fwrap_default_real, ndim=3, mode='fortran'] array_",])
         eq_(self.cy_int_arg.intern_declarations(),
-                ["cdef np.ndarray[fwrap_default_integer, ndim=1, mode='fortran'] int_array_ = int_array",])
+                ["cdef np.ndarray[fwrap_default_integer, ndim=1, mode='fortran'] int_array_",])
 
     def test_call_arg_list(self):
         eq_(self.cy_arg.call_arg_list(),
@@ -155,6 +155,19 @@ class test_cy_array_arg_wrapper(object):
         eq_(self.cy_int_arg.call_arg_list(),
                  ['&int_array_.shape[0]',
                  '<fwrap_default_integer*>int_array_.data'])
+
+    def test_pre_call_code(self):
+        eq_(self.cy_arg.pre_call_code(), ["array_ = array",])
+        eq_(self.cy_int_arg.pre_call_code(), ["int_array_ = int_array",])
+
+    def test_post_call_code(self):
+        eq_(self.cy_arg.post_call_code(), [])
+        eq_(self.cy_int_arg.post_call_code(), [])
+
+    def test_return_tuple_list(self):
+        eq_(self.cy_arg.return_tuple_list(), [])
+        eq_(self.cy_int_arg.return_tuple_list(), [])
+
 
 class test_cmplx_args(object):
 

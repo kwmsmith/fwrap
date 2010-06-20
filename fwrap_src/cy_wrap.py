@@ -100,11 +100,10 @@ class CyArrayArgWrapper(object):
         return ['object %s' % self.arg.intern_name()]
 
     def intern_declarations(self):
-        return ["cdef np.ndarray[%s, ndim=%d, mode='fortran'] %s_ = %s" % \
+        return ["cdef np.ndarray[%s, ndim=%d, mode='fortran'] %s_" % \
                 (self.arg.get_ktp(),
                  self.arg.get_ndims(),
-                 self.arg.intern_name(),
-                 self.arg.intern_name())
+                 self.arg.intern_name(),)
                 ]
                  
     def call_arg_list(self):
@@ -112,6 +111,15 @@ class CyArrayArgWrapper(object):
                                 for i in range(self.arg.get_ndims())])
         data = '<%s*>%s_.data' % (self.arg.get_ktp(), self.arg.intern_name())
         return list(shapes) + [data]
+
+    def pre_call_code(self):
+        return ["%s_ = %s" % (self.arg.intern_name(), self.arg.intern_name())]
+
+    def post_call_code(self):
+        return []
+
+    def return_tuple_list(self):
+        return []
 
 FW_RETURN_VAR_NAME = 'fwrap_return_var'
 class CyArgWrapperManager(object):
