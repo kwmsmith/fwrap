@@ -150,9 +150,9 @@ class test_cy_array_arg_wrapper(object):
 
     def test_call_arg_list(self):
         eq_(self.cy_arg.call_arg_list(),
-                ['&array_.shape[2]',
+                ['&array_.shape[0]',
                  '&array_.shape[1]',
-                 '&array_.shape[0]',
+                 '&array_.shape[2]',
                  '<fwrap_default_real*>array_.data'])
         eq_(self.cy_int_arg.call_arg_list(),
                  ['&int_array_.shape[0]',

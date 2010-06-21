@@ -108,8 +108,8 @@ class CyArrayArgWrapper(object):
                 ]
                  
     def call_arg_list(self):
-        shapes = reversed(['&%s.shape[%d]' % (self.intern_name, i) \
-                                for i in range(self.arg.get_ndims())])
+        shapes = ['&%s.shape[%d]' % (self.intern_name, i) \
+                                for i in range(self.arg.get_ndims())]
         data = '<%s*>%s.data' % (self.arg.get_ktp(), self.intern_name)
         return list(shapes) + [data]
 
