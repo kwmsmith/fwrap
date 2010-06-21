@@ -68,7 +68,8 @@ def _generate_type_specs(ctps, buf):
     for ctp in ctps:
         out_lst.append(dict(basetype=ctp.basetype,
                             odecl=ctp.odecl,
-                            fwrap_name=ctp.fwrap_name))
+                            fwrap_name=ctp.fwrap_name,
+                            lang=ctp.lang))
     buf.write(dumps(out_lst))
 
 def extract_ctps(ast):
@@ -85,16 +86,24 @@ def ctps_from_dtypes(dtypes):
             continue
         ret.append(ConfigTypeParam(basetype=dtype.type,
                        fwrap_name=dtype.fw_ktp,
-                       odecl=dtype.odecl))
+                       odecl=dtype.odecl,
+                       lang=dtype.lang))
     return ret
 
-def ConfigTypeParam(basetype, odecl, fwrap_name):
-    if basetype == 'complex':
-        return _CmplxTypeParam(basetype, odecl, fwrap_name)
+def ConfigTypeParam(basetype, odecl, fwrap_name, lang='fortran'):
+    if lang == 'c':
+        return _CConfigTypeParam(basetype, odecl, fwrap_name)
+    elif lang == 'fortran':
+        if basetype == 'complex':
+            return _CmplxTypeParam(basetype, odecl, fwrap_name)
+        else:
+            return _ConfigTypeParam(basetype, odecl, fwrap_name)
     else:
-        return _ConfigTypeParam(basetype, odecl, fwrap_name)
+        raise ValueError("unknown language '%s' not one of 'c' or 'fortran'" % lang)
 
 class _ConfigTypeParam(object):
+
+    lang = 'fortran'
 
     def __init__(self, basetype, odecl, fwrap_name):
         self.basetype = basetype
@@ -187,6 +196,11 @@ class _CmplxTypeParam(_ConfigTypeParam):
     def cy_name(self):
         return "cy_%s" % self.fwrap_name
 
+
+class _CConfigTypeParam(_ConfigTypeParam):
+
+    lang = 'c'
+
 f2c = {
     'c_int'             : 'int',
     'c_short'           : 'short int',
@@ -217,6 +231,8 @@ f2c = {
     'c_bool'            : '_Bool',
     'c_char'            : 'char',
     }
+
+c2f = dict([(y,x) for (x,y) in f2c.items()])
 
 type_dict = {
         'integer' : ('c_signed_char', 'c_short', 'c_int',

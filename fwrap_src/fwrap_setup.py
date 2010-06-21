@@ -69,20 +69,40 @@ def configuration(projname, extra_sources=None):
 
 def gen_type_map_files(config_cmd):
     ctps = gc.read_type_spec('fwrap_type_specs.in')
-    find_fc_types(ctps, config_cmd)
+    find_types(ctps, config_cmd)
     gc.write_f_mod('fwrap_ktp_mod.f90', ctps)
     gc.write_header('fwrap_ktp_header.h', ctps)
     gc.write_pxd('fwrap_ktp.pxd', 'fwrap_ktp_header.h', ctps)
     return 'fwrap_ktp_mod.f90'
 
-def find_fc_types(ctps, config_cmd):
+def find_types(ctps, config_cmd):
     for ctp in ctps:
-        fc_type = find_fc_type(ctp.basetype,
-                    ctp.odecl, config_cmd)
+        fc_type = None
+        if ctp.lang == 'fortran':
+            fc_type = find_fc_type(ctp.basetype,
+                        ctp.odecl, config_cmd)
+        elif ctp.lang == 'c':
+            fc_type = find_c_type(ctp, config_cmd)
         if not fc_type:
             raise RuntimeError(
                     "unable to find C type for type %s" % ctp.odecl)
         ctp.fc_type = fc_type
+
+def find_c_type(ctp, config_cmd):
+    import numpy
+    from distutils.sysconfig import get_python_inc
+    if ctp.lang != 'c':
+        raise ValueError("wrong language, given %s, expected 'c'" % ctp.lang)
+    if ctp.basetype != 'integer':
+        raise ValueError("only integer basetype supported for C type discovery.")
+    basetypes = ('signed char', 'short int', 'int', 'long int', 'long long int')
+    expected = ['sizeof(%s)' % basetype for basetype in basetypes]
+    result = config_cmd.check_type_size(type_name=ctp.odecl,
+                    headers=['Python.h', 'numpy/arrayobject.h'],
+                    include_dirs=[get_python_inc(), numpy.get_include()],
+                    expected=expected)
+    c_type = dict(zip(expected, basetypes))[result]
+    return gc.c2f[c_type]
 
 fc_type_memo = {}
 def find_fc_type(base_type, decl, config_cmd):

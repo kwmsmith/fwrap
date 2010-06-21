@@ -80,7 +80,7 @@
 
       do l = 1, size(arr0,1)
           do m = 1, size(arr0,2)
-              print *, arr0(m,l)
+              print *, arr0(m,l,1)
           enddo
       enddo
 

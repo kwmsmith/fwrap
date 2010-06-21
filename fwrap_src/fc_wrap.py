@@ -348,6 +348,11 @@ class ArrayArgWrapper(ArgWrapperBase):
     def extern_arg_list(self):
         return [arg.name for arg in self._extern_args]
 
+    def _get_intent(self):
+        return self._orig_arg.intent
+
+    intent = property(_get_intent)
+
 class LogicalWrapper(ArgWrapper):
 
     def __init__(self, arg):

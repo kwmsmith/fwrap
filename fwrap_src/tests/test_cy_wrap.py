@@ -131,7 +131,7 @@ class test_cy_array_arg_wrapper(object):
         arg1 = pyf.Argument('array', dtype=pyf.default_real,
                             dimension=[':']*3, intent='in')
         arg2 = pyf.Argument('int_array', dtype=pyf.default_integer,
-                            dimension=[':']*1, intent='in')
+                            dimension=[':']*1, intent='inout')
         fc_arg = fc_wrap.ArrayArgWrapper(arg1)
         self.cy_arg = cy_wrap.CyArrayArgWrapper(fc_arg)
         self.cy_int_arg = cy_wrap.CyArrayArgWrapper(fc_wrap.ArrayArgWrapper(arg2))
@@ -142,9 +142,11 @@ class test_cy_array_arg_wrapper(object):
 
     def test_intern_declarations(self):
         eq_(self.cy_arg.intern_declarations(),
-                ["cdef np.ndarray[fwrap_default_real, ndim=3, mode='fortran'] array_",])
+                ["cdef np.ndarray[fwrap_default_real, "
+                 "ndim=3, mode='fortran'] array_",])
         eq_(self.cy_int_arg.intern_declarations(),
-                ["cdef np.ndarray[fwrap_default_integer, ndim=1, mode='fortran'] int_array_",])
+                ["cdef np.ndarray[fwrap_default_integer, "
+                 "ndim=1, mode='fortran'] int_array_",])
 
     def test_call_arg_list(self):
         eq_(self.cy_arg.call_arg_list(),
@@ -166,7 +168,7 @@ class test_cy_array_arg_wrapper(object):
 
     def test_return_tuple_list(self):
         eq_(self.cy_arg.return_tuple_list(), [])
-        eq_(self.cy_int_arg.return_tuple_list(), [])
+        eq_(self.cy_int_arg.return_tuple_list(), ["int_array_"])
 
 
 class test_cmplx_args(object):

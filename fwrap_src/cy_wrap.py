@@ -95,30 +95,33 @@ class CyArrayArgWrapper(object):
 
     def __init__(self, arg):
         self.arg = arg
+        self.intern_name = '%s_' % self.arg.intern_name()
 
     def extern_declarations(self):
         return ['object %s' % self.arg.intern_name()]
 
     def intern_declarations(self):
-        return ["cdef np.ndarray[%s, ndim=%d, mode='fortran'] %s_" % \
+        return ["cdef np.ndarray[%s, ndim=%d, mode='fortran'] %s" % \
                 (self.arg.get_ktp(),
                  self.arg.get_ndims(),
-                 self.arg.intern_name(),)
+                 self.intern_name,)
                 ]
                  
     def call_arg_list(self):
-        shapes = reversed(['&%s_.shape[%d]' % (self.arg.intern_name(), i) \
+        shapes = reversed(['&%s.shape[%d]' % (self.intern_name, i) \
                                 for i in range(self.arg.get_ndims())])
-        data = '<%s*>%s_.data' % (self.arg.get_ktp(), self.arg.intern_name())
+        data = '<%s*>%s.data' % (self.arg.get_ktp(), self.intern_name)
         return list(shapes) + [data]
 
     def pre_call_code(self):
-        return ["%s_ = %s" % (self.arg.intern_name(), self.arg.intern_name())]
+        return ["%s = %s" % (self.intern_name, self.arg.intern_name())]
 
     def post_call_code(self):
         return []
 
     def return_tuple_list(self):
+        if self.arg.intent in ('out', 'inout', None):
+            return [self.intern_name]
         return []
 
 FW_RETURN_VAR_NAME = 'fwrap_return_var'
@@ -189,6 +192,7 @@ def wrap_fc(ast):
     return ret
 
 def generate_cy_pxd(ast, fc_pxd_name, buf):
+    buf.putln('cimport numpy as np')
     buf.putln("from %s cimport *" % fc_pxd_name)
     buf.putln('')
     for proc in ast:

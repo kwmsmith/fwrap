@@ -23,12 +23,13 @@ class Dtype(object):
                 self.odecl == other.odecl and \
                 self.type == other.type
 
-    def __init__(self, fw_ktp, odecl=None):
+    def __init__(self, fw_ktp, odecl=None, lang='fortran'):
         if not valid_fort_name(fw_ktp):
             raise InvalidNameException("%s is not a valid fortran parameter name.")
         self.fw_ktp = ktp_namer(fw_ktp)
         self.odecl = odecl
         self.type = None
+        self.lang = lang
 
     def type_spec(self):
         return '%s(%s)' % (self.type, self.fw_ktp)
@@ -45,13 +46,13 @@ default_character = CharacterType(fw_ktp="default_character", odecl="character(k
 
 class IntegerType(Dtype):
 
-    def __init__(self, fw_ktp, odecl=None):
-        super(IntegerType, self).__init__(fw_ktp, odecl)
+    def __init__(self, fw_ktp, odecl=None, lang='fortran'):
+        super(IntegerType, self).__init__(fw_ktp, odecl, lang)
         self.type = 'integer'
 
 default_integer = IntegerType(fw_ktp='default_integer', odecl="integer(kind(0))")
 
-dim_dtype = IntegerType(fw_ktp="npy_intp", odecl=None)
+dim_dtype = IntegerType(fw_ktp="npy_intp", odecl='npy_intp', lang='c')
 
 class LogicalType(Dtype):
 
@@ -206,6 +207,8 @@ class ArgManager(object):
         dts = []
         for arg in self._args:
             dts.append(arg.dtype)
+            if arg.is_array:
+                dts.append(dim_dtype)
         if self._return_arg:
             dts.append(self._return_arg.dtype)
         return dts
