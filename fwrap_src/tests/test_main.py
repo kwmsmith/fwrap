@@ -77,6 +77,7 @@ end function empty_func
     def test_generate_cy_pxd(self):
         fname, buf = main.generate_cy_pxd(self.cy_wrap, self.options)
         pxd = '''\
+        cimport numpy as np
         from DP_fc cimport *
 
         cpdef api object empty_func()
