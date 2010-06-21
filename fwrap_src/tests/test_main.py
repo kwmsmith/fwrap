@@ -97,27 +97,3 @@ end function empty_func
         for ctp in ctps:
             ok_(isinstance(ctp, dict))
             eq_(sorted(ctp.keys()), ['basetype', 'fwrap_name', 'lang', 'odecl'])
-        
-
-genconfig_code = '''\
-program genconfig
-    use fc_type_map
-    implicit none
-    integer :: iserr
-    iserr = 0
-
-    call open_map_file(iserr)
-    if (iserr .ne. 0) then
-        print *, errmsg
-        stop 1
-    endif
-    call lookup_integer(kind(0), "fwrap_default_integer", iserr)
-    if (iserr .ne. 0) then
-        goto 100
-    endif
-    goto 200
-    100 print *, errmsg
-    call close_map_file(iserr)
-    stop 1
-    200 call close_map_file(iserr)
-end program genconfig'''
