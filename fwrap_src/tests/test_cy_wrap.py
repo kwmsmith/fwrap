@@ -249,6 +249,17 @@ class test_cy_arg_wrapper_mgr(object):
         eq_(self.mgr.return_arg_declaration(),
                 ["cdef %s fwrap_return_var" % self.rtn])
 
+class test_empty_ret_tuple(object):
+
+    def test_empty_ret(self):
+        int_args_in = [pyf.Argument('a1', pyf.default_integer, 'in'),
+                       pyf.Argument('a2', pyf.default_integer, 'in')]
+        subr = pyf.Subroutine(name='dummy',
+                args=int_args_in)
+        fc_wrapper = fc_wrap.SubroutineWrapper(wrapped=subr)
+        cy_wrapper = cy_wrap.ProcWrapper(wrapped=fc_wrapper)
+        eq_(cy_wrapper.return_tuple(), '')
+
 class test_cy_proc_wrapper(object):
 
     def setup(self):

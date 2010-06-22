@@ -17,7 +17,7 @@ def test_breakup():
         yield breakup_gen, line, chunk
 
 def breakup_gen(line, chunk):
-    ret = code.reflow(line, 0, chunk)
+    ret = code.reflow_line(line, 0, chunk)
     eq_(simple_break(line, chunk), ret)
     for part in ret[1:-1]:
         eq_(len(part), chunk+2)
@@ -46,13 +46,13 @@ def simple_break(text, chunk):
 
 def test_nobreak():
     line = """aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"""
-    ret = code.reflow(line, 0, 100)
+    ret = code.reflow_line(line, 0, 100)
     eq_(ret, [line])
 
 def test_indent():
     line = "12345678901234567890"
-    ret = code.reflow(line, 1, 100)
+    ret = code.reflow_line(line, 1, 100)
     eq_(ret, [code.INDENT+line])
-    ret = code.reflow(line, 1, 10)
+    ret = code.reflow_line(line, 1, 10)
     eq_(ret, [code.INDENT+line[:8]+'&', code.INDENT+'&'+line[8:16]+'&', code.INDENT+'&'+line[16:]])
     # set_trace()

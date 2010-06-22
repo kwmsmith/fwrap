@@ -2,11 +2,15 @@ from cStringIO import StringIO
 from math import ceil, floor
 
 INDENT = "  "
-LINE_LENGTH = 79
+LINE_LENGTH = 77 # leave room for two '&' characters
 BREAK_CHARS = (' ', '\t', ',', '!')
 COMMENT_CHAR = '!'
 
-def reflow(text, level=0, max_len=LINE_LENGTH):
+def reflow_fort(code, level=0, max_len=LINE_LENGTH):
+    newcode = ['\n'.join(reflow_line(line)) for line in code.splitlines()]
+    return '\n'.join(newcode)
+
+def reflow_line(text, level=0, max_len=LINE_LENGTH):
     line_len = max_len - len(INDENT)*level
     broken_text = []
     lim = int(ceil(len(text)/float(line_len)))

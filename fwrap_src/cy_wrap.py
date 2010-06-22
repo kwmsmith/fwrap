@@ -240,7 +240,10 @@ class ProcWrapper(object):
         if self.wrapped.kind == 'function':
             ret_arg_list.append(FW_RETURN_VAR_NAME)
         ret_arg_list.extend(self.arg_mgr.return_tuple_list())
-        return "return (%s,)" % ", ".join(ret_arg_list)
+        if ret_arg_list:
+            return "return (%s,)" % ", ".join(ret_arg_list)
+        else:
+            return ''
 
     def pre_call_code(self, buf):
         for line in self.arg_mgr.pre_call_code():
@@ -257,5 +260,6 @@ class ProcWrapper(object):
         self.pre_call_code(buf)
         buf.putln(self.proc_call())
         self.post_call_code(buf)
-        buf.putln(self.return_tuple())
+        rt = self.return_tuple()
+        if rt: buf.putln(rt)
         buf.dedent()

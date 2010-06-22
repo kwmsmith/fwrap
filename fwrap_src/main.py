@@ -1,7 +1,7 @@
 import os
 from optparse import OptionParser
 from cStringIO import StringIO
-from code import CodeBuffer
+from code import CodeBuffer, reflow_fort
 
 import constants
 import pyf_iface as pyf
@@ -116,7 +116,9 @@ def generate_fc_f(fc_ast, options):
     buf = CodeBuffer()
     for proc in fc_ast:
         proc.generate_wrapper(buf)
-    return constants.FC_F_TMPL % options.projectname, buf
+    ret_buf = CodeBuffer()
+    ret_buf.putlines(reflow_fort(buf.getvalue()))
+    return constants.FC_F_TMPL % options.projectname, ret_buf
 
 def generate_ast(fsrcs):
     import fwrap_parse
