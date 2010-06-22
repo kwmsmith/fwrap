@@ -150,12 +150,12 @@ class test_cy_array_arg_wrapper(object):
 
     def test_call_arg_list(self):
         eq_(self.cy_arg.call_arg_list(),
-                ['&array_.shape[0]',
-                 '&array_.shape[1]',
-                 '&array_.shape[2]',
+                ['<fwrap_npy_intp*>&array_.shape[0]',
+                 '<fwrap_npy_intp*>&array_.shape[1]',
+                 '<fwrap_npy_intp*>&array_.shape[2]',
                  '<fwrap_default_real*>array_.data'])
         eq_(self.cy_int_arg.call_arg_list(),
-                 ['&int_array_.shape[0]',
+                 ['<fwrap_npy_intp*>&int_array_.shape[0]',
                  '<fwrap_default_integer*>int_array_.data'])
 
     def test_pre_call_code(self):
