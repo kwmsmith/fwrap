@@ -88,7 +88,12 @@ def find_types(ctps, config_cmd):
                     "unable to find C type for type %s" % ctp.odecl)
         ctp.fc_type = fc_type
 
+def _find_c_type(ctp, config_cmd):
+    # this works for intel -- something with Cython...
+    return 'c_int'
+
 def find_c_type(ctp, config_cmd):
+    # this doesn't work for intel -- something with Cython...
     import numpy
     from distutils.sysconfig import get_python_inc
     if ctp.lang != 'c':
