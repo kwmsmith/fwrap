@@ -76,16 +76,19 @@ class _CyCmplxArg(_CyArgWrapper):
 
     def pre_call_code(self):
         if self.arg.intent in ('in', 'inout', None):
-            return ['CyComplex2%s(%s, %s)' % (self.arg.get_ktp(),
-                                              self.arg.get_name(),
-                                              self.intern_name)]
+            d = {'argname' : self.arg.get_name(),
+                 'ktp' : self.arg.get_ktp(),
+                 'intern_name' : self.intern_name}
+            return ['%(ktp)s_from_parts(%(argname)s.real, %(argname)s.imag, %(intern_name)s)' % d]
         return []
 
     def post_call_code(self):
         if self.arg.intent in ('out', 'inout', None):
-            return ['%s2CyComplex(%s, %s)' % (self.arg.get_ktp(),
-                                              self.intern_name,
-                                              self.arg.get_name())]
+            d = {'argname' : self.arg.get_name(),
+                 'ktp' : self.arg.get_ktp(),
+                 'intern_name' : self.intern_name}
+            return ('%(argname)s.real = %(ktp)s_creal(%(intern_name)s)\n'
+                    '%(argname)s.imag = %(ktp)s_cimag(%(intern_name)s)' % d).splitlines()
         return []
 
     def call_arg_list(self):

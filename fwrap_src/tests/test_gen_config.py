@@ -51,13 +51,10 @@ class test_genconfig(object):
                 ['typedef float _Complex fwrap_default_complex;'])
         eq_(self.cmplx.gen_c_includes(), ['#include <complex.h>'])
         eq_(self.cmplx.gen_c_extra(),
-                ["""\
-#define %(ktp)s_creal(x) (creal(x))
-#define %(ktp)s_cimag(x) (cimag(x))
-#define CyComplex2%(ktp)s(x, y) (y = (__Pyx_CREAL(x) + _Complex_I * __Pyx_CIMAG(x)))
-#define %(ktp)s2CyComplex(y, x) __Pyx_SET_CREAL(x, fwrap_default_complex_creal(y)); \
-                           __Pyx_SET_CIMAG(x, fwrap_default_complex_cimag(y))
-""" % {'ktp' : self.cmplx.fwrap_name}])
+                 ("#define %(ktp)s_creal(x) (creal(x))\n"
+                  "#define %(ktp)s_cimag(x) (cimag(x))\n"
+                  "#define %(ktp)s_from_parts(r, i, x)"
+                  " (x = ((r) + _Complex_I * (i)))" % {'ktp' : self.cmplx.fwrap_name}).splitlines())
 
     def test_gen_pxd(self):
         eq_(self.int.gen_pxd_extern_typedef(), ['ctypedef int fwrap_default_integer'])
@@ -68,10 +65,9 @@ class test_genconfig(object):
 
         eq_(self.int.gen_pxd_extern_extra(), [])
         eq_(self.cmplx.gen_pxd_extern_extra(),
-                [ 'float fwrap_default_complex_creal(fwrap_default_complex fdc)',
-                 'float fwrap_default_complex_cimag(fwrap_default_complex fdc)',
-                 'void CyComplex2fwrap_default_complex(cy_fwrap_default_complex cy, fwrap_default_complex fc)',
-                 'void fwrap_default_complex2CyComplex(fwrap_default_complex fc, cy_fwrap_default_complex cy)', ]
+            ['float fwrap_default_complex_creal(fwrap_default_complex fdc)',
+             'float fwrap_default_complex_cimag(fwrap_default_complex fdc)',
+             'void fwrap_default_complex_from_parts(float r, float i, fwrap_default_complex fc)']
             )
 
     def test_gen_type_spec(self):

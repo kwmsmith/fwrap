@@ -201,13 +201,14 @@ class test_cmplx_args(object):
 
     def test_pre_call_code(self):
         eq_(self.intent_in.pre_call_code(),
-                ['CyComplex2fwrap_default_complex(name, fw_name)'])
+                ['fwrap_default_complex_from_parts(name.real, name.imag, fw_name)'])
         eq_(self.intent_out.pre_call_code(),
                 [])
 
     def test_post_call_code(self):
         eq_(self.intent_out.post_call_code(),
-                ['fwrap_default_complex2CyComplex(fw_name, name)'])
+                ['name.real = fwrap_default_complex_creal(fw_name)',
+                 'name.imag = fwrap_default_complex_cimag(fw_name)'])
         eq_(self.intent_in.post_call_code(),
                 [])
 
