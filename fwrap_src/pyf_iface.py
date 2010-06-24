@@ -58,9 +58,11 @@ class LogicalType(Dtype):
 
     def __init__(self, fw_ktp, odecl=None):
         super(LogicalType, self).__init__(fw_ktp, odecl)
-        self.type = 'logical'
+        self.type = 'integer'
+        if self.odecl:
+            self.odecl = self.odecl.replace('logical', 'integer')
 
-default_logical = LogicalType(fw_ktp='default_logical', odecl="logical(kind(.true.))")
+default_logical = LogicalType(fw_ktp='default_logical', odecl="integer(kind=kind(0))")
 
 class RealType(Dtype):
 

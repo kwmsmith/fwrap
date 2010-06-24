@@ -207,12 +207,12 @@ def test_logical_function():
     function lgcl_fun_c() bind(c, name="lgcl_fun_c")
         use fwrap_ktp_mod
         implicit none
-        logical(fwrap_lgcl) :: lgcl_fun_c
+        integer(fwrap_lgcl) :: lgcl_fun_c
         interface
             function lgcl_fun()
                 use fwrap_ktp_mod
                 implicit none
-                logical(fwrap_lgcl) :: lgcl_fun
+                integer(fwrap_lgcl) :: lgcl_fun
             end function lgcl_fun
         end interface
         lgcl_fun_c = lgcl_fun()
@@ -232,12 +232,12 @@ def test_logical_wrapper():
     subroutine lgcl_arg_c(lgcl) bind(c, name="lgcl_arg_c")
         use fwrap_ktp_mod
         implicit none
-        logical(fwrap_lgcl_ktp), intent(inout) :: lgcl
+        integer(fwrap_lgcl_ktp), intent(inout) :: lgcl
         interface
             subroutine lgcl_arg(lgcl)
                 use fwrap_ktp_mod
                 implicit none
-                logical(fwrap_lgcl_ktp), intent(inout) :: lgcl
+                integer(fwrap_lgcl_ktp), intent(inout) :: lgcl
             end subroutine lgcl_arg
         end interface
         call lgcl_arg(lgcl)
@@ -407,9 +407,9 @@ class test_arg_wrapper(object):
 
     def test_extern_lgcl_arg(self):
         eq_(self.lgcl_arg_wrap.extern_declarations(),
-                ['logical(fwrap_default_logical), intent(inout) :: lgcl'])
+                ['integer(fwrap_default_logical), intent(inout) :: lgcl'])
         eq_(self.lgcl_arg_in_wrap.extern_declarations(),
-                ['logical(fwrap_default_logical), intent(in) :: lgcl_in'])
+                ['integer(fwrap_default_logical), intent(in) :: lgcl_in'])
 
     def test_intern_lgcl_var(self):
         eq_(self.lgcl_arg_wrap.intern_declarations(), [])
@@ -434,8 +434,8 @@ class test_arg_wrapper_manager(object):
 
     def test_arg_declarations(self):
         decls = '''\
-logical(fwrap_default_logical), intent(inout) :: lgcl1
-logical(fwrap_default_logical), intent(inout) :: lgcl2
+integer(fwrap_default_logical), intent(inout) :: lgcl1
+integer(fwrap_default_logical), intent(inout) :: lgcl2
 integer(fwrap_int), intent(inout) :: int
 '''.splitlines()
         eq_(self.am.arg_declarations(), decls)
@@ -468,7 +468,7 @@ class test_arg_manager_return(object):
 
     def test_declarations(self):
         declaration = '''\
-logical(fwrap_default_logical) :: ll
+integer(fwrap_default_logical) :: ll
 '''.splitlines()
         eq_(self.am_lgcl.arg_declarations(), declaration)
 
@@ -536,7 +536,7 @@ subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assume
     integer(fwrap_default_integer), intent(in) :: d1
     integer(fwrap_npy_intp), intent(in) :: assumed_shape_d1
     integer(fwrap_npy_intp), intent(in) :: assumed_shape_d2
-    logical(fwrap_default_logical), dimension(assumed_shape_d1, assumed_shape_d2), intent(out) :: assumed_shape
+    integer(fwrap_default_logical), dimension(assumed_shape_d1, assumed_shape_d2), intent(out) :: assumed_shape
     integer(fwrap_npy_intp), intent(in) :: explicit_shape_d1
     integer(fwrap_npy_intp), intent(in) :: explicit_shape_d2
     complex(fwrap_default_complex), dimension(explicit_shape_d1, explicit_shape_d2), intent(inout) :: explicit_shape
@@ -547,7 +547,7 @@ subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assume
             use fwrap_ktp_mod
             implicit none
             integer(fwrap_default_integer), intent(in) :: d1
-            logical(fwrap_default_logical), dimension(:, :), intent(out) :: assumed_shape
+            integer(fwrap_default_logical), dimension(:, :), intent(out) :: assumed_shape
             integer(fwrap_default_integer), intent(inout) :: c1
             integer(fwrap_default_integer) :: c2
             integer(fwrap_default_integer), dimension(d1, *), intent(inout) :: assumed_size
