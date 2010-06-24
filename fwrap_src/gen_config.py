@@ -238,4 +238,3 @@ type_dict = {
         'complex' : ('c_float_complex', 'c_double_complex', 'c_long_double_complex'),
         'character' : ('c_char',),
         }
-type_dict['logical'] = type_dict['integer']

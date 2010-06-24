@@ -109,15 +109,11 @@ def find_fc_type(base_type, decl, config_cmd):
     res = fc_type_memo.get((base_type, decl), None)
     if res is not None:
         return res
-    if base_type == 'logical':
-        base_type = 'integer'
     for ctype in gc.type_dict[base_type]:
         test_decl = '%s(kind=%s)' % (base_type, ctype)
         fsrc = fsrc_tmpl % {'TYPE_DECL' : decl,
                             'TEST_DECL' : test_decl}
         print fsrc
-        if 'logical' in fsrc:
-            import pdb; pdb.set_trace()
         if config_cmd.try_compile(body=fsrc, lang='f90'):
             res = ctype
             break
