@@ -165,13 +165,10 @@ class _CmplxTypeParam(_ConfigTypeParam):
 
     def gen_c_extra(self):
         self.check_init()
-        return ["""\
-#define %(ktp)s_creal(x) (creal(x))
-#define %(ktp)s_cimag(x) (cimag(x))
-#define CyComplex2%(ktp)s(x, y) (y = (__Pyx_CREAL(x) + _Complex_I * __Pyx_CIMAG(x)))
-#define %(ktp)s2CyComplex(y, x) __Pyx_SET_CREAL(x, fwrap_default_complex_creal(y)); \
-                           __Pyx_SET_CIMAG(x, fwrap_default_complex_cimag(y))
-""" % {'ktp' : self.fwrap_name}]
+        return ("#define %(ktp)s_creal(x) (creal(x))\n"
+                "#define %(ktp)s_cimag(x) (cimag(x))\n"
+                "#define %(ktp)s_from_parts(r, i, x)"
+                " (x = ((r) + _Complex_I * (i)))" % {'ktp' : self.fwrap_name}).splitlines()
 
     def gen_pxd_extern_extra(self):
         ctype = f2c[self._c2r_map[self.fc_type]]
@@ -180,10 +177,10 @@ class _CmplxTypeParam(_ConfigTypeParam):
         d = {'fktp' : fktp,
              'cyktp' : cyktp,
              'ctype' : ctype}
-        return ('%(ctype)s %(fktp)s_creal(%(fktp)s fdc)\n'
-                 '%(ctype)s %(fktp)s_cimag(%(fktp)s fdc)\n'
-                 'void CyComplex2%(fktp)s(%(cyktp)s cy, %(fktp)s fc)\n'
-                 'void %(fktp)s2CyComplex(%(fktp)s fc, %(cyktp)s cy)\n' % d).splitlines()
+        code = ('%(ctype)s %(fktp)s_creal(%(fktp)s fdc)\n'
+                '%(ctype)s %(fktp)s_cimag(%(fktp)s fdc)\n'
+                'void %(fktp)s_from_parts(%(ctype)s r, %(ctype)s i, %(fktp)s fc)\n' % d)
+        return code.splitlines()
 
     def gen_pxd_extern_typedef(self):
         self.check_init()

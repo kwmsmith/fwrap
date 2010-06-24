@@ -1,3 +1,19 @@
+      subroutine assumed_size(arr, d1)
+        implicit none
+        integer, intent(in) :: d1
+        complex*16, intent(inout) :: arr(d1, *)
+
+        arr(1:d1, 1) = cmplx(10,20,kind=kind(arr))
+      end subroutine assumed_size
+      subroutine explicit_shape(arr, d1, d2)
+        implicit none
+        integer, intent(in) :: d1, d2
+        real(kind=8), intent(inout) :: arr(d1,d2)
+
+        arr = 10.0
+
+      end subroutine explicit_shape
+
       subroutine pass_array(arr0, arr1, arr2)
       implicit none
       integer, dimension(:,:), intent(in) :: arr0
