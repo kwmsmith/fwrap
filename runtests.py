@@ -86,7 +86,7 @@ class FwrapOptions(object):
 
 class FwrapTestBuilder(object):
     def __init__(self, rootdir, workdir, selectors, exclude_selectors,
-            cleanup_workdir, cleanup_sharedlibs, fcompiler):
+            cleanup_workdir, cleanup_sharedlibs, fcompiler, verbosity=0):
         self.rootdir = rootdir
         self.workdir = workdir
         self.selectors = selectors
@@ -94,6 +94,7 @@ class FwrapTestBuilder(object):
         self.cleanup_workdir = cleanup_workdir
         self.cleanup_sharedlibs = cleanup_sharedlibs
         self.fcompiler = fcompiler
+        self.verbosity = verbosity
 
     def build_suite(self):
         suite = unittest.TestSuite()
@@ -138,7 +139,8 @@ class FwrapTestBuilder(object):
         return test_class(path, workdir, filename,
                 cleanup_workdir=self.cleanup_workdir,
                 cleanup_sharedlibs=self.cleanup_sharedlibs,
-                fcompiler=self.fcompiler)
+                fcompiler=self.fcompiler,
+                verbosity=self.verbosity)
 
 class _devnull(object):
 
@@ -150,13 +152,15 @@ class _devnull(object):
 
 class FwrapCompileTestCase(unittest.TestCase):
     def __init__(self, directory, workdir, filename,
-            cleanup_workdir=True, cleanup_sharedlibs=True, fcompiler=None):
+            cleanup_workdir=True, cleanup_sharedlibs=True, fcompiler=None,
+            verbosity=0):
         self.directory = directory
         self.workdir = workdir
         self.filename = filename
         self.cleanup_workdir = cleanup_workdir
         self.cleanup_sharedlibs = cleanup_sharedlibs
         self.fcompiler = fcompiler
+        self.verbosity = verbosity
         unittest.TestCase.__init__(self)
 
     def shortDescription(self):
@@ -207,15 +211,19 @@ class FwrapCompileTestCase(unittest.TestCase):
         FILENAME = self.filename
         PROJNAME = self.projname
 
+        LOG_FILE = 'fwrap_setup.log'
+        if self.verbosity == 3:
+            LOG_FILE = ''
+
         setup_source = '''
 from fwrap_setup import setup, fwrap_cmdclass, configuration
       
 cfg = configuration(projname='%(PROJNAME)s', extra_sources=['%(FILENAME)s'])
 
-setup(cmdclass=fwrap_cmdclass, configuration=cfg)
+setup(log='%(LOG_FILE)s', cmdclass=fwrap_cmdclass, configuration=cfg)
 ''' % {'PROJNAME': PROJNAME,
-       'FILENAME': FILENAME}
-
+       'FILENAME': FILENAME,
+       'LOG_FILE': LOG_FILE}
 
         setup_fqpath = os.path.join(self.projdir, 'setup.py')
         f = open(setup_fqpath,'w')
@@ -857,7 +865,7 @@ if __name__ == '__main__':
     # if 0
 
     filetests = FwrapTestBuilder(ROOTDIR, WORKDIR, selectors, exclude_selectors,
-            options.cleanup_workdir, options.cleanup_sharedlibs, options.fcompiler)
+            options.cleanup_workdir, options.cleanup_sharedlibs, options.fcompiler, options.verbosity)
     test_suite.addTest(filetests.build_suite())
 
     if 0:
