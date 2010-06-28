@@ -32,17 +32,21 @@ class Dtype(object):
         self.lang = lang
 
     def type_spec(self):
-        return '%s(%s)' % (self.type, self.fw_ktp)
+        return '%s(kind=%s)' % (self.type, self.fw_ktp)
+
+    def orig_type_spec(self):
+        return self.odecl
 
     def __str__(self):
         return "%s(fw_ktp=%s, odecl=%s)" % (type(self), self.fw_ktp, self.odecl)
 
 class CharacterType(Dtype):
-    def __init__(self, fw_ktp, odecl=None):
+    def __init__(self, fw_ktp, len, odecl=None):
         super(CharacterType, self).__init__(fw_ktp, odecl)
+        self.len = str(len)
         self.type = 'character'
 
-default_character = CharacterType(fw_ktp="default_character", odecl="character(kind=kind('a'))")
+default_character = CharacterType(fw_ktp="default_character", len='1', odecl="character(kind=kind('a'))")
 
 class IntegerType(Dtype):
 
@@ -102,14 +106,20 @@ class Var(object):
         else:
             self.is_array = False
 
-    def var_specs(self):
-        specs = [self.dtype.type_spec()]
+    def var_specs(self, orig=False):
+        if orig:
+            specs = [self.dtype.orig_type_spec()]
+        else:
+            specs = [self.dtype.type_spec()]
         if self.dimension:
             specs.append('dimension(%s)' % ', '.join(self.dimension))
         return specs
 
     def declaration(self):
         return '%s :: %s' % (', '.join(self.var_specs()), self.name)
+
+    def orig_declaration(self):
+        return "%s :: %s" % (', '.join(self.var_specs(orig=True)), self.name)
 
 
 class Argument(object):

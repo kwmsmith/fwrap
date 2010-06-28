@@ -224,6 +224,8 @@ def ArgWrapperFactory(arg):
         return ArrayArgWrapper(arg)
     elif arg.intent == 'hide':
         return HideArgWrapper(arg)
+    elif arg.dtype.type == 'character':
+        return CharArgWrapper(arg)
     else:
         return ArgWrapper(arg)
 
@@ -246,7 +248,6 @@ class ArgWrapperBase(object):
 class ArgWrapper(ArgWrapperBase):
 
     def __init__(self, arg):
-        self._orig_arg = arg
         self._extern_arg = arg
         self._intern_var = None
         self.dtype = self._extern_arg.dtype
@@ -282,6 +283,41 @@ class ArgWrapper(ArgWrapperBase):
         return self._extern_arg.intent
 
     intent = property(_get_intent)
+
+class CharArgWrapper(ArgWrapperBase):
+
+    _transfer_templ = '%s = transfer(%s, %s)'
+
+    def __init__(self, arg):
+        self.orig_arg = arg
+        self.len_arg = pyf.Argument(name="fw_%s_len" % arg.name,
+                               dtype=pyf.default_integer,
+                               intent='in')
+        self.arg = pyf.Argument(name="fw_%s" % arg.name,
+                dtype=arg.dtype,
+                intent=arg.intent,
+                dimension=[self.len_arg.name])
+
+    def c_declarations(self):
+        return [self.len_arg.c_declaration(),
+                self.arg.c_declaration()]
+
+    def extern_declarations(self):
+        return [self.len_arg.declaration(),
+                self.arg.declaration()]
+
+    def intern_declarations(self):
+        return [self.orig_arg._var.orig_declaration()]
+
+    def pre_call_code(self):
+        return [self._transfer_templ % (self.orig_arg.name,
+                                           self.arg.name,
+                                           self.orig_arg.name)]
+
+    def post_call_code(self):
+        return [self._transfer_templ % (self.arg.name,
+                                           self.orig_arg.name,
+                                           self.arg.name)]
 
 class HideArgWrapper(ArgWrapperBase):
 

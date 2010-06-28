@@ -63,12 +63,12 @@ end function empty_func
         function empty_func_c() bind(c, name="empty_func_c")
             use fwrap_ktp_mod
             implicit none
-            integer(fwrap_default_integer) :: empty_func_c
+            integer(kind=fwrap_default_integer) :: empty_func_c
             interface
                 function empty_func()
                     use fwrap_ktp_mod
                     implicit none
-                    integer(fwrap_default_integer) :: empty_func
+                    integer(kind=fwrap_default_integer) :: empty_func
                 end function empty_func
             end interface
             empty_func_c = empty_func()
