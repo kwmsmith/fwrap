@@ -289,7 +289,7 @@ class CharArgWrapper(ArgWrapperBase):
     _transfer_templ = '%s = transfer(%s, %s)'
 
     def __init__(self, arg):
-        self.orig_arg = arg
+        self.intern_arg = arg
         self.len_arg = pyf.Argument(name="fw_%s_len" % arg.name,
                                dtype=pyf.default_integer,
                                intent='in')
@@ -302,22 +302,38 @@ class CharArgWrapper(ArgWrapperBase):
         return [self.len_arg.c_declaration(),
                 self.arg.c_declaration()]
 
+    def extern_arg_list(self):
+        return [self.len_arg.name,
+                self.arg.name]
+
+    def _get_intent(self):
+        return self.arg.intent
+
+    intent = property(_get_intent)
+
     def extern_declarations(self):
         return [self.len_arg.declaration(),
                 self.arg.declaration()]
 
     def intern_declarations(self):
-        return [self.orig_arg._var.orig_declaration()]
+        return [self.intern_arg._var.orig_declaration()]
 
     def pre_call_code(self):
-        return [self._transfer_templ % (self.orig_arg.name,
+        return [self._transfer_templ % (self.intern_arg.name,
                                            self.arg.name,
-                                           self.orig_arg.name)]
+                                           self.intern_arg.name)]
 
     def post_call_code(self):
         return [self._transfer_templ % (self.arg.name,
-                                           self.orig_arg.name,
+                                           self.intern_arg.name,
                                            self.arg.name)]
+
+    def intern_name(self):
+        return self.intern_arg.name
+
+    def get_ktp(self):
+        return self.arg.ktp
+
 
 class HideArgWrapper(ArgWrapperBase):
 

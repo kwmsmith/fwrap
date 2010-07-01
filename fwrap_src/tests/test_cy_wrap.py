@@ -41,9 +41,13 @@ def make_caws(dts, names, intents=None):
         intents = ('in',)*len(dts)
     caws = []
     for dt, name, intent in zip(dts, names, intents):
+        try:
+            dtype = getattr(pyf, dt, dt)
+        except TypeError:
+            dtype = dt
         arg = pyf.Argument(
                     name,
-                    dtype=getattr(pyf, dt),
+                    dtype=dtype,
                     intent=intent)
         fc_arg = fc_wrap.ArgWrapper(arg)
         caws.append(cy_wrap.CyArgWrapper(fc_arg))
@@ -170,6 +174,62 @@ class test_cy_array_arg_wrapper(object):
         eq_(self.cy_arg.return_tuple_list(), [])
         eq_(self.cy_int_arg.return_tuple_list(), ["int_array_"])
 
+
+class test_char_args(object):
+
+    def setup(self):
+        self.intents = ('in', 'out', 'inout', None)
+        self.dtypes = [pyf.CharacterType('ch_%d'%d,
+                                        len=str(d),
+                                        odecl='character(len=%d)'%d) \
+                            for d in (10,20,30,40)]
+        self.caws = make_caws(self.dtypes, ['name']*len(self.dtypes), self.intents)
+        self.intent_in, self.intent_out, self.intent_inout, self.no_intent = self.caws
+
+    def test_extern_declarations(self):
+        eq_(self.intent_in.extern_declarations(),
+               ['bytes name'])
+        eq_(self.intent_inout.extern_declarations(),
+               ['bytes name'])
+        eq_(self.intent_out.extern_declarations(),
+               [])
+
+    def test_intern_declarations(self):
+        eq_(self.intent_out.intern_declarations(),
+                ['cdef bytes fw_name',
+                 'cdef fwrap_npy_intp fw_name_len'])
+        eq_(self.intent_in.intern_declarations(),
+                ['cdef bytes fw_name',
+                 'cdef fwrap_npy_intp fw_name_len'])
+        eq_(self.intent_inout.intern_declarations(),
+                ['cdef bytes fw_name',
+                 'cdef fwrap_npy_intp fw_name_len'])
+
+    def test_pre_call_code(self):
+        eq_(self.intent_out.pre_call_code(),
+                ['fw_name = "%s"' % ('0'*20),
+                 'fw_name_len = len(fw_name)'])
+        eq_(self.intent_in.pre_call_code(),
+                ['fw_name = name',
+                 'fw_name_len = len(fw_name)'])
+        eq_(self.intent_inout.pre_call_code(),
+                ['fw_name = PyBytes_FromStringAndSize(<char*>name, len(name))',
+                 'fw_name_len = len(fw_name)'])
+
+    def test_post_call_code(self):
+        eq_(self.intent_out.post_call_code(), [])
+        eq_(self.intent_in.post_call_code(), [])
+        eq_(self.intent_inout.post_call_code(), [])
+
+    def test_call_arg_list(self):
+        eq_(self.intent_out.call_arg_list(), ['&fw_name_len', '<char*>fw_name'])
+        eq_(self.intent_in.call_arg_list(), ['&fw_name_len', '<char*>fw_name'])
+        eq_(self.intent_inout.call_arg_list(), ['&fw_name_len', '<char*>fw_name'])
+
+    def test_return_tuple_list(self):
+        eq_(self.intent_inout.return_tuple_list(), ['fw_name'])
+        eq_(self.intent_out.return_tuple_list(), ['fw_name'])
+        eq_(self.intent_in.return_tuple_list(), [])
 
 class test_cmplx_args(object):
 

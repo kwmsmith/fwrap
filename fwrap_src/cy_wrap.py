@@ -21,6 +21,8 @@ cpdef api DP_c.fwrap_default_int empty_func()
 def CyArgWrapper(arg):
     if isinstance(arg.dtype, pyf_iface.ComplexType):
         return _CyCmplxArg(arg)
+    elif isinstance(arg.dtype, pyf_iface.CharacterType):
+        return _CyCharArg(arg)
     return _CyArgWrapper(arg)
 
 class _CyArgWrapper(object):
@@ -59,6 +61,46 @@ class _CyArgWrapper(object):
     def return_tuple_list(self):
         if self.arg.intent in ('out', 'inout', None):
             return [self.arg.get_name()]
+        return []
+
+class _CyCharArg(_CyArgWrapper):
+
+    def __init__(self, arg):
+        super(_CyCharArg, self).__init__(arg)
+        
+    def intern_name(self):
+        return 'fw_%s' % self.get_name()
+
+    def intern_len_name(self):
+        return '%s_len' % self.intern_name()
+
+    def cy_dtype_name(self):
+        return 'bytes'
+
+    def intern_declarations(self):
+        return ['cdef bytes %s' % self.intern_name(),
+                'cdef fwrap_npy_intp %s' % self.intern_len_name()]
+
+    def get_len(self):
+        return int(self.arg.dtype.len)
+
+    def pre_call_code(self):
+        ret = []
+        if self.arg.intent == 'out':
+            ret.append('%s = "%s"' % (self.intern_name(), '0'*self.get_len()))
+        elif self.arg.intent == 'in':
+            ret.append('%s = %s' % (self.intern_name(), self.get_name()))
+        elif self.arg.intent in ('inout', None):
+            ret.append('%s = PyBytes_FromStringAndSize(<char*>%s, len(%s))' % \
+                    (self.intern_name(), self.get_name(), self.get_name()))
+        return ret + ['%s = len(%s)' % (self.intern_len_name(), self.intern_name())]
+
+    def call_arg_list(self):
+        return ['&%s' % self.intern_len_name(), '<char*>%s' % self.intern_name()]
+
+    def return_tuple_list(self):
+        if self.arg.intent in ('out', 'inout', None):
+            return [self.intern_name()]
         return []
 
 class _CyCmplxArg(_CyArgWrapper):
