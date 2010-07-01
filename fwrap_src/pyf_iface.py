@@ -40,11 +40,19 @@ class Dtype(object):
     def __str__(self):
         return "%s(fw_ktp=%s, odecl=%s)" % (type(self), self.fw_ktp, self.odecl)
 
+    def all_dtypes(self):
+        return [self]
+
+
 class CharacterType(Dtype):
     def __init__(self, fw_ktp, len, odecl=None):
         super(CharacterType, self).__init__(fw_ktp, odecl)
         self.len = str(len)
         self.type = 'character'
+
+    def all_dtypes(self):
+        adts = super(CharacterType, self).all_dtypes()
+        return adts + [dim_dtype]
 
 default_character = CharacterType(fw_ktp="default_character", len='1', odecl="character(kind=kind('a'))")
 
@@ -165,6 +173,12 @@ class Argument(object):
     def c_declaration(self):
         return "%s *%s" % (self.ktp, self.name)
 
+    def all_dtypes(self):
+        adts = self.dtype.all_dtypes()
+        if self.is_array:
+            adts += [dim_dtype]
+        return adts
+
 class ProcArgument(object):
     def __init__(self, proc):
         self.proc = proc
@@ -218,11 +232,9 @@ class ArgManager(object):
     def all_dtypes(self):
         dts = []
         for arg in self._args:
-            dts.append(arg.dtype)
-            if arg.is_array:
-                dts.append(dim_dtype)
+            dts.extend(arg.all_dtypes())
         if self._return_arg:
-            dts.append(self._return_arg.dtype)
+            dts.extend(self._return_arg.all_dtypes())
         return dts
 
 class Procedure(object):
