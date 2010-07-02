@@ -108,9 +108,15 @@ end function empty_func
 
     def test_generate_cy_pyx(self):
         fname, buf = main.generate_cy_pyx(self.cy_wrap, self.options)
-        buf2 = CodeBuffer()
-        self.cy_wrap[0].generate_wrapper(buf2)
-        compare(buf2.getvalue(), buf.getvalue())
+        test_str = '''\
+cdef extern from "string.h":
+    void *memcpy(void *dest, void *src, size_t n)
+cpdef api object empty_func():
+    cdef fwrap_default_integer fwrap_return_var
+    fwrap_return_var = empty_func_c()
+    return (fwrap_return_var,)
+'''
+        compare(test_str, buf.getvalue())
 
     def test_generate_type_specs(self):
         from cPickle import loads

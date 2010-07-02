@@ -192,13 +192,13 @@ class test_char_assumed_size(object):
     def test_pre_call_code(self):
         eq_(self.intent_out.pre_call_code(),
                 ['fw_name_len = len(name)',
-                 'fw_name_buf = <char*>malloc(fw_name_len+1)',
-                 'fw_name = PyBytes_FromStringAndSize(fw_name_buf, fw_name_len)',])
+                 'fw_name = PyBytes_FromStringAndSize(NULL, fw_name_len)',
+                 'fw_name_buf = <char*>fw_name',])
         eq_(self.intent_inout.pre_call_code(),
                 ['fw_name_len = len(name)',
-                 'fw_name_buf = <char*>malloc(fw_name_len+1)',
-                 'memcpy(fw_name_buf, <char*>name, fw_name_len+1)',
-                 'fw_name = PyBytes_FromStringAndSize(fw_name_buf, fw_name_len)',])
+                 'fw_name = PyBytes_FromStringAndSize(NULL, fw_name_len)',
+                 'fw_name_buf = <char*>fw_name',
+                 'memcpy(fw_name_buf, <char*>name, fw_name_len+1)',])
 
 class test_char_args(object):
 
@@ -239,16 +239,16 @@ class test_char_args(object):
     def test_pre_call_code(self):
         eq_(self.intent_out.pre_call_code(),
                 ['fw_name_len = 20',
-                 'fw_name_buf = <char*>malloc(fw_name_len+1)',
-                 'fw_name = PyBytes_FromStringAndSize(fw_name_buf, fw_name_len)',])
+                 'fw_name = PyBytes_FromStringAndSize(NULL, fw_name_len)',
+                 'fw_name_buf = <char*>fw_name'])
         eq_(self.intent_in.pre_call_code(),
                 ['fw_name_len = len(name)',
                  'fw_name = name',])
         eq_(self.intent_inout.pre_call_code(),
                 ['fw_name_len = len(name)',
-                 'fw_name_buf = <char*>malloc(fw_name_len+1)',
-                 'memcpy(fw_name_buf, <char*>name, fw_name_len+1)',
-                 'fw_name = PyBytes_FromStringAndSize(fw_name_buf, fw_name_len)',])
+                 'fw_name = PyBytes_FromStringAndSize(NULL, fw_name_len)',
+                 'fw_name_buf = <char*>fw_name',
+                 'memcpy(fw_name_buf, <char*>name, fw_name_len+1)',])
 
     def test_post_call_code(self):
         eq_(self.intent_out.post_call_code(), [])
@@ -256,9 +256,9 @@ class test_char_args(object):
         eq_(self.intent_inout.post_call_code(), [])
 
     def test_call_arg_list(self):
-        eq_(self.intent_out.call_arg_list(), ['&fw_name_len', '<char*>fw_name'])
+        eq_(self.intent_out.call_arg_list(), ['&fw_name_len', 'fw_name_buf'])
         eq_(self.intent_in.call_arg_list(), ['&fw_name_len', '<char*>fw_name'])
-        eq_(self.intent_inout.call_arg_list(), ['&fw_name_len', '<char*>fw_name'])
+        eq_(self.intent_inout.call_arg_list(), ['&fw_name_len', 'fw_name_buf'])
 
     def test_return_tuple_list(self):
         eq_(self.intent_inout.return_tuple_list(), ['fw_name'])

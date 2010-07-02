@@ -107,25 +107,33 @@ class _CyCharArg(_CyArgWrapper):
             else:
                 len_str = self.get_len()
             ret = ['%s = %s' % (self.intern_len_name(), len_str),
-                   '%s = <char*>malloc(%s+1)' % (self.intern_buf_name(), self.intern_len_name()),
-                   self._fromstringandsize_call()]
+                   self._fromstringandsize_call(),
+                   '%s = <char*>%s' % (self.intern_buf_name(), self.intern_name()),]
         elif self.arg.intent == 'in':
             ret = ['%s = len(%s)' % (self.intern_len_name(), self.get_name()),
                     '%s = %s' % (self.intern_name(), self.get_name())]
         elif self.arg.intent in ('inout', None):
-            ret = ['%s = len(%s)' % (self.intern_len_name(), self.get_name()),
-                   '%s = <char*>malloc(%s+1)' % (self.intern_buf_name(), self.intern_len_name()),
-                   'memcpy(%s, <char*>%s, %s+1)' % (self.intern_buf_name(), self.get_name(), self.intern_len_name()),
-                   self._fromstringandsize_call()]
+            if self.is_assumed_size():
+                len_str = 'len(%s)' % self.get_name()
+            else:
+                len_str = self.get_len()
+            ret = ['%s = %s' % (self.intern_len_name(), len_str),
+                   self._fromstringandsize_call(),
+                   '%s = <char*>%s' % (self.intern_buf_name(), self.intern_name()),
+                   'memcpy(%s, <char*>%s, %s+1)' % (self.intern_buf_name(), self.get_name(), self.intern_len_name())]
         return ret
 
     def _fromstringandsize_call(self):
-        return '%s = PyBytes_FromStringAndSize(%s, %s)' % \
-                    (self.intern_name(), self.intern_buf_name(), self.intern_len_name())
+        return '%s = PyBytes_FromStringAndSize(NULL, %s)' % \
+                    (self.intern_name(), self.intern_len_name())
 
 
     def call_arg_list(self):
-        return ['&%s' % self.intern_len_name(), '<char*>%s' % self.intern_name()]
+        if self.arg.intent == 'in':
+            return ['&%s' % self.intern_len_name(), '<char*>%s' % self.intern_name()]
+        else:
+            return ['&%s' % self.intern_len_name(), self.intern_buf_name()]
+
 
     def return_tuple_list(self):
         if self.arg.intent in ('out', 'inout', None):
@@ -272,7 +280,17 @@ def generate_cy_pxd(ast, fc_pxd_name, buf):
     for proc in ast:
         buf.putln(proc.cy_prototype())
 
+def gen_cimport_decls(buf):
+    for dtype in pyf_iface.intrinsic_types:
+        buf.putlines(dtype.cimport_decls)
+
+def gen_cdef_extern_decls(buf):
+    for dtype in pyf_iface.intrinsic_types:
+        buf.putlines(dtype.cdef_extern_decls)
+
 def generate_cy_pyx(ast, buf):
+    gen_cimport_decls(buf)
+    gen_cdef_extern_decls(buf)
     for proc in ast:
         proc.generate_wrapper(buf)
 
@@ -283,8 +301,8 @@ class ProcWrapper(object):
         self.name = self.wrapped.wrapped_name()
         self.arg_mgr = CyArgWrapperManager.from_fwrapped_proc(wrapped)
 
-    def extern_declarations(self):
-        pass
+    def all_dtypes(self):
+        return self.wrapped.all_dtypes()
 
     def cy_prototype(self):
         template = "cpdef api object %(proc_name)s(%(arg_list)s)"

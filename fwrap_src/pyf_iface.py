@@ -11,9 +11,11 @@ class InvalidNameException(Exception):
 def ktp_namer(fw_ktp):
     return "fwrap_%s" % fw_ktp
 
-_do_nothing = lambda x: x
-
 class Dtype(object):
+
+    cdef_extern_decls = ''
+
+    cimport_decls = ''
 
     def __hash__(self):
         return hash(self.fw_ktp + (self.odecl or '') + self.type)
@@ -49,6 +51,12 @@ class Dtype(object):
 
 
 class CharacterType(Dtype):
+
+    cdef_extern_decls = '''\
+cdef extern from "string.h":
+    void *memcpy(void *dest, void *src, size_t n)
+'''
+
     def __init__(self, fw_ktp, len, odecl=None):
         super(CharacterType, self).__init__(fw_ktp, odecl)
         self.len = str(len)
@@ -97,6 +105,8 @@ class ComplexType(Dtype):
 
 default_complex = ComplexType(fw_ktp='default_complex', odecl="complex(kind((0.0,0.0)))")
 default_double_complex = ComplexType(fw_ktp='default_double_complex', odecl="complex(kind((0.0D0,0.0D0)))")
+
+intrinsic_types = [RealType, IntegerType, ComplexType, CharacterType, LogicalType]
 
 class Parameter(object):
     

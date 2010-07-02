@@ -109,6 +109,9 @@ class ProcWrapper(object):
         args = ", ".join(self.arg_man.c_proto_args())
         return '%s %s(%s)' % (self.arg_man.c_proto_return_type(), self.name, args)
 
+    def all_dtypes(self):
+        return self.wrapped.all_dtypes()
+
 class FunctionWrapper(ProcWrapper):
 
     def __init__(self, wrapped):
