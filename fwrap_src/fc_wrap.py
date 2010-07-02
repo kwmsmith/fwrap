@@ -289,11 +289,13 @@ class CharArgWrapper(ArgWrapperBase):
     _transfer_templ = '%s = transfer(%s, %s)'
 
     def __init__(self, arg):
-        self.intern_arg = arg
+        self.intern_arg = pyf.Argument(name="fw_%s" % arg.name,
+                                       dtype=arg.dtype,
+                                       intent=arg.intent)
         self.len_arg = pyf.Argument(name="fw_%s_len" % arg.name,
                                     dtype=pyf.dim_dtype,
                                     intent='in')
-        self.extern_arg = pyf.Argument(name="fw_%s" % arg.name,
+        self.extern_arg = pyf.Argument(name=arg.name,
                                        dtype=arg.dtype,
                                        intent='inout',
                                        dimension=[self.len_arg.name])

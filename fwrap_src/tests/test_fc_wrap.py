@@ -396,11 +396,11 @@ class test_char_arg(object):
     def test_c_declarations(self):
         results = [
                 ['fwrap_npy_intp *fw_ch1_len',
-                 'fwrap_char_20 *fw_ch1'],
+                 'fwrap_char_20 *ch1'],
                 ['fwrap_npy_intp *fw_ch2_len',
-                 'fwrap_char_10 *fw_ch2'],
+                 'fwrap_char_10 *ch2'],
                 ['fwrap_npy_intp *fw_ch3_len',
-                 'fwrap_char_x *fw_ch3'],
+                 'fwrap_char_x *ch3'],
                 ]
         for wrap, result in zip(self.inout_wraps, results):
             eq_(wrap.c_declarations(), result)
@@ -408,22 +408,22 @@ class test_char_arg(object):
     def test_extern_decl(self):
         results = [
                 ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch1_len',
-                 'character(kind=fwrap_char_20), dimension(fw_ch1_len), intent(inout) :: fw_ch1'],
+                 'character(kind=fwrap_char_20), dimension(fw_ch1_len), intent(inout) :: ch1'],
                 
                 ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch2_len',
-                 'character(kind=fwrap_char_10), dimension(fw_ch2_len), intent(inout) :: fw_ch2'],
+                 'character(kind=fwrap_char_10), dimension(fw_ch2_len), intent(inout) :: ch2'],
 
                 ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch3_len',
-                 'character(kind=fwrap_char_x), dimension(fw_ch3_len), intent(inout) :: fw_ch3'],
+                 'character(kind=fwrap_char_x), dimension(fw_ch3_len), intent(inout) :: ch3'],
                 ]
         for wrap, result in zip(self.inout_wraps, results):
             eq_(wrap.extern_declarations(), result)
 
     def test_intern_decl(self):
         results = [
-                ['character*20 :: ch1'],
-                ['character(len=10) :: ch2'],
-                ['character(kind=fwrap_char_x, len=fw_ch3_len) :: ch3'],
+                ['character*20 :: fw_ch1'],
+                ['character(len=10) :: fw_ch2'],
+                ['character(kind=fwrap_char_x, len=fw_ch3_len) :: fw_ch3'],
                 ]
 
         for wrap, result in zip(self.inout_wraps, results):
@@ -436,18 +436,18 @@ class test_char_arg(object):
         #    return
         # endif
 
-        results =  ( ['ch1 = transfer(fw_ch1, ch1)'],
-                     ['ch2 = transfer(fw_ch2, ch2)'],
-                     ['ch3 = transfer(fw_ch3, ch3)'])
+        results =  ( ['fw_ch1 = transfer(ch1, fw_ch1)'],
+                     ['fw_ch2 = transfer(ch2, fw_ch2)'],
+                     ['fw_ch3 = transfer(ch3, fw_ch3)'])
 
         for wrap, result in zip(self.inout_wraps, results):
             eq_(wrap.pre_call_code(), result)
 
     def test_post_call_code(self):
         #XXX: see comment for test_pre_call_code.
-        results =  ( ['fw_ch1 = transfer(ch1, fw_ch1)'],
-                     ['fw_ch2 = transfer(ch2, fw_ch2)'],
-                     ['fw_ch3 = transfer(ch3, fw_ch3)'])
+        results =  ( ['ch1 = transfer(fw_ch1, ch1)'],
+                     ['ch2 = transfer(fw_ch2, ch2)'],
+                     ['ch3 = transfer(fw_ch3, ch3)'])
 
         for wrap, result in zip(self.inout_wraps, results):
             eq_(wrap.post_call_code(), result)
