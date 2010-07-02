@@ -25,7 +25,6 @@ class Dtype(object):
 
     def __init__(self, fw_ktp, odecl=None, lang='fortran'):
         if not valid_fort_name(fw_ktp):
-            import pdb; pdb.set_trace()
             raise InvalidNameException("%s is not a valid fortran parameter name." % fw_ktp)
         self.fw_ktp = ktp_namer(fw_ktp)
         self.odecl = odecl
