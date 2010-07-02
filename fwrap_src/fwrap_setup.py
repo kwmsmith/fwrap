@@ -2,6 +2,8 @@
 # numpy.distutils for fwrap's purposes.
 
 import os, sys
+import tempfile
+import logging
 
 from fwrap_src import gen_config as gc
 
