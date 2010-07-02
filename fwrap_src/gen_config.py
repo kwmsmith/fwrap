@@ -47,6 +47,8 @@ def write_pxd(fname, h_name, ctps):
     pxd_out = open(fname, 'w')
     try:
         for ctp in ctps:
+            for line in ctp.gen_pxd_cimports():
+                pxd_out.write(line+'\n')
             for line in ctp.gen_pxd_intern_typedef():
                 pxd_out.write(line+'\n')
         pxd_out.write('cdef extern from "%s":\n' % h_name)
@@ -96,6 +98,8 @@ def ConfigTypeParam(basetype, odecl, fwrap_name, lang='fortran'):
     elif lang == 'fortran':
         if basetype == 'complex':
             return _CmplxTypeParam(basetype, odecl, fwrap_name)
+        if basetype == 'character':
+            return _CharTypeParam(basetype, odecl, fwrap_name)
         else:
             return _ConfigTypeParam(basetype, odecl, fwrap_name)
     else:
@@ -147,6 +151,14 @@ class _ConfigTypeParam(object):
 
     def gen_pxd_intern_typedef(self):
         return []
+
+    def gen_pxd_cimports(self):
+        return []
+
+class _CharTypeParam(_ConfigTypeParam):
+
+    def gen_pxd_cimports(self):
+        return ['from python_bytes cimport PyBytes_FromStringAndSize']
 
 class _CmplxTypeParam(_ConfigTypeParam):
 

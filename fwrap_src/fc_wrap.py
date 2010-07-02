@@ -291,12 +291,13 @@ class CharArgWrapper(ArgWrapperBase):
     def __init__(self, arg):
         self.intern_arg = arg
         self.len_arg = pyf.Argument(name="fw_%s_len" % arg.name,
-                               dtype=pyf.default_integer,
+                               dtype=pyf.dim_dtype,
                                intent='in')
         self.arg = pyf.Argument(name="fw_%s" % arg.name,
                 dtype=arg.dtype,
                 intent=arg.intent,
                 dimension=[self.len_arg.name])
+        self.dtype = self.intern_arg.dtype
 
     def c_declarations(self):
         return [self.len_arg.c_declaration(),
@@ -327,6 +328,9 @@ class CharArgWrapper(ArgWrapperBase):
         return [self._transfer_templ % (self.arg.name,
                                            self.intern_arg.name,
                                            self.arg.name)]
+
+    def get_name(self):
+        return self.arg.name
 
     def intern_name(self):
         return self.intern_arg.name

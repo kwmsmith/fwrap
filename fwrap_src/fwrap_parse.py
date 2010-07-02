@@ -97,6 +97,8 @@ def _get_dtype(typedecl):
     if length and kind and typedecl.name != 'character':
         raise RuntimeError("both length and kind specified for"
                            " non-character intrinsic type: length: %s kind: %s" % (length, kind))
+    if typedecl.name == 'character':
+        return pyf.CharacterType(fw_ktp='%s_x%s' % (typedecl.name, length), odecl=typedecl.tostr().lower(), len=length)
     if length and not kind:
         return name2type[typedecl.name](fw_ktp="%s_x%s" % (typedecl.name, length), odecl=typedecl.tostr().lower())
     try:
