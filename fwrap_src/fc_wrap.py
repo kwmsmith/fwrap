@@ -291,12 +291,12 @@ class CharArgWrapper(ArgWrapperBase):
     def __init__(self, arg):
         self.intern_arg = arg
         self.len_arg = pyf.Argument(name="fw_%s_len" % arg.name,
-                               dtype=pyf.dim_dtype,
-                               intent='in')
-        self.arg = pyf.Argument(name="fw_%s" % arg.name,
-                dtype=arg.dtype,
-                intent='inout',
-                dimension=[self.len_arg.name])
+                                    dtype=pyf.dim_dtype,
+                                    intent='in')
+        self.extern_arg = pyf.Argument(name="fw_%s" % arg.name,
+                                       dtype=arg.dtype,
+                                       intent='inout',
+                                       dimension=[self.len_arg.name])
         self.dtype = self.intern_arg.dtype
 
     def is_assumed_size(self):
@@ -304,20 +304,20 @@ class CharArgWrapper(ArgWrapperBase):
 
     def c_declarations(self):
         return [self.len_arg.c_declaration(),
-                self.arg.c_declaration()]
+                self.extern_arg.c_declaration()]
 
     def extern_arg_list(self):
         return [self.len_arg.name,
-                self.arg.name]
+                self.extern_arg.name]
 
     def _get_intent(self):
-        return self.arg.intent
+        return self.intern_arg.intent
 
     intent = property(_get_intent)
 
     def extern_declarations(self):
         return [self.len_arg.declaration(),
-                self.arg.declaration()]
+                self.extern_arg.declaration()]
 
     def intern_declarations(self):
         if self.is_assumed_size():
@@ -326,22 +326,22 @@ class CharArgWrapper(ArgWrapperBase):
 
     def pre_call_code(self):
         return [self._transfer_templ % (self.intern_arg.name,
-                                           self.arg.name,
-                                           self.intern_arg.name)]
+                                        self.extern_arg.name,
+                                        self.intern_arg.name)]
 
     def post_call_code(self):
-        return [self._transfer_templ % (self.arg.name,
+        return [self._transfer_templ % (self.extern_arg.name,
                                            self.intern_arg.name,
-                                           self.arg.name)]
+                                           self.extern_arg.name)]
 
     def get_name(self):
-        return self.arg.name
+        return self.extern_arg.name
 
     def intern_name(self):
         return self.intern_arg.name
 
     def get_ktp(self):
-        return self.arg.ktp
+        return self.extern_arg.ktp
 
 
 class HideArgWrapper(ArgWrapperBase):
