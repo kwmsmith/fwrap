@@ -295,7 +295,7 @@ class CharArgWrapper(ArgWrapperBase):
                                intent='in')
         self.arg = pyf.Argument(name="fw_%s" % arg.name,
                 dtype=arg.dtype,
-                intent=arg.intent,
+                intent='inout',
                 dimension=[self.len_arg.name])
         self.dtype = self.intern_arg.dtype
 
