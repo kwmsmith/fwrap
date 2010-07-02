@@ -175,6 +175,28 @@ class test_cy_array_arg_wrapper(object):
         eq_(self.cy_int_arg.return_tuple_list(), ["int_array_"])
 
 
+class test_char_assumed_size(object):
+
+    def setup(self):
+        self.intents = ('in', 'out', 'inout', None)
+        self.dtypes = [pyf.CharacterType('ch_xX',
+                                        len='*',
+                                        odecl='character(len=*)') for _ in range(4)]
+        self.caws = make_caws(self.dtypes, ['name']*len(self.dtypes), self.intents)
+        self.intent_in, self.intent_out, self.intent_inout, self.no_intent = self.caws
+
+    def test_extern_declarations(self):
+        eq_(self.intent_out.extern_declarations(),
+                ['bytes name'])
+
+    def test_pre_call_code(self):
+        eq_(self.intent_out.pre_call_code(),
+                ['fw_name = name',
+                 'fw_name_len = len(fw_name)'])
+        eq_(self.intent_inout.pre_call_code(),
+                ['fw_name = PyBytes_FromStringAndSize(<char*>name, len(name))',
+                 'fw_name_len = len(fw_name)'])
+
 class test_char_args(object):
 
     def setup(self):
@@ -207,13 +229,14 @@ class test_char_args(object):
 
     def test_pre_call_code(self):
         eq_(self.intent_out.pre_call_code(),
-                ['fw_name = "%s"' % ('0'*20),
+                ['fw_name = "%s"' % (' '*20),
                  'fw_name_len = len(fw_name)'])
         eq_(self.intent_in.pre_call_code(),
                 ['fw_name = name',
                  'fw_name_len = len(fw_name)'])
         eq_(self.intent_inout.pre_call_code(),
-                ['fw_name = PyBytes_FromStringAndSize(<char*>name, len(name))',
+                ['name = name[:30] + " "*(30-len(name))',
+                 'fw_name = PyBytes_FromStringAndSize(<char*>name, len(name))',
                  'fw_name_len = len(fw_name)'])
 
     def test_post_call_code(self):

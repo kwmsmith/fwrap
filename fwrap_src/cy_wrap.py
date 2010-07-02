@@ -67,6 +67,13 @@ class _CyCharArg(_CyArgWrapper):
 
     def __init__(self, arg):
         super(_CyCharArg, self).__init__(arg)
+
+    def extern_declarations(self):
+        if self.arg.intent in ('in', 'inout', None):
+            return ["%s %s" % (self.cy_dtype_name(), self.arg.get_name())]
+        elif self.is_assumed_size():
+            return ['%s %s' % (self.cy_dtype_name(), self.arg.get_name())]
+        return []
         
     def intern_name(self):
         return 'fw_%s' % self.get_name()
@@ -82,18 +89,41 @@ class _CyCharArg(_CyArgWrapper):
                 'cdef fwrap_npy_intp %s' % self.intern_len_name()]
 
     def get_len(self):
-        return int(self.arg.dtype.len)
+        return self.arg.dtype.len
+
+    def is_assumed_size(self):
+        return self.get_len() == '*'
 
     def pre_call_code(self):
+        if self.is_assumed_size():
+            ret = self._pre_call_code_assumed_size()
+        else:
+            ret = self._pre_call_code()
+        return ret + ['%s = len(%s)' % (self.intern_len_name(), self.intern_name())]
+
+    def _fromstringandsize_call(self):
+        return '%s = PyBytes_FromStringAndSize(<char*>%s, len(%s))' % \
+                    (self.intern_name(), self.get_name(), self.get_name())
+
+    def _pre_call_code_assumed_size(self):
+        ret = []
+        if self.arg.intent in ('out', 'in'):
+            ret.append('%s = %s' % (self.intern_name(), self.get_name()))
+        elif self.arg.intent in ('inout', None):
+            ret.append(self._fromstringandsize_call())
+        return ret
+
+    def _pre_call_code(self):
         ret = []
         if self.arg.intent == 'out':
-            ret.append('%s = "%s"' % (self.intern_name(), '0'*self.get_len()))
+            ret.append('%s = "%s"' % (self.intern_name(), ' '*int(self.get_len())))
         elif self.arg.intent == 'in':
             ret.append('%s = %s' % (self.intern_name(), self.get_name()))
         elif self.arg.intent in ('inout', None):
-            ret.append('%s = PyBytes_FromStringAndSize(<char*>%s, len(%s))' % \
-                    (self.intern_name(), self.get_name(), self.get_name()))
-        return ret + ['%s = len(%s)' % (self.intern_len_name(), self.intern_name())]
+            ret = ['%(nm)s = %(nm)s[:%(flen)s] + " "*(%(flen)s-len(%(nm)s))' % \
+                    {'nm': self.get_name(), 'flen': self.get_len()}]
+            ret.append(self._fromstringandsize_call())
+        return ret
 
     def call_arg_list(self):
         return ['&%s' % self.intern_len_name(), '<char*>%s' % self.intern_name()]

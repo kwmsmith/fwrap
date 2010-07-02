@@ -25,14 +25,18 @@ class Dtype(object):
 
     def __init__(self, fw_ktp, odecl=None, lang='fortran'):
         if not valid_fort_name(fw_ktp):
-            raise InvalidNameException("%s is not a valid fortran parameter name.")
+            raise InvalidNameException("%s is not a valid fortran parameter name." % fw_ktp)
         self.fw_ktp = ktp_namer(fw_ktp)
         self.odecl = odecl
         self.type = None
         self.lang = lang
 
-    def type_spec(self):
-        return '%s(kind=%s)' % (self.type, self.fw_ktp)
+    def type_spec(self, len=None):
+        if len:
+            return '%s(kind=%s, len=%s)' % (self.type, self.fw_ktp, len)
+        else:
+            return '%s(kind=%s)' % (self.type, self.fw_ktp)
+
 
     def orig_type_spec(self):
         return self.odecl
@@ -114,17 +118,17 @@ class Var(object):
         else:
             self.is_array = False
 
-    def var_specs(self, orig=False):
+    def var_specs(self, orig=False, len=None):
         if orig:
             specs = [self.dtype.orig_type_spec()]
         else:
-            specs = [self.dtype.type_spec()]
+            specs = [self.dtype.type_spec(len)]
         if self.dimension:
             specs.append('dimension(%s)' % ', '.join(self.dimension))
         return specs
 
-    def declaration(self):
-        return '%s :: %s' % (', '.join(self.var_specs()), self.name)
+    def declaration(self, len=None):
+        return '%s :: %s' % (', '.join(self.var_specs(len=len)), self.name)
 
     def orig_declaration(self):
         return "%s :: %s" % (', '.join(self.var_specs(orig=True)), self.name)

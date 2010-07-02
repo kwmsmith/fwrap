@@ -299,6 +299,9 @@ class CharArgWrapper(ArgWrapperBase):
                 dimension=[self.len_arg.name])
         self.dtype = self.intern_arg.dtype
 
+    def is_assumed_size(self):
+        return self.intern_arg.dtype.len == '*'
+
     def c_declarations(self):
         return [self.len_arg.c_declaration(),
                 self.arg.c_declaration()]
@@ -317,6 +320,8 @@ class CharArgWrapper(ArgWrapperBase):
                 self.arg.declaration()]
 
     def intern_declarations(self):
+        if self.is_assumed_size():
+            return [self.intern_arg._var.declaration(len=self.len_arg.name)]
         return [self.intern_arg._var.orig_declaration()]
 
     def pre_call_code(self):

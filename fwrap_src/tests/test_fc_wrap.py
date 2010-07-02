@@ -395,11 +395,11 @@ class test_char_arg(object):
 
     def test_c_declarations(self):
         results = [
-                ['fwrap_default_integer *fw_ch1_len',
+                ['fwrap_npy_intp *fw_ch1_len',
                  'fwrap_char_20 *fw_ch1'],
-                ['fwrap_default_integer *fw_ch2_len',
+                ['fwrap_npy_intp *fw_ch2_len',
                  'fwrap_char_10 *fw_ch2'],
-                ['fwrap_default_integer *fw_ch3_len',
+                ['fwrap_npy_intp *fw_ch3_len',
                  'fwrap_char_x *fw_ch3'],
                 ]
         for wrap, result in zip(self.inout_wraps, results):
@@ -407,13 +407,13 @@ class test_char_arg(object):
 
     def test_extern_decl(self):
         results = [
-                ['integer(kind=fwrap_default_integer), intent(in) :: fw_ch1_len',
+                ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch1_len',
                  'character(kind=fwrap_char_20), dimension(fw_ch1_len), intent(inout) :: fw_ch1'],
                 
-                ['integer(kind=fwrap_default_integer), intent(in) :: fw_ch2_len',
+                ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch2_len',
                  'character(kind=fwrap_char_10), dimension(fw_ch2_len), intent(inout) :: fw_ch2'],
 
-                ['integer(kind=fwrap_default_integer), intent(in) :: fw_ch3_len',
+                ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch3_len',
                  'character(kind=fwrap_char_x), dimension(fw_ch3_len), intent(inout) :: fw_ch3'],
                 ]
         for wrap, result in zip(self.inout_wraps, results):
@@ -423,7 +423,7 @@ class test_char_arg(object):
         results = [
                 ['character*20 :: ch1'],
                 ['character(len=10) :: ch2'],
-                ['character(len=*) :: ch3'],
+                ['character(kind=fwrap_char_x, len=fw_ch3_len) :: ch3'],
                 ]
 
         for wrap, result in zip(self.inout_wraps, results):
