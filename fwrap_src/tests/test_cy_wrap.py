@@ -191,11 +191,14 @@ class test_char_assumed_size(object):
 
     def test_pre_call_code(self):
         eq_(self.intent_out.pre_call_code(),
-                ['fw_name = name',
-                 'fw_name_len = len(fw_name)'])
+                ['fw_name_len = len(name)',
+                 'fw_name_buf = <char*>malloc(fw_name_len+1)',
+                 'fw_name = PyBytes_FromStringAndSize(fw_name_buf, fw_name_len)',])
         eq_(self.intent_inout.pre_call_code(),
-                ['fw_name = PyBytes_FromStringAndSize(<char*>name, len(name))',
-                 'fw_name_len = len(fw_name)'])
+                ['fw_name_len = len(name)',
+                 'fw_name_buf = <char*>malloc(fw_name_len+1)',
+                 'memcpy(fw_name_buf, <char*>name, fw_name_len+1)',
+                 'fw_name = PyBytes_FromStringAndSize(fw_name_buf, fw_name_len)',])
 
 class test_char_args(object):
 
@@ -219,25 +222,33 @@ class test_char_args(object):
     def test_intern_declarations(self):
         eq_(self.intent_out.intern_declarations(),
                 ['cdef bytes fw_name',
-                 'cdef fwrap_npy_intp fw_name_len'])
+                 'cdef fwrap_npy_intp fw_name_len',
+                 'cdef char *fw_name_buf'])
         eq_(self.intent_in.intern_declarations(),
                 ['cdef bytes fw_name',
                  'cdef fwrap_npy_intp fw_name_len'])
         eq_(self.intent_inout.intern_declarations(),
                 ['cdef bytes fw_name',
-                 'cdef fwrap_npy_intp fw_name_len'])
+                 'cdef fwrap_npy_intp fw_name_len',
+                 'cdef char *fw_name_buf'])
+        eq_(self.no_intent.intern_declarations(),
+                ['cdef bytes fw_name',
+                 'cdef fwrap_npy_intp fw_name_len',
+                 'cdef char *fw_name_buf'])
 
     def test_pre_call_code(self):
         eq_(self.intent_out.pre_call_code(),
-                ['fw_name = "%s"' % (' '*20),
-                 'fw_name_len = len(fw_name)'])
+                ['fw_name_len = 20',
+                 'fw_name_buf = <char*>malloc(fw_name_len+1)',
+                 'fw_name = PyBytes_FromStringAndSize(fw_name_buf, fw_name_len)',])
         eq_(self.intent_in.pre_call_code(),
-                ['fw_name = name',
-                 'fw_name_len = len(fw_name)'])
+                ['fw_name_len = len(name)',
+                 'fw_name = name',])
         eq_(self.intent_inout.pre_call_code(),
-                ['name = name[:30] + " "*(30-len(name))',
-                 'fw_name = PyBytes_FromStringAndSize(<char*>name, len(name))',
-                 'fw_name_len = len(fw_name)'])
+                ['fw_name_len = len(name)',
+                 'fw_name_buf = <char*>malloc(fw_name_len+1)',
+                 'memcpy(fw_name_buf, <char*>name, fw_name_len+1)',
+                 'fw_name = PyBytes_FromStringAndSize(fw_name_buf, fw_name_len)',])
 
     def test_post_call_code(self):
         eq_(self.intent_out.post_call_code(), [])

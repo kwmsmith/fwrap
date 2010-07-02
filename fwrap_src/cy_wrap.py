@@ -81,12 +81,18 @@ class _CyCharArg(_CyArgWrapper):
     def intern_len_name(self):
         return '%s_len' % self.intern_name()
 
+    def intern_buf_name(self):
+        return '%s_buf' % self.intern_name()
+
     def cy_dtype_name(self):
         return 'bytes'
 
     def intern_declarations(self):
-        return ['cdef bytes %s' % self.intern_name(),
+        ret = ['cdef bytes %s' % self.intern_name(),
                 'cdef fwrap_npy_intp %s' % self.intern_len_name()]
+        if self.arg.intent in ('out', 'inout', None):
+            ret.append('cdef char *%s' % self.intern_buf_name())
+        return ret
 
     def get_len(self):
         return self.arg.dtype.len
@@ -95,35 +101,28 @@ class _CyCharArg(_CyArgWrapper):
         return self.get_len() == '*'
 
     def pre_call_code(self):
-        if self.is_assumed_size():
-            ret = self._pre_call_code_assumed_size()
-        else:
-            ret = self._pre_call_code()
-        return ret + ['%s = len(%s)' % (self.intern_len_name(), self.intern_name())]
+        if self.arg.intent == 'out':
+            if self.is_assumed_size():
+                len_str = 'len(%s)' % self.get_name()
+            else:
+                len_str = self.get_len()
+            ret = ['%s = %s' % (self.intern_len_name(), len_str),
+                   '%s = <char*>malloc(%s+1)' % (self.intern_buf_name(), self.intern_len_name()),
+                   self._fromstringandsize_call()]
+        elif self.arg.intent == 'in':
+            ret = ['%s = len(%s)' % (self.intern_len_name(), self.get_name()),
+                    '%s = %s' % (self.intern_name(), self.get_name())]
+        elif self.arg.intent in ('inout', None):
+            ret = ['%s = len(%s)' % (self.intern_len_name(), self.get_name()),
+                   '%s = <char*>malloc(%s+1)' % (self.intern_buf_name(), self.intern_len_name()),
+                   'memcpy(%s, <char*>%s, %s+1)' % (self.intern_buf_name(), self.get_name(), self.intern_len_name()),
+                   self._fromstringandsize_call()]
+        return ret
 
     def _fromstringandsize_call(self):
-        return '%s = PyBytes_FromStringAndSize(<char*>%s, len(%s))' % \
-                    (self.intern_name(), self.get_name(), self.get_name())
+        return '%s = PyBytes_FromStringAndSize(%s, %s)' % \
+                    (self.intern_name(), self.intern_buf_name(), self.intern_len_name())
 
-    def _pre_call_code_assumed_size(self):
-        ret = []
-        if self.arg.intent in ('out', 'in'):
-            ret.append('%s = %s' % (self.intern_name(), self.get_name()))
-        elif self.arg.intent in ('inout', None):
-            ret.append(self._fromstringandsize_call())
-        return ret
-
-    def _pre_call_code(self):
-        ret = []
-        if self.arg.intent == 'out':
-            ret.append('%s = "%s"' % (self.intern_name(), ' '*int(self.get_len())))
-        elif self.arg.intent == 'in':
-            ret.append('%s = %s' % (self.intern_name(), self.get_name()))
-        elif self.arg.intent in ('inout', None):
-            ret = ['%(nm)s = %(nm)s[:%(flen)s] + " "*(%(flen)s-len(%(nm)s))' % \
-                    {'nm': self.get_name(), 'flen': self.get_len()}]
-            ret.append(self._fromstringandsize_call())
-        return ret
 
     def call_arg_list(self):
         return ['&%s' % self.intern_len_name(), '<char*>%s' % self.intern_name()]
@@ -283,6 +282,9 @@ class ProcWrapper(object):
         self.wrapped = wrapped
         self.name = self.wrapped.wrapped_name()
         self.arg_mgr = CyArgWrapperManager.from_fwrapped_proc(wrapped)
+
+    def extern_declarations(self):
+        pass
 
     def cy_prototype(self):
         template = "cpdef api object %(proc_name)s(%(arg_list)s)"
