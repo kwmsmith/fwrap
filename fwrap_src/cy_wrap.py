@@ -100,28 +100,35 @@ class _CyCharArg(_CyArgWrapper):
     def is_assumed_size(self):
         return self.get_len() == '*'
 
+    def _len_str(self):
+        if self.is_assumed_size():
+            len_str = 'len(%s)' % self.get_name()
+        else:
+            len_str = self.get_len()
+        return len_str
+
+    def _in_pre_call_code(self):
+        return ['%s = len(%s)' % (self.intern_len_name(), self.get_name()),
+                '%s = %s' % (self.intern_name(), self.get_name())]
+        
+    def _out_pre_call_code(self):
+        len_str = self._len_str()
+        return ['%s = %s' % (self.intern_len_name(), len_str),
+               self._fromstringandsize_call(),
+               '%s = <char*>%s' % (self.intern_buf_name(), self.intern_name()),]
+
+    def _inout_pre_call_code(self):
+       ret = self._out_pre_call_code()
+       ret += ['memcpy(%s, <char*>%s, %s+1)' % (self.intern_buf_name(), self.get_name(), self.intern_len_name())]
+       return ret
+
     def pre_call_code(self):
-        if self.arg.intent == 'out':
-            if self.is_assumed_size():
-                len_str = 'len(%s)' % self.get_name()
-            else:
-                len_str = self.get_len()
-            ret = ['%s = %s' % (self.intern_len_name(), len_str),
-                   self._fromstringandsize_call(),
-                   '%s = <char*>%s' % (self.intern_buf_name(), self.intern_name()),]
-        elif self.arg.intent == 'in':
-            ret = ['%s = len(%s)' % (self.intern_len_name(), self.get_name()),
-                    '%s = %s' % (self.intern_name(), self.get_name())]
+        if self.arg.intent == 'in':
+            return self._in_pre_call_code()
+        elif self.arg.intent == 'out':
+            return self._out_pre_call_code()
         elif self.arg.intent in ('inout', None):
-            if self.is_assumed_size():
-                len_str = 'len(%s)' % self.get_name()
-            else:
-                len_str = self.get_len()
-            ret = ['%s = %s' % (self.intern_len_name(), len_str),
-                   self._fromstringandsize_call(),
-                   '%s = <char*>%s' % (self.intern_buf_name(), self.intern_name()),
-                   'memcpy(%s, <char*>%s, %s+1)' % (self.intern_buf_name(), self.get_name(), self.intern_len_name())]
-        return ret
+            return self._inout_pre_call_code()
 
     def _fromstringandsize_call(self):
         return '%s = PyBytes_FromStringAndSize(NULL, %s)' % \

@@ -245,7 +245,7 @@ class test_char_args(object):
                 ['fw_name_len = len(name)',
                  'fw_name = name',])
         eq_(self.intent_inout.pre_call_code(),
-                ['fw_name_len = len(name)',
+                ['fw_name_len = 30',
                  'fw_name = PyBytes_FromStringAndSize(NULL, fw_name_len)',
                  'fw_name_buf = <char*>fw_name',
                  'memcpy(fw_name_buf, <char*>name, fw_name_len+1)',])
