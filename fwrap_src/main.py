@@ -24,9 +24,9 @@ import cy_wrap
 logger = logging.getLogger('fwrap')
         
 
-def wrap(source_files=[], name="fwproj", build=False, out_dir='./',
-            fcompiler=None, fflags='', ldflags='', recompile=True, 
-            src_list=None):
+def wrap(source_files=[], config=None, name="fwproj", build=False, 
+            out_dir='./', f90="gfortran", fcompiler='gnu95', fflags='', 
+            ldflags='', recompile=True):
     r"""Wrap the source given and compile if requested
     
     This function is the main driving routine for fwrap and for most use
@@ -40,37 +40,44 @@ def wrap(source_files=[], name="fwproj", build=False, out_dir='./',
        order compilation must proceed in, i.e. if you have modules in your
        source, list the source files that contain the modules first.  Can also
        be a file containing a list of sources.
+     - *config* - (string) Path to configuration file.  This will be config
+       file is read in first so arguments to the command supercede the
+       settings in the config file.
      - *name* - (string) Name of the project and the name of the resulting
        python module
      - *build* - (bool) Compile all source into a shared library for importing
        in python, default is True
      - *out_dir* - (string) Path where project build is placed
-     - *fcompiler* - (string) Fortran compiler requested, defaults to 
-       distutils choice of compilers
+     - *f90* - (string) Compiler or path to compiler, default is 'gfortran'
+     - *fcompiler* - (string) Class name of fortran compiler requested, this
+       name is the one that distutils recognizes.  Default is 'gnu95'.
      - *fflags* - (string) Compilation flags used, appended to the end of 
        distutils compilation run
      - *ldflags* - (string) Linker flags used, used in linking final
        library.
      - *recompile* - (bool) Recompile all object files before creating shared
        library, default is True
-     - *src_list* - (string) Path to file containing a new line delimited list 
-       of source files.  The source files will be appeneded to the list given
-       in source_files or create it otherwise.
     """
     # Check to see if each source exists and expand to full paths
+    raw_source = False
     if isinstance(source_files,basestring):
         if os.path.exists(source_files):
             source_files = [source_files]
         else:
-            raise NotImplementedError("Direct source wrapping not supported.")
+            # Put raw source in a temporary directory
+            raw_source = True
+            fh,source_path = tempfile.mkstemp(suffix='f90',text=True)
+            fh.write(source_files)
+            fh.close()
+            source_files = [source_path]
     elif not isinstance(source_files,list):
         raise ValueError("Must provide a list of source files")
-    if src_list is not None:
-        if isinstance(src_list,basestring):
-            if os.path.exists(src_list):
-                src_file = open(src_list,'r')
-                for line in src_file:
-                    source_files.append(line)
+    # if src_list is not None:
+    #     if isinstance(src_list,basestring):
+    #         if os.path.exists(src_list):
+    #             src_file = open(src_list,'r')
+    #             for line in src_file:
+    #                 source_files.append(line)
     if len(source_files) < 1:
         raise ValueError("Must provide a list of source files")
     for (i,source) in enumerate(source_files):
@@ -78,6 +85,10 @@ def wrap(source_files=[], name="fwproj", build=False, out_dir='./',
             source_files[i] = source.strip()
         else:
             raise ValueError("The source file %s does not exist." % source)
+            
+    # Read in config file if present
+    if config is not None:
+        raise NotImplementedError("Configuration files are not supported yet.")
 
     # Validate some of the options
     for opt in ['name','out_dir','fflags','ldflags']:
@@ -123,6 +134,10 @@ def wrap(source_files=[], name="fwproj", build=False, out_dir='./',
         logger.info("Compiling library module...")
         raise NotImplementError("Building of library module not supported.")
         logger.info("Compiling was successful.")
+        
+    # If raw source was passed in, we need to delete the temp file we created
+    if raw_source:
+        os.remove(source_files[0])
         
 
 def parse(source_files,parser='fparser'):
@@ -221,6 +236,7 @@ if __name__ == "__main__":
     parser.add_option('-m',dest='name',help='')
     parser.add_option('-c','-b','--build',dest='build',action='store_true',help='')
     parser.add_option('-o','--out_dir',dest='out_dir',help='')
+    parser.add_option('--f90',dest='f90',help='')
     parser.add_option('-F','--fcompiler',dest='fcompiler',help='')
     parser.add_option('-f','--fflags',dest='fflags',help='')
     parser.add_option('-l','--ldflags',dest='ldflags',help='')
@@ -228,16 +244,18 @@ if __name__ == "__main__":
     parser.add_option('--no-recompile',action="store_false",dest='recompile',help='')
     parser.add_option('--src-list',dest='src_list',help='')
     
-    parser.set_defaults(name="fwproj",build=False,out_dir="./",fflags='',
-                        ldflags='',recompile=True,src_list=None)
+    parser.set_defaults(name="fwproj",build=False,out_dir="./",f90='gfortran',
+                        fcompiler='gnu95',fflags='',ldflags='',recompile=True,
+                        src_list=None)
     
     options, source_files = parser.parse_args()
 
     try:
         wrap(source_files,name=options.name,build=options.build,
-            out_dir=options.out_dir,fcompiler=options.fcompiler,
-            fflags=options.fflags,ldflags=options.ldflags,
-            recompile=options.recompile,src_list=options.src_list)
+            out_dir=options.out_dir,f90=options.f90,
+            fcompiler=options.fcompiler,fflags=options.fflags,
+            ldflags=options.ldflags,recompile=options.recompile,
+            src_list=options.src_list)
     except:
         raise
     sys.exit(0)
