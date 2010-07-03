@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # encoding: utf-8
-r"""
-Empty help!
+r"""This module contains the interface for fwrap and the command line routine
 
-:Author:
+
+
+:Authors:
 """
 
 import os
@@ -26,7 +27,14 @@ logger = logging.getLogger('fwrap')
 def wrap(source_files=[], name="fwproj", build=False, out_dir='./',
             fcompiler=None, fflags='', ldflags='', recompile=True, 
             src_list=None):
-    r"""
+    r"""Wrap the source given and compile if requested
+    
+    This function is the main driving routine for fwrap and for most use
+    cases should be sufficient.  It performs argument validation, compilation
+    of the base source if requested, parses the source, writes out the
+    necessary fortran, c, and cython files for wrapping, and again compiles
+    those into a module if requested.
+    
     :Input:
      - *source_files* - (id) List of paths to source files, this must be in the
        order compilation must proceed in, i.e. if you have modules in your
