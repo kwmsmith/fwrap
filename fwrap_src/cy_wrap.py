@@ -1,23 +1,6 @@
 import pyf_iface
 import constants
 
-def generate_pyx(program_unit_list, buf):
-    buf.write('''
-cimport DP_c
-
-cpdef api DP_c.fwrap_default_int empty_func():
-    return DP_c.empty_func_c()
-'''
-)
-
-def generate_pxd(program_unit_list, buf):
-    buf.write('''
-cimport DP_c
-
-cpdef api DP_c.fwrap_default_int empty_func()
-'''
-)
-
 def CyArgWrapper(arg):
     if isinstance(arg.dtype, pyf_iface.ComplexType):
         return _CyCmplxArg(arg)
@@ -140,7 +123,6 @@ class _CyCharArg(_CyArgWrapper):
             return ['&%s' % self.intern_len_name(), '<char*>%s' % self.intern_name()]
         else:
             return ['&%s' % self.intern_len_name(), self.intern_buf_name()]
-
 
     def return_tuple_list(self):
         if self.arg.intent in ('out', 'inout', None):
