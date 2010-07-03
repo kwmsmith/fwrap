@@ -9,6 +9,7 @@ Empty help!
 import os
 import sys
 import logging
+import traceback
 from optparse import OptionParser
 from cStringIO import StringIO
 from code import CodeBuffer, reflow_fort
@@ -22,8 +23,8 @@ import cy_wrap
 logger = logging.getLogger('fwrap')
         
 
-def wrap(source_files=[], name="fwproj", build=False, build_dir='./fw_build',
-            fort_compiler=None, fort_flags='', link_flags='', recompile=True,
+def wrap(source_files=[], name="fwproj", build=False, out_dir='./',
+            fcompiler=None, fflags='', ldflags='', recompile=True, 
             src_list=None):
     r"""
     :Input:
@@ -31,15 +32,16 @@ def wrap(source_files=[], name="fwproj", build=False, build_dir='./fw_build',
        order compilation must proceed in, i.e. if you have modules in your
        source, list the source files that contain the modules first.  Can also
        be a file containing a list of sources.
-     - *name* - (string) Name of the python module produced
+     - *name* - (string) Name of the project and the name of the resulting
+       python module
      - *build* - (bool) Compile all source into a shared library for importing
        in python, default is True
-     - *build_dir* - (string) Path where build products are placed
-     - *fort_compiler* - (string) Fortran compiler requested, defaults to 
+     - *out_dir* - (string) Path where project build is placed
+     - *fcompiler* - (string) Fortran compiler requested, defaults to 
        distutils choice of compilers
-     - *fort_flags* - (string) Compilation flags used, appended to the end of 
+     - *fflags* - (string) Compilation flags used, appended to the end of 
        distutils compilation run
-     - *link_flags* - (string) Linker flags used, used in linking final
+     - *ldflags* - (string) Linker flags used, used in linking final
        library.
      - *recompile* - (bool) Recompile all object files before creating shared
        library, default is True
@@ -64,27 +66,32 @@ def wrap(source_files=[], name="fwproj", build=False, build_dir='./fw_build',
     if len(source_files) < 1:
         raise ValueError("Must provide a list of source files")
     for (i,source) in enumerate(source_files):
-        if os.path.exists(os.path.abspath(source)):
-            source_files[i] = os.path.abspath(source)
+        if os.path.exists(source.strip()):
+            source_files[i] = source.strip()
         else:
             raise ValueError("The source file %s does not exist." % source)
 
     # Validate some of the options
-    for opt in ['name','build_dir','fort_flags','link_flags']:
+    for opt in ['name','out_dir','fflags','ldflags']:
         if not isinstance(locals()[opt],basestring):
             raise ValueError('Option "%s" must be a string' % opt)
     if not isinstance(build,bool):
         raise ValueError('Option "build" must be a bool.')
-    if not os.path.exists(os.path.abspath(build_dir)):
-        build_dir = os.path.abspath(build_dir)
-    else:
-        raise ValueError("Build directory %s already exists" \
-                            % build_dir)
+    if fcompiler is not None:
+        if not isinstance(fcompiler,basestring):
+            raise ValueError('Option fcompiler must be a string.')
+    out_dir = out_dir.strip()
     name.strip()
-    if fort_compiler is not None:
-        if not isinstance(fort_compiler,basestring):
-            raise ValueError('Option fort_compiler must be a string.')
-    # TODO: Check if distutils can use this compiler
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+    project_path = os.path.join(out_dir,name)
+    if os.path.exists(project_path):
+        raise ValueError("Project directory %s already exists" \
+                % os.path.join(out_dir,name.strip()))
+    else:
+        name.strip()
+        os.mkdir(project_path)
+    # TODO: Check if distutils can use this fcompiler
     
     # Build source if need be, this is set to False by default as this section
     # has not been done yet
@@ -100,7 +107,7 @@ def wrap(source_files=[], name="fwproj", build=False, build_dir='./fw_build',
 
     # Generate wrapper files
     logger.info("Wrapping fortran...")
-    generate(f_ast,name,build_dir)
+    generate(f_ast,name,project_path)
     logger.info("Wrapping was successful.")
     
     # Generate library module if requested
@@ -126,13 +133,13 @@ def parse(source_files,parser='fparser'):
         raise NotImplementedError("Parser %s not supported." % parser)
     return ast
 
-def generate(fort_ast,name,build_dir='./'):
+def generate(fort_ast,name,project_path):
     r"""Given a fortran abstract syntax tree ast, generate wrapper files
     
     :Input:
      - *fort_ast* - (`fparser.ProgramBlock`) Abstract syntax tree from parser
      - *name* - (string) Name of the library module
-     - *build_dir* - (string) Path to build directory, defaults to './'
+     - *out_dir* - (string) Path to build directory, defaults to './'
      
      Raises `IOError`
     """
@@ -140,22 +147,19 @@ def generate(fort_ast,name,build_dir='./'):
     # Generate wrapping abstract syntax trees
     logger.info("Generating abstract syntax tress for c and cython.")
     c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
-    cython_ast = cy_wrap.wrap_fc(fort_ast)
+    cython_ast = cy_wrap.wrap_fc(c_ast)
     
     # Generate files and write them out
-    generators = ( (generate_genconfig,(fort_ast)),
-                   (generate_type_specs,(fort_ast)),
+    generators = ( (generate_type_specs,(fort_ast)),
                    (generate_fc_f,(c_ast,name)),
                    (generate_fc_h,(c_ast,name)),
                    (generate_fc_pxd,(cython_ast,name)),
                    (generate_cy_pxd,(cython_ast,name)),
                    (generate_cy_pyx,(cython_ast,name)) )
-                   
     for (generator,args) in generators:
         file_name, buf = generator(*args)
         try:
-            path = os.path.join(build_dir, file_name)
-            fh = open(path,'w')
+            fh = open(project_path,'w')
             fh.write(buff.getvalue())
             fh.close()
         except IOError:
@@ -207,29 +211,25 @@ if __name__ == "__main__":
     parser = OptionParser("usage: %prog [options] arg")
     
     parser.add_option('-m',dest='name',help='')
-    parser.add_option('-c','--build',dest='build',action='store_true',help='')
-    parser.add_option('-b','--build_dir',dest='build_dir',help='')
-    parser.add_option('-F','--fort_compiler',dest='fort_compiler',help='')
-    parser.add_option('-f','--fort_flags',dest='fort_flags',help='')
-    parser.add_option('-L','--link_flags',dest='link_flags',help='')
+    parser.add_option('-c','-b','--build',dest='build',action='store_true',help='')
+    parser.add_option('-o','--out_dir',dest='out_dir',help='')
+    parser.add_option('-F','--fcompiler',dest='fcompiler',help='')
+    parser.add_option('-f','--fflags',dest='fflags',help='')
+    parser.add_option('-l','--ldflags',dest='ldflags',help='')
     parser.add_option('-r','--recompile',action="store_true",dest='recompile',help='')
     parser.add_option('--no-recompile',action="store_false",dest='recompile',help='')
     parser.add_option('--src-list',dest='src_list',help='')
     
-    parser.set_defaults(name="fwproj",build=False,build_dir="./fw_build",
-                            fort_flags='',link_flags='',recompile=True,
-                            src_list=None)
+    parser.set_defaults(name="fwproj",build=False,out_dir="./",fflags='',
+                        ldflags='',recompile=True,src_list=None)
     
     options, source_files = parser.parse_args()
 
     try:
         wrap(source_files,name=options.name,build=options.build,
-            build_dir=options.build_dir,fort_compiler=options.fort_compiler,
-            fort_flags=options.fort_flags,link_flags=options.link_flags,
+            out_dir=options.out_dir,fcompiler=options.fcompiler,
+            fflags=options.fflags,ldflags=options.ldflags,
             recompile=options.recompile,src_list=options.src_list)
     except:
-        logger.critical(''.join(('Traceback\n',
-            ''.join( traceback.format_stack() ))))
-        logger.critical("fwrap.wrap failed")
-        sys.exit(1)
+        raise
     sys.exit(0)
