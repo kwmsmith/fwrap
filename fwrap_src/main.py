@@ -7,6 +7,8 @@ r"""This module contains the interface for fwrap and the command line routine
 :Authors:
 """
 
+__version__ = "0.1.0"
+
 import os
 import sys
 import logging
@@ -24,9 +26,10 @@ import cy_wrap
 logger = logging.getLogger('fwrap')
         
 
-def wrap(source_files=[], config=None, name="fwproj", build=False, 
-            out_dir='./', f90="gfortran", fcompiler='gnu95', fflags='', 
-            ldflags='', recompile=True):
+def wrap(source_files,**kargs):
+            # config=None,name="fwproj", build=False, 
+            #             out_dir='./', f90="gfortran", fcompiler='gnu95', fflags='', 
+            #             ldflags='', recompile=True):
     r"""Wrap the source given and compile if requested
     
     This function is the main driving routine for fwrap and for most use
@@ -58,6 +61,13 @@ def wrap(source_files=[], config=None, name="fwproj", build=False,
      - *recompile* - (bool) Recompile all object files before creating shared
        library, default is True
     """
+    # Options and their defaults
+    config = None
+    
+    # Read in config file if present
+    if config is not None:
+        raise NotImplementedError("Configuration files are not supported yet.")
+    
     # Check to see if each source exists and expand to full paths
     raw_source = False
     if isinstance(source_files,basestring):
@@ -72,12 +82,6 @@ def wrap(source_files=[], config=None, name="fwproj", build=False,
             source_files = [source_path]
     elif not isinstance(source_files,list):
         raise ValueError("Must provide a list of source files")
-    # if src_list is not None:
-    #     if isinstance(src_list,basestring):
-    #         if os.path.exists(src_list):
-    #             src_file = open(src_list,'r')
-    #             for line in src_file:
-    #                 source_files.append(line)
     if len(source_files) < 1:
         raise ValueError("Must provide a list of source files")
     for (i,source) in enumerate(source_files):
@@ -85,10 +89,6 @@ def wrap(source_files=[], config=None, name="fwproj", build=False,
             source_files[i] = source.strip()
         else:
             raise ValueError("The source file %s does not exist." % source)
-            
-    # Read in config file if present
-    if config is not None:
-        raise NotImplementedError("Configuration files are not supported yet.")
 
     # Validate some of the options
     for opt in ['name','out_dir','fflags','ldflags']:
@@ -96,9 +96,12 @@ def wrap(source_files=[], config=None, name="fwproj", build=False,
             raise ValueError('Option "%s" must be a string' % opt)
     if not isinstance(build,bool):
         raise ValueError('Option "build" must be a bool.')
+    if f90 is not None:
+        if not isinstance(f90,basestring):
+            raise ValueError('Option "f90" must be a string.')
     if fcompiler is not None:
         if not isinstance(fcompiler,basestring):
-            raise ValueError('Option fcompiler must be a string.')
+            raise ValueError('Option "fcompiler" must be a string.')
     out_dir = out_dir.strip()
     name.strip()
     if not os.path.exists(out_dir):
@@ -110,7 +113,7 @@ def wrap(source_files=[], config=None, name="fwproj", build=False,
     else:
         name.strip()
         os.mkdir(project_path)
-    # TODO: Check if distutils can use this fcompiler
+    # TODO: Check if distutils can use this fcompiler and f90
     
     # Build source if need be, this is set to False by default as this section
     # has not been done yet
@@ -231,9 +234,11 @@ def generate_fc_h(fc_ast, name):
 
 if __name__ == "__main__":
     # Parse command line options
-    parser = OptionParser("usage: %prog [options] arg")
+    parser = OptionParser("usage: fwrap [options] SOURCE_FILES",
+                            version=__version__)
     
     parser.add_option('-m',dest='name',help='')
+    parser.add_option('-C','--config',dest='config',help='')
     parser.add_option('-c','-b','--build',dest='build',action='store_true',help='')
     parser.add_option('-o','--out_dir',dest='out_dir',help='')
     parser.add_option('--f90',dest='f90',help='')
@@ -242,20 +247,18 @@ if __name__ == "__main__":
     parser.add_option('-l','--ldflags',dest='ldflags',help='')
     parser.add_option('-r','--recompile',action="store_true",dest='recompile',help='')
     parser.add_option('--no-recompile',action="store_false",dest='recompile',help='')
-    parser.add_option('--src-list',dest='src_list',help='')
-    
-    parser.set_defaults(name="fwproj",build=False,out_dir="./",f90='gfortran',
-                        fcompiler='gnu95',fflags='',ldflags='',recompile=True,
-                        src_list=None)
     
     options, source_files = parser.parse_args()
-
-    try:
-        wrap(source_files,name=options.name,build=options.build,
-            out_dir=options.out_dir,f90=options.f90,
-            fcompiler=options.fcompiler,fflags=options.fflags,
-            ldflags=options.ldflags,recompile=options.recompile,
-            src_list=options.src_list)
-    except:
-        raise
+    
+    # Loop over options and put in a dictionary for passing into wrap
+    kargs = {}
+    for opt in ('name','config','build','out_dir','f90','fflags','ldflags',
+                    'recompile'):
+        try:
+            kargs[opt] = getattr(options,opt)
+        except AttributeError:
+            pass
+        
+    # Call main routine
+    wrap(source_files,**kargs)
     sys.exit(0)
