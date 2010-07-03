@@ -22,8 +22,9 @@ import cy_wrap
 logger = logging.getLogger('fwrap')
         
 
-def wrap(source_files, name="fwproj", build=False, build_dir='./fw_build',
-            fort_compiler=None, fort_flags='', link_flags='', recompile=True):
+def wrap(source_files=[], name="fwproj", build=False, build_dir='./fw_build',
+            fort_compiler=None, fort_flags='', link_flags='', recompile=True,
+            src_list=None):
     r"""
     :Input:
      - *source_files* - (id) List of paths to source files, this must be in the
@@ -42,15 +43,24 @@ def wrap(source_files, name="fwproj", build=False, build_dir='./fw_build',
        library.
      - *recompile* - (bool) Recompile all object files before creating shared
        library, default is True
+     - *src_list* - (string) Path to file containing a new line delimited list 
+       of source files.  The source files will be appeneded to the list given
+       in source_files or create it otherwise.
     """
     # Check to see if each source exists and expand to full paths
     if isinstance(source_files,basestring):
-        file_list = open(source_files,'r')
-        source_files = []
-        for line in file_list:
-            source_files.append(line)
+        if os.path.exists(source_files):
+            source_files = [source_files]
+        else:
+            raise NotImplementedError("Direct source wrapping not supported.")
     elif not isinstance(source_files,list):
         raise ValueError("Must provide a list of source files")
+    if src_list is not None:
+        if isinstance(src_list,basestring):
+            if os.path.exists(src_list):
+                src_file = open(src_list,'r')
+                for line in src_file:
+                    source_files.append(line)
     if len(source_files) < 1:
         raise ValueError("Must provide a list of source files")
     for (i,source) in enumerate(source_files):
@@ -200,16 +210,26 @@ if __name__ == "__main__":
     parser.add_option('-c','--build',dest='build',action='store_true',help='')
     parser.add_option('-b','--build_dir',dest='build_dir',help='')
     parser.add_option('-F','--fort_compiler',dest='fort_compiler',help='')
-    parser.add_option('-f','--fort_flags',dest='fort_flags',default="")
-    parser.add_option('-L','--link_flags',dest='link_flags',default="")
-    parser.add_option('-r','--recompile',action="store_true",dest='recompile')
-    parser.add_option('--no-recompile',action="store_false",dest='recompile')
+    parser.add_option('-f','--fort_flags',dest='fort_flags',help='')
+    parser.add_option('-L','--link_flags',dest='link_flags',help='')
+    parser.add_option('-r','--recompile',action="store_true",dest='recompile',help='')
+    parser.add_option('--no-recompile',action="store_false",dest='recompile',help='')
+    parser.add_option('--src-list',dest='src_list',help='')
     
     parser.set_defaults(name="fwproj",build=False,build_dir="./fw_build",
-                            fort_flags='',link_flags='',recompile=True)
+                            fort_flags='',link_flags='',recompile=True,
+                            src_list=None)
     
     options, source_files = parser.parse_args()
 
-    sys.exit(wrap(source_files,options.name,options.build,options.build_dir,
-                    options.fort_compiler,options.fort_flags,
-                    options.link_flags,options.recompile))
+    try:
+        wrap(source_files,name=options.name,build=options.build,
+            build_dir=options.build_dir,fort_compiler=options.fort_compiler,
+            fort_flags=options.fort_flags,link_flags=options.link_flags,
+            recompile=options.recompile,src_list=options.src_list)
+    except:
+        logger.critical(''.join(('Traceback\n',
+            ''.join( traceback.format_stack() ))))
+        logger.critical("fwrap.wrap failed")
+        sys.exit(1)
+    sys.exit(0)
