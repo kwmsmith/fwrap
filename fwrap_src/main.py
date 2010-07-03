@@ -34,12 +34,13 @@ options = {'config':None,
            'build':'general',
            'recompile':'general',
            'out_dir':'general',
+           'override':'general',
            'f90':'compiler',
            'fflags':'compiler',
            'ldflags':'compiler'}
         
 
-def wrap(source,**kargs):
+def wrap(source=None,**kargs):
     r"""Wrap the source given and compile if requested
     
     This function is the main driving routine for fwrap and for most use
@@ -49,10 +50,11 @@ def wrap(source,**kargs):
     those into a module if requested.
     
     :Input:
-     - *source* - (id) List of paths to source files, this must be in the
-       order compilation must proceed in, i.e. if you have modules in your
-       source, list the source files that contain the modules first.  Can also
-       be a file containing a list of sources.
+     - *source* - (id) Path to source or a list of paths to source to be
+       wrapped.  It can also be a piece of raw source in a string (assumed if
+       the single string does not lead to a valid file).  If you give a list
+       of source files, make sure that they are in the order that they must
+       be compiled due to dependencies like modules.
      - *config* - (string) Path to configuration file.  This will be config
        file is read in first so arguments to the command supercede the
        settings in the config file.
@@ -70,6 +72,8 @@ def wrap(source,**kargs):
        library.
      - *recompile* - (bool) Recompile all object files before creating shared
        library, default is True
+     - *override* - (bool) If a project directory already exists in the
+       out_dir specified, remove it and create a fresh project.
     """
     # Read in config file if present and parse input options
     config_files = [os.path.join(os.path.dirname(__file__),'default.config')]
@@ -95,7 +99,12 @@ def wrap(source,**kargs):
         os.mkdir(out_dir)
     project_path = os.path.join(out_dir,name)
     if os.path.exists(project_path):
-        raise ValueError("Project directory %s already exists" \
+        if override:
+            logger.debug("Removing %s" % project_path)
+            os.removedirs(project_path)
+            os.mkdir(project_path)
+        else:
+            raise ValueError("Project directory %s already exists" \
                 % os.path.join(out_dir,name.strip()))
     else:
         name.strip()
@@ -131,7 +140,7 @@ def wrap(source,**kargs):
     for src in source_files:
         logger.debug("  %s" % src)
         
-    import pdb; pdb.set_trace()
+    sys.exit(0)
     
     # Build source if need be, this is set to False by default as this section
     # has not been done yet
@@ -265,6 +274,8 @@ if __name__ == "__main__":
     parser.add_option('-l','--ldflags',dest='ldflags',help='')
     parser.add_option('-r','--recompile',action="store_true",dest='recompile',help='')
     parser.add_option('--no-recompile',action="store_false",dest='recompile',help='')
+    parser.add_option('--override',action="store_true",dest='override',help='')
+    parser.add_option('--no-override',action="store_false",dest='override',help='')
     
     parsed_options, source_files = parser.parse_args()
     
