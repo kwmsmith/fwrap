@@ -200,10 +200,10 @@ class FwrapCompileTestCase(unittest.TestCase):
         self.wrapped_filename = self.projname+'_fc.f90'
         self.fwrap_cython_source=self.projname+'.pyx'
         fq_fname = os.path.join(os.path.abspath(self.directory), self.filename)
-        options = FwrapOptions()
-        options.projectname = self.projname
-        options.outdir = self.projdir
-        wrap([fq_fname], options)
+        # options = FwrapOptions()
+        # options.projectname = self.projname
+        # options.outdir = self.projdir
+        wrap([fq_fname],name=self.projname,out_dir=self.workdir)
         self.runCompileTest_distutils()
 
     def runCompileTest_distutils(self):

@@ -141,7 +141,7 @@ def generate(fort_ast,name,project_path):
      - *name* - (string) Name of the library module
      - *out_dir* - (string) Path to build directory, defaults to './'
      
-     Raises `IOError`
+     Raises `Exception.IOError` if writing the generated code fails.
     """
     
     # Generate wrapping abstract syntax trees
@@ -150,17 +150,17 @@ def generate(fort_ast,name,project_path):
     cython_ast = cy_wrap.wrap_fc(c_ast)
     
     # Generate files and write them out
-    generators = ( (generate_type_specs,(fort_ast)),
+    generators = ( (generate_type_specs,(fort_ast,name)),
                    (generate_fc_f,(c_ast,name)),
                    (generate_fc_h,(c_ast,name)),
-                   (generate_fc_pxd,(cython_ast,name)),
+                   (generate_fc_pxd,(c_ast,name)),
                    (generate_cy_pxd,(cython_ast,name)),
                    (generate_cy_pyx,(cython_ast,name)) )
     for (generator,args) in generators:
         file_name, buf = generator(*args)
         try:
-            fh = open(project_path,'w')
-            fh.write(buff.getvalue())
+            fh = open(os.path.join(project_path,file_name),'w')
+            fh.write(buf.getvalue())
             fh.close()
         except IOError:
             raise
