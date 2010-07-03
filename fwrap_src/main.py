@@ -14,6 +14,7 @@ import sys
 import logging
 import traceback
 import ConfigParser
+import tempfile
 from optparse import OptionParser
 from cStringIO import StringIO
 from code import CodeBuffer, reflow_fort
@@ -27,17 +28,18 @@ import cy_wrap
 # Logging utility, see log.config for default configuration
 logger = logging.getLogger('fwrap')
 
-# Available options, key is the option and value is the section in the 
-# config file where it should be found
-options = {'config':None,
-           'name':'general',
-           'build':'general',
-           'recompile':'general',
-           'out_dir':'general',
-           'override':'general',
-           'f90':'compiler',
-           'fflags':'compiler',
-           'ldflags':'compiler'}
+# Available options parsed from default config files
+_config_parser = ConfigParser.SafeConfigParser() 
+_config_parser.readfp(open(os.path.join(os.path.dirname(__file__),
+                        'default.config'),'r'))
+_available_options = {}
+for section in _config_parser.sections():
+    for opt in _config_parser.options(section):
+        _available_options[opt] = section
+# Remove source option
+_available_options.pop('source')
+# Add config option
+_available_options['config'] = None
         
 
 def wrap(source=None,**kargs):
@@ -54,7 +56,10 @@ def wrap(source=None,**kargs):
        wrapped.  It can also be a piece of raw source in a string (assumed if
        the single string does not lead to a valid file).  If you give a list
        of source files, make sure that they are in the order that they must
-       be compiled due to dependencies like modules.
+       be compiled due to dependencies like modules.  Note that if a source
+       list exists in the configuration file as well, the source argument is
+       appended to the end of the source list.  If you need to append to the
+       front of the list, you need to modify the configuration file.
      - *config* - (string) Path to configuration file.  This will be config
        file is read in first so arguments to the command supercede the
        settings in the config file.
@@ -76,25 +81,25 @@ def wrap(source=None,**kargs):
        out_dir specified, remove it and create a fresh project.
     """
     # Read in config file if present and parse input options
-    config_files = [os.path.join(os.path.dirname(__file__),'default.config')]
     if kargs.has_key('config'):
-        config_files.append(config)
-    configparser = ConfigParser.SafeConfigParser()
-    files_parsed = configparser.read(config_files)
-    if kargs.has_key('config'):
-        if config not in files_parse:
-            logger.warning("Could not open configuration file %s" % config)
-    # We remove the config option here since we have already treated it
-    options.pop('config')
-    for opt in options.iterkeys():
-        if kargs.has_key(opt):
-            exec("%s = kargs[opt]" % opt)
-        else:
-            exec("%s = configparser.get(options[opt],opt)" % opt)
-            
+        file_list = _config_parser.read(kargs['config'])
+        if kargs['config'] not in file_list:
+            logger.warning("Could not open configuration file %s" % kargs['config'])
+    for opt in _available_options.iterkeys():
+        if not opt == 'config': 
+            if kargs.has_key(opt):
+                exec("%s = kargs[opt]" % opt)
+            else:
+                exec("%s = _config_parser.get(_available_options[opt],opt)" % opt)
+    
     # Do some option parsing
     out_dir = out_dir.strip()
     name.strip()
+    logger.debug("Running with following options:")
+    for opt in _available_options:
+        if not (opt == 'source' or opt == 'config'):
+            logger.debug("  %s = %s" % (opt,locals()[opt]))
+    
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
     project_path = os.path.join(out_dir,name)
@@ -110,32 +115,41 @@ def wrap(source=None,**kargs):
         name.strip()
         os.mkdir(project_path)
     # *** TODO: Check if distutils can use this fcompiler and f90
-    logger.debug("Running with following options:")
-    for opt in options:
-        logger.debug("  %s = %s" % (opt,locals()[opt]))
     
     # Check to see if each source exists and expand to full paths
     raw_source = False
     source_files = []
-    if isinstance(source,basestring):
-        if os.path.exists(source):
-            source_files = [source]
+    # Parse config file source list
+    config_source = _config_parser.get('general','source')
+    if len(config_source) > 0:
+        for src in config_source.split(','):
+            source_files.append(src)
+    # Parse function call source list
+    if source is not None:
+        if isinstance(source,basestring):
+            if os.path.exists(source):
+                source_files = [source]
+            else:
+                # Assume this is raw source, put in temporary directory
+                raw_source = True
+                fh,source_path = tempfile.mkstemp(suffix='f90',text=True)
+                fh.write(source)
+                fh.close()
+                source_files.append(source_path)
+        elif (isinstance(source,list) or isinstance(source,tuple)):
+            for src in source:
+                source_files.append(src)
         else:
-            # Put raw source in a temporary directory
-            raw_source = True
-            fh,source_path = tempfile.mkstemp(suffix='f90',text=True)
-            fh.write(source)
-            fh.close()
-            source_files.append(source_path)
-    # elif not isinstance(source,list):
-    #     raise ValueError("Must provide a list of source files")
+            raise ValueError("Must provide either a string or list of source")
+    
+    # Validate and parse source list
     if len(source_files) < 1:
         raise ValueError("Must provide at least one source to wrap.")
-    for (i,source) in enumerate(source_files):
-        if os.path.exists(source.strip()):
-            source_files[i] = source.strip()
-        else:
-            raise ValueError("The source file %s does not exist." % source)
+    for (i,src) in enumerate(source_files):
+        # Expand variables and path
+        source_files[i] = os.path.expanduser(os.path.expandvars(src.strip()))
+        if not os.path.exists(source_files[i]):
+            raise ValueError("The source file %s does not exist." % source_files[i])
     logger.debug("Wrapping the following source:")
     for src in source_files:
         logger.debug("  %s" % src)
@@ -282,10 +296,13 @@ if __name__ == "__main__":
     # Loop over options and put in a dictionary for passing into wrap
     kargs = {}
     logger.debug("Command line arguments: ")
-    for opt in options.iterkeys():
-        if getattr(parsed_options,opt) is not None:
-            kargs[opt] = getattr(parsed_options,opt)
-            logger.debug("  %s = %s" % (opt,kargs[opt]))
+    for opt in _available_options.iterkeys():
+        try:
+            if getattr(parsed_options,opt) is not None:
+                kargs[opt] = getattr(parsed_options,opt)
+                logger.debug("  %s = %s" % (opt,kargs[opt]))
+        except:
+            pass
     
     # Call main routine
     wrap(source_files,**kargs)
