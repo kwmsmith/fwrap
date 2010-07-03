@@ -13,6 +13,7 @@ import os
 import sys
 import logging
 import traceback
+import ConfigParser
 from optparse import OptionParser
 from cStringIO import StringIO
 from code import CodeBuffer, reflow_fort
@@ -23,13 +24,22 @@ import gen_config as gc
 import fc_wrap
 import cy_wrap
 
+# Logging utility, see log.config for default configuration
 logger = logging.getLogger('fwrap')
+
+# Available options, key is the option and value is the section in the 
+# config file where it should be found
+options = {'config':None,
+           'name':'general',
+           'build':'general',
+           'recompile':'general',
+           'out_dir':'general',
+           'f90':'compiler',
+           'fflags':'compiler',
+           'ldflags':'compiler'}
         
 
-def wrap(source_files,**kargs):
-            # config=None,name="fwproj", build=False, 
-            #             out_dir='./', f90="gfortran", fcompiler='gnu95', fflags='', 
-            #             ldflags='', recompile=True):
+def wrap(source,**kargs):
     r"""Wrap the source given and compile if requested
     
     This function is the main driving routine for fwrap and for most use
@@ -39,7 +49,7 @@ def wrap(source_files,**kargs):
     those into a module if requested.
     
     :Input:
-     - *source_files* - (id) List of paths to source files, this must be in the
+     - *source* - (id) List of paths to source files, this must be in the
        order compilation must proceed in, i.e. if you have modules in your
        source, list the source files that contain the modules first.  Can also
        be a file containing a list of sources.
@@ -61,47 +71,24 @@ def wrap(source_files,**kargs):
      - *recompile* - (bool) Recompile all object files before creating shared
        library, default is True
     """
-    # Options and their defaults
-    config = None
-    
-    # Read in config file if present
-    if config is not None:
-        raise NotImplementedError("Configuration files are not supported yet.")
-    
-    # Check to see if each source exists and expand to full paths
-    raw_source = False
-    if isinstance(source_files,basestring):
-        if os.path.exists(source_files):
-            source_files = [source_files]
+    # Read in config file if present and parse input options
+    config_files = [os.path.join(os.path.dirname(__file__),'default.config')]
+    if kargs.has_key('config'):
+        config_files.append(config)
+    configparser = ConfigParser.SafeConfigParser()
+    files_parsed = configparser.read(config_files)
+    if kargs.has_key('config'):
+        if config not in files_parse:
+            logger.warning("Could not open configuration file %s" % config)
+    # We remove the config option here since we have already treated it
+    options.pop('config')
+    for opt in options.iterkeys():
+        if kargs.has_key(opt):
+            exec("%s = kargs[opt]" % opt)
         else:
-            # Put raw source in a temporary directory
-            raw_source = True
-            fh,source_path = tempfile.mkstemp(suffix='f90',text=True)
-            fh.write(source_files)
-            fh.close()
-            source_files = [source_path]
-    elif not isinstance(source_files,list):
-        raise ValueError("Must provide a list of source files")
-    if len(source_files) < 1:
-        raise ValueError("Must provide a list of source files")
-    for (i,source) in enumerate(source_files):
-        if os.path.exists(source.strip()):
-            source_files[i] = source.strip()
-        else:
-            raise ValueError("The source file %s does not exist." % source)
-
-    # Validate some of the options
-    for opt in ['name','out_dir','fflags','ldflags']:
-        if not isinstance(locals()[opt],basestring):
-            raise ValueError('Option "%s" must be a string' % opt)
-    if not isinstance(build,bool):
-        raise ValueError('Option "build" must be a bool.')
-    if f90 is not None:
-        if not isinstance(f90,basestring):
-            raise ValueError('Option "f90" must be a string.')
-    if fcompiler is not None:
-        if not isinstance(fcompiler,basestring):
-            raise ValueError('Option "fcompiler" must be a string.')
+            exec("%s = configparser.get(options[opt],opt)" % opt)
+            
+    # Do some option parsing
     out_dir = out_dir.strip()
     name.strip()
     if not os.path.exists(out_dir):
@@ -113,7 +100,38 @@ def wrap(source_files,**kargs):
     else:
         name.strip()
         os.mkdir(project_path)
-    # TODO: Check if distutils can use this fcompiler and f90
+    # *** TODO: Check if distutils can use this fcompiler and f90
+    logger.debug("Running with following options:")
+    for opt in options:
+        logger.debug("  %s = %s" % (opt,locals()[opt]))
+    
+    # Check to see if each source exists and expand to full paths
+    raw_source = False
+    source_files = []
+    if isinstance(source,basestring):
+        if os.path.exists(source):
+            source_files = [source]
+        else:
+            # Put raw source in a temporary directory
+            raw_source = True
+            fh,source_path = tempfile.mkstemp(suffix='f90',text=True)
+            fh.write(source)
+            fh.close()
+            source_files.append(source_path)
+    # elif not isinstance(source,list):
+    #     raise ValueError("Must provide a list of source files")
+    if len(source_files) < 1:
+        raise ValueError("Must provide at least one source to wrap.")
+    for (i,source) in enumerate(source_files):
+        if os.path.exists(source.strip()):
+            source_files[i] = source.strip()
+        else:
+            raise ValueError("The source file %s does not exist." % source)
+    logger.debug("Wrapping the following source:")
+    for src in source_files:
+        logger.debug("  %s" % src)
+        
+    import pdb; pdb.set_trace()
     
     # Build source if need be, this is set to False by default as this section
     # has not been done yet
@@ -248,17 +266,16 @@ if __name__ == "__main__":
     parser.add_option('-r','--recompile',action="store_true",dest='recompile',help='')
     parser.add_option('--no-recompile',action="store_false",dest='recompile',help='')
     
-    options, source_files = parser.parse_args()
+    parsed_options, source_files = parser.parse_args()
     
     # Loop over options and put in a dictionary for passing into wrap
     kargs = {}
-    for opt in ('name','config','build','out_dir','f90','fflags','ldflags',
-                    'recompile'):
-        try:
-            kargs[opt] = getattr(options,opt)
-        except AttributeError:
-            pass
-        
+    logger.debug("Command line arguments: ")
+    for opt in options.iterkeys():
+        if getattr(parsed_options,opt) is not None:
+            kargs[opt] = getattr(parsed_options,opt)
+            logger.debug("  %s = %s" % (opt,kargs[opt]))
+    
     # Call main routine
     wrap(source_files,**kargs)
     sys.exit(0)
