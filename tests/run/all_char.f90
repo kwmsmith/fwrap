@@ -59,3 +59,13 @@
         ch_inout = 'a'
 
       end subroutine char_len_x
+
+      subroutine len_1_args(a, b, c)
+        implicit none
+        character :: a
+        character, intent(inout) :: b
+        character, intent(out) :: c
+
+        a = b
+        c = b
+      end subroutine len_1_args

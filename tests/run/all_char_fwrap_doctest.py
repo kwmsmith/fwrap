@@ -14,4 +14,6 @@ __doc__ = u'''
 ('^',)
 >>> char_len_x(ch='a'*20, ch_in='b'*10, ch_inout='_')
 ('bbbbbbbbbb_bbbb_bbbb', '_bbbb', 'a')
+>>> len_1_args('a', 'b')
+('b', 'b', 'b')
 '''
