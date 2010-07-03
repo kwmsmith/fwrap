@@ -153,8 +153,6 @@ def wrap(source=None,**kargs):
     logger.debug("Wrapping the following source:")
     for src in source_files:
         logger.debug("  %s" % src)
-        
-    sys.exit(0)
     
     # Build source if need be, this is set to False by default as this section
     # has not been done yet
