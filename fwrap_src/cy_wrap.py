@@ -134,33 +134,36 @@ class _CyCmplxArg(_CyArgWrapper):
     def __init__(self, arg):
         super(_CyCmplxArg, self).__init__(arg)
         self.intern_name = 'fw_%s' % self.arg.get_name()
+
+    def get_name(self):
+        return self.arg.get_name()
     
     def cy_dtype_name(self):
-        return "cy_%s" % self.arg.get_ktp()
+        return "%s" % self.arg.get_ktp()
 
     def intern_declarations(self):
-        ids = super(_CyCmplxArg, self).intern_declarations()
-        return ids + ['cdef %s %s' % (self.arg.get_ktp(), self.intern_name)]
+        return super(_CyCmplxArg, self).intern_declarations()
+        # return ids + ['cdef %s %s' % (self.arg.get_ktp(), self.intern_name)]
 
     def pre_call_code(self):
-        if self.arg.intent in ('in', 'inout', None):
-            d = {'argname' : self.arg.get_name(),
-                 'ktp' : self.arg.get_ktp(),
-                 'intern_name' : self.intern_name}
-            return ['%(ktp)s_from_parts(%(argname)s.real, %(argname)s.imag, %(intern_name)s)' % d]
+        # if self.arg.intent in ('in', 'inout', None):
+            # d = {'argname' : self.arg.get_name(),
+                 # 'ktp' : self.arg.get_ktp(),
+                 # 'intern_name' : self.intern_name}
+            # return ['%(ktp)s_from_parts(%(argname)s.real, %(argname)s.imag, %(intern_name)s)' % d]
         return []
 
     def post_call_code(self):
-        if self.arg.intent in ('out', 'inout', None):
-            d = {'argname' : self.arg.get_name(),
-                 'ktp' : self.arg.get_ktp(),
-                 'intern_name' : self.intern_name}
-            return ('%(argname)s.real = %(ktp)s_creal(%(intern_name)s)\n'
-                    '%(argname)s.imag = %(ktp)s_cimag(%(intern_name)s)' % d).splitlines()
+        # if self.arg.intent in ('out', 'inout', None):
+            # d = {'argname' : self.arg.get_name(),
+                 # 'ktp' : self.arg.get_ktp(),
+                 # 'intern_name' : self.intern_name}
+            # return ('%(argname)s.real = %(ktp)s_creal(%(intern_name)s)\n'
+                    # '%(argname)s.imag = %(ktp)s_cimag(%(intern_name)s)' % d).splitlines()
         return []
 
     def call_arg_list(self):
-        return ['&%s' % self.intern_name]
+        return ['&%s' % self.get_name()]
 
 class CyArrayArgWrapper(object):
 

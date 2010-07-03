@@ -61,7 +61,7 @@ class test_genconfig(object):
         eq_(self.cmplx.gen_pxd_extern_typedef(), ['ctypedef float fwrap_default_complex'])
 
         eq_(self.int.gen_pxd_intern_typedef(), [])
-        eq_(self.cmplx.gen_pxd_intern_typedef(), ['ctypedef float complex cy_fwrap_default_complex'])
+        eq_(self.cmplx.gen_pxd_intern_typedef(), ['ctypedef float complex fwrap_default_complex'])
 
         eq_(self.int.gen_pxd_extern_extra(), [])
         eq_(self.cmplx.gen_pxd_extern_extra(),

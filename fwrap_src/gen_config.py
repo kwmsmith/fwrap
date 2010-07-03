@@ -185,9 +185,7 @@ class _CmplxTypeParam(_ConfigTypeParam):
     def gen_pxd_extern_extra(self):
         ctype = f2c[self._c2r_map[self.fc_type]]
         fktp = self.fwrap_name
-        cyktp = self.cy_name()
         d = {'fktp' : fktp,
-             'cyktp' : cyktp,
              'ctype' : ctype}
         code = ('%(ctype)s %(fktp)s_creal(%(fktp)s fdc)\n'
                 '%(ctype)s %(fktp)s_cimag(%(fktp)s fdc)\n'
@@ -196,13 +194,14 @@ class _CmplxTypeParam(_ConfigTypeParam):
 
     def gen_pxd_extern_typedef(self):
         self.check_init()
-        return ['ctypedef %s %s' % (f2c[self._c2r_map[self.fc_type]], self.fwrap_name)]
+        return []
+        # return ['ctypedef %s %s' % (f2c[self._c2r_map[self.fc_type]], self.fwrap_name)]
 
     def gen_pxd_intern_typedef(self):
         self.check_init()
-        return ['ctypedef %s %s' % (self._c2cy_map[self.fc_type], self.cy_name())]
+        return ['ctypedef %s %s' % (self._c2cy_map[self.fc_type], self.fwrap_name)]
 
-    def cy_name(self):
+    def _cy_name(self):
         return "cy_%s" % self.fwrap_name
 
 

@@ -248,40 +248,35 @@ class test_cmplx_args(object):
 
     def test_extern_declarations(self):
         eq_(self.intent_in.extern_declarations(),
-                ['cy_fwrap_default_complex name'])
+                ['fwrap_default_complex name'])
         eq_(self.intent_inout.extern_declarations(),
-                ['cy_fwrap_default_complex name'])
+                ['fwrap_default_complex name'])
         eq_(self.intent_none.extern_declarations(),
-                ['cy_fwrap_default_complex name'])
+                ['fwrap_default_complex name'])
 
     def test_intern_declarations(self):
         eq_(self.intent_out.intern_declarations(),
-                ['cdef cy_fwrap_default_complex name',
-                 'cdef fwrap_default_complex fw_name'])
-        eq_(self.intent_in.intern_declarations(),
-                ['cdef fwrap_default_complex fw_name'])
-        eq_(self.intent_inout.intern_declarations(),
-                ['cdef fwrap_default_complex fw_name'])
-        eq_(self.intent_none.intern_declarations(),
-                ['cdef fwrap_default_complex fw_name'])
+                ['cdef fwrap_default_complex name'])
+        eq_(self.intent_in.intern_declarations(), [])
+        eq_(self.intent_inout.intern_declarations(), [])
+        eq_(self.intent_none.intern_declarations(), [])
 
     def test_pre_call_code(self):
-        eq_(self.intent_in.pre_call_code(),
-                ['fwrap_default_complex_from_parts(name.real, name.imag, fw_name)'])
-        eq_(self.intent_out.pre_call_code(),
-                [])
+        eq_(self.intent_in.pre_call_code(), [])
+                # ['fwrap_default_complex_from_parts(name.real, name.imag, fw_name)'])
+        eq_(self.intent_out.pre_call_code(), [])
 
     def test_post_call_code(self):
-        eq_(self.intent_out.post_call_code(),
-                ['name.real = fwrap_default_complex_creal(fw_name)',
-                 'name.imag = fwrap_default_complex_cimag(fw_name)'])
+        eq_(self.intent_out.post_call_code(), [])
+                # ['name.real = fwrap_default_complex_creal(fw_name)',
+                 # 'name.imag = fwrap_default_complex_cimag(fw_name)'])
         eq_(self.intent_in.post_call_code(),
                 [])
 
     def test_call_arg_list(self):
-        eq_(self.intent_in.call_arg_list(), ['&fw_name'])
-        eq_(self.intent_out.call_arg_list(), ['&fw_name'])
-        eq_(self.intent_none.call_arg_list(), ['&fw_name'])
+        eq_(self.intent_in.call_arg_list(), ['&name'])
+        eq_(self.intent_out.call_arg_list(), ['&name'])
+        eq_(self.intent_none.call_arg_list(), ['&name'])
 
     def test_return_tuple_list(self):
         eq_(self.intent_inout.return_tuple_list(), ['name'])
