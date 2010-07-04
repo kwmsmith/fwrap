@@ -165,7 +165,12 @@ class _CyCmplxArg(_CyArgWrapper):
     def call_arg_list(self):
         return ['&%s' % self.get_name()]
 
-class CyArrayArgWrapper(object):
+def CyArrayArgWrapper(arg):
+    if arg.dtype.type == 'character':
+        return CyCharArrayArgWrapper(arg)
+    return _CyArrayArgWrapper(arg)
+
+class _CyArrayArgWrapper(object):
 
     def __init__(self, arg):
         self.arg = arg
@@ -184,8 +189,8 @@ class CyArrayArgWrapper(object):
     def call_arg_list(self):
         shapes = ['<fwrap_npy_intp*>&%s.shape[%d]' % (self.intern_name, i) \
                                 for i in range(self.arg.get_ndims())]
-        data = '<%s*>%s.data' % (self.arg.get_ktp(), self.intern_name)
-        return list(shapes) + [data]
+        data = ['<%s*>%s.data' % (self.arg.get_ktp(), self.intern_name)]
+        return shapes + data
 
     def pre_call_code(self):
         return ["%s = %s" % (self.intern_name, self.arg.intern_name())]
@@ -197,6 +202,40 @@ class CyArrayArgWrapper(object):
         if self.arg.intent in ('out', 'inout', None):
             return [self.intern_name]
         return []
+
+class CyCharArrayArgWrapper(_CyArrayArgWrapper):
+
+    def __init__(self, arg):
+        super(CyCharArrayArgWrapper, self).__init__(arg)
+        self.odtype_name = "%s_odtype" % self.arg.intern_name()
+        self.shape_name = "%s_shape" % self.arg.intern_name()
+        self.name = self.arg.intern_name()
+
+    def intern_declarations(self):
+        ret = super(CyCharArrayArgWrapper, self).intern_declarations()
+        return ret + ["cdef fwrap_npy_intp %s[%d]" % (self.shape_name, self.arg.get_ndims()+1)]
+    
+    def pre_call_code(self):
+        tmpl = ("%(odtype)s = %(name)s.dtype\n"
+                "for i in range(%(ndim)d): %(shape)s[i+1] = %(name)s.shape[i]\n"
+                "%(name)s.dtype = 'b'\n"
+                "%(intern)s = %(name)s\n"
+                "%(shape)s[0] = <fwrap_npy_intp>(%(name)s.shape[0]/%(shape)s[1])")
+        D = {"odtype" : self.odtype_name,
+             "ndim" : self.arg.get_ndims(),
+             "name" : self.name,
+             "intern" : self.intern_name,
+             "shape" : self.shape_name}
+
+        return (tmpl  % D).splitlines()
+
+    def post_call_code(self):
+        return ["%s.dtype = %s" % (self.name, self.odtype_name)]
+
+    def call_arg_list(self):
+        shapes = ["&%s[%d]" % (self.shape_name, i) for i in range(self.arg.get_ndims()+1)]
+        data = ["<%s*>%s.data" % (self.arg.get_ktp(), self.intern_name)]
+        return shapes + data
 
 FW_RETURN_VAR_NAME = 'fwrap_return_var'
 class CyArgWrapperManager(object):

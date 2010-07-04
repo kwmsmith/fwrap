@@ -348,6 +348,92 @@ def test_declaration_order():
     buf = CodeBuffer()
     fc_wrap.generate_interface(arr_arg, buf)
     compare(iface, buf.getvalue())
+
+class test_char_array_arg_wrapper(object):
+
+    def setup(self):
+        charr1 = pyf.Argument('charr1', 
+                              pyf.CharacterType("char_x20",
+                                                len="20",
+                                                odecl="character(20)"),
+                              dimension=(":",),
+                              intent="inout")
+        charr3 = pyf.Argument('charr3', 
+                              pyf.CharacterType("char_x30",
+                                                len="30",
+                                                odecl="character(30)"),
+                              dimension=[':']*3,
+                              intent="inout")
+        charr_star = pyf.Argument('cs',
+                                  pyf.CharacterType("char_xX",
+                                                    len="*",
+                                                    odecl="character(*)"),
+                                  dimension=('n1',),
+                                  intent='inout')
+        self.fc_charr1 = fc_wrap.CharArrayArgWrapper(charr1)
+        self.fc_charr3 = fc_wrap.CharArrayArgWrapper(charr3)
+        self.fc_charr_star = fc_wrap.CharArrayArgWrapper(charr_star)
+
+    def test_extern_decls(self):
+        decls1 = '''\
+integer(kind=fwrap_npy_intp), intent(in) :: charr1_d1
+integer(kind=fwrap_npy_intp), intent(in) :: charr1_d2
+character(kind=fwrap_char_x20), dimension(charr1_d1, charr1_d2), intent(inout) :: charr1
+'''
+        eq_(self.fc_charr1.extern_declarations(), decls1.splitlines())
+
+        decls3 = '''\
+integer(kind=fwrap_npy_intp), intent(in) :: charr3_d1
+integer(kind=fwrap_npy_intp), intent(in) :: charr3_d2
+integer(kind=fwrap_npy_intp), intent(in) :: charr3_d3
+integer(kind=fwrap_npy_intp), intent(in) :: charr3_d4
+character(kind=fwrap_char_x30), dimension(charr3_d1, charr3_d2, charr3_d3, charr3_d4), intent(inout) :: charr3
+'''
+        eq_(self.fc_charr3.extern_declarations(), decls3.splitlines())
+
+        decls_star = '''\
+integer(kind=fwrap_npy_intp), intent(in) :: cs_d1
+integer(kind=fwrap_npy_intp), intent(in) :: cs_d2
+character(kind=fwrap_char_xX), dimension(cs_d1, cs_d2), intent(inout) :: cs
+'''
+        eq_(self.fc_charr_star.extern_declarations(), decls_star.splitlines())
+
+    def test_intern_decls(self):
+        eq_(self.fc_charr1.intern_declarations(), 
+                ["character(20), dimension(charr1_d2) :: fw_charr1"])
+        eq_(self.fc_charr3.intern_declarations(), 
+                ["character(30), dimension(charr3_d2, charr3_d3, charr3_d4) :: fw_charr3"])
+        eq_(self.fc_charr_star.intern_declarations(), 
+                # XXX: this should be ... dimension(n1) ...
+                ['character(kind=fwrap_char_xX, len=cs_d1), dimension(cs_d2) :: fw_cs'])
+
+    def test_extern_arg_list(self):
+        eq_(self.fc_charr1.extern_arg_list(), ['charr1_d1', 'charr1_d2', 'charr1'])
+        eq_(self.fc_charr3.extern_arg_list(), 
+                ['charr3_d1', 'charr3_d2', 'charr3_d3', 'charr3_d4', 'charr3'])
+        eq_(self.fc_charr_star.extern_arg_list(),
+                ['cs_d1', 'cs_d2', 'cs'])
+
+    def test_pre_call_code(self):
+        #XXX: there should be a test in the generated code along the lines of:
+        # if(len(ch) .ne. size(fw_ch)) then
+        #    ... set error flag and return ...
+        #    return
+        # endif
+        eq_(self.fc_charr1.pre_call_code(),
+                ["fw_charr1 = reshape(transfer(charr1, fw_charr1), shape(fw_charr1))"])
+        eq_(self.fc_charr3.pre_call_code(),
+                ["fw_charr3 = reshape(transfer(charr3, fw_charr3), shape(fw_charr3))"])
+        eq_(self.fc_charr_star.pre_call_code(),
+                ["fw_cs = reshape(transfer(cs, fw_cs), shape(fw_cs))"])
+
+    def test_post_call_code(self):
+        eq_(self.fc_charr1.post_call_code(),
+                ["charr1 = reshape(transfer(fw_charr1, charr1), shape(charr1))"])
+        eq_(self.fc_charr3.post_call_code(),
+                ["charr3 = reshape(transfer(fw_charr3, charr3), shape(charr3))"])
+        eq_(self.fc_charr_star.post_call_code(),
+                ["cs = reshape(transfer(fw_cs, cs), shape(cs))"])
  
 class test_array_arg_wrapper(object):
 

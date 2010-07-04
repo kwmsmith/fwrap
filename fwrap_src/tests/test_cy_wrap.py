@@ -101,6 +101,67 @@ class test_cy_arg_wrapper(object):
         for dt, caw in zip(self.dts, self.caws):
             eq_(caw.intern_name(), "foo")
 
+class test_cy_char_array_arg_wrapper(object):
+
+    def setup(self):
+        arg1d = pyf.Argument('charr1', 
+                            dtype=pyf.CharacterType(
+                                fw_ktp='charr_x8',
+                                len='20', odecl='character(20)'),
+                            dimension=[':'], intent='inout')
+        arg2d = pyf.Argument('charr2', 
+                            dtype=pyf.CharacterType(
+                                fw_ktp='charr_x30',
+                                len='30', odecl='character(30)'),
+                            dimension=[':']*2, intent='inout')
+        fc_arg1d = fc_wrap.ArrayArgWrapper(arg1d)
+        fc_arg2d = fc_wrap.ArrayArgWrapper(arg2d)
+        self.cy_arg1d = cy_wrap.CyCharArrayArgWrapper(fc_arg1d)
+        self.cy_arg2d = cy_wrap.CyCharArrayArgWrapper(fc_arg2d)
+    
+    def test_intern_declarations(self):
+        eq_(self.cy_arg1d.intern_declarations(),
+                ["cdef np.ndarray[fwrap_charr_x8, "
+                 "ndim=1, mode='fortran'] charr1_",
+                 "cdef fwrap_npy_intp charr1_shape[2]"])
+        eq_(self.cy_arg2d.intern_declarations(),
+                ["cdef np.ndarray[fwrap_charr_x30, "
+                 "ndim=2, mode='fortran'] charr2_",
+                 "cdef fwrap_npy_intp charr2_shape[3]"])
+
+    def test_pre_call_code(self):
+        cmp1 = ["charr1_odtype = charr1.dtype",
+                 "for i in range(1): charr1_shape[i+1] = charr1.shape[i]",
+                 "charr1.dtype = 'b'",
+                 "charr1_ = charr1",
+                 "charr1_shape[0] = <fwrap_npy_intp>"
+                     "(charr1.shape[0]/charr1_shape[1])",]
+        eq_(self.cy_arg1d.pre_call_code(), cmp1)
+        cmp2 = ["charr2_odtype = charr2.dtype",
+                 "for i in range(2): charr2_shape[i+1] = charr2.shape[i]",
+                 "charr2.dtype = 'b'",
+                 "charr2_ = charr2",
+                 "charr2_shape[0] = <fwrap_npy_intp>"
+                     "(charr2.shape[0]/charr2_shape[1])"]
+        eq_(self.cy_arg2d.pre_call_code(), cmp2)
+
+    def test_post_call_code(self):
+        eq_(self.cy_arg1d.post_call_code(),
+                ["charr1.dtype = charr1_odtype"])
+        eq_(self.cy_arg2d.post_call_code(),
+                ["charr2.dtype = charr2_odtype"])
+
+    def test_call_arg_list(self):
+        eq_(self.cy_arg1d.call_arg_list(),
+            ["&charr1_shape[0]",
+             "&charr1_shape[1]",
+             "<fwrap_charr_x8*>charr1_.data"])
+        eq_(self.cy_arg2d.call_arg_list(),
+            ["&charr2_shape[0]",
+             "&charr2_shape[1]",
+             "&charr2_shape[2]",
+             "<fwrap_charr_x30*>charr2_.data"])
+
 class test_cy_array_arg_wrapper(object):
     
     def setup(self):
