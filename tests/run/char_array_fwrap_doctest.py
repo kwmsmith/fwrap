@@ -12,3 +12,10 @@ True
 >>> np.all(char_star(charr) == np.array([['123', '123', '123'], ['123', '123', '123']], dtype='|S3'))
 True
 '''
+
+# FIXME:
+# Yields a bus error -- passing an 'S3' when Fortran expects a character(len=1)
+# dtype.
+# Requires a runtime check to make sure the 'itemsize' of the dtype string
+# passed in == the 'len' of the fortran character dtype.
+# >>> np.all(char1_arr(charr) == np.array([['%', '%', '%'], ['%', '%', '%']], dtype='|S1'))
