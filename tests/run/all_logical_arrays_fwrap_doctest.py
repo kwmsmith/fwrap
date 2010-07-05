@@ -1,4 +1,4 @@
-from all_integer_arrays_fwrap import *
+from all_logical_arrays_fwrap import *
 import numpy as np
 
 n1, n2 = 3, 4
@@ -12,14 +12,16 @@ ainout_ = ainout.copy('F')
 ano_ = ano.copy('F')
 
 def init(ain, aout, ainout, ano, aout_, ainout_, ano_):
-    ain.fill(2)
+    ain.fill(1)
+    ain[0,0] = 0
     aout.fill(0)
-    ainout.fill(34)
+    ainout.fill(1)
     ano.fill(0)
 
-    aout_[...] = ain
-    ano_[...] = ainout
-    ainout_[...] = ain + ano_
+    aout_[:,:] = ain
+    ano_[:,:] = ainout
+    ainout_[:,:] = ainout
+    ainout_[ain.astype(np.bool)] = 0
 
 def test_results(func, args, results):
     res_ = func(*args)
