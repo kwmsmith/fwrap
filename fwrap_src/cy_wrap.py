@@ -326,22 +326,15 @@ class ProcWrapper(object):
         proc_call = "%(call_name)s(%(call_arg_list)s)" % {
                 'call_name' : self.wrapped.name,
                 'call_arg_list' : ', '.join(self.arg_mgr.call_arg_list())}
-        # if self.wrapped.kind == 'subroutine':
         return proc_call
-        # else:
-            # return '%s = %s' % (FW_RETURN_VAR_NAME, proc_call)
 
     def temp_declarations(self, buf):
         decls = self.arg_mgr.intern_declarations()
-        # if self.wrapped.kind == 'function':
-            # decls.extend(self.arg_mgr.return_arg_declaration())
         for line in decls:
             buf.putln(line)
 
     def return_tuple(self):
         ret_arg_list = []
-        # if self.wrapped.kind == 'function':
-            # ret_arg_list.append(FW_RETURN_VAR_NAME)
         ret_arg_list.extend(self.arg_mgr.return_tuple_list())
         if ret_arg_list:
             return "return (%s,)" % ", ".join(ret_arg_list)

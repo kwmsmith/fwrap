@@ -116,7 +116,6 @@ class FunctionWrapper(ProcWrapper):
     RETURN_ARG_NAME = 'fw_ret_arg'
 
     def __init__(self, wrapped):
-        self.kind = 'function'
         self.name = constants.PROC_SUFFIX_TMPL % wrapped.name
         self.wrapped = wrapped
         ra = pyf.Argument(name=self.RETURN_ARG_NAME,
@@ -133,7 +132,6 @@ class FunctionWrapper(ProcWrapper):
 class SubroutineWrapper(ProcWrapper):
 
     def __init__(self, wrapped):
-        self.kind = 'subroutine'
         self.name = constants.PROC_SUFFIX_TMPL % wrapped.name
         self.wrapped = wrapped
         self.arg_man = ArgWrapperManager(wrapped.args, isfunction=False)
