@@ -27,7 +27,7 @@ def test_generate_fc_h():
     code = '''\
     #include "foobar"
     
-    fwrap_default_real two_arg_c(fwrap_default_integer *a, fwrap_default_integer *b, fwrap_default_integer *c, fwrap_default_integer *d);
+    void two_arg_c(fwrap_default_real *fw_ret_arg, fwrap_default_integer *a, fwrap_default_integer *b, fwrap_default_integer *c, fwrap_default_integer *d);
     '''
     compare(buf.getvalue(), code)
 
@@ -48,7 +48,7 @@ def test_generate_fc_pxd():
     from fwrap_ktp cimport *
 
     cdef extern from "foobar":
-        fwrap_default_real two_arg_c(fwrap_default_integer *a, fwrap_default_integer *b)
+        void two_arg_c(fwrap_default_real *fw_ret_arg, fwrap_default_integer *a, fwrap_default_integer *b)
     '''
     compare(buf.getvalue(), code)
 
@@ -86,10 +86,10 @@ def test_gen_empty_func_wrapper():
     empty_func_wrapper = fc_wrap.FunctionWrapper(wrapped=empty_func)
                       
     empty_func_wrapped = '''\
-    function empty_func_c() bind(c, name="empty_func_c")
+    subroutine empty_func_c(fw_ret_arg) bind(c, name="empty_func_c")
         use fwrap_ktp_mod
         implicit none
-        integer(kind=fwrap_default_integer) :: empty_func_c
+        integer(kind=fwrap_default_integer), intent(out) :: fw_ret_arg
         interface
             function empty_func()
                 use fwrap_ktp_mod
@@ -97,8 +97,8 @@ def test_gen_empty_func_wrapper():
                 integer(kind=fwrap_default_integer) :: empty_func
             end function empty_func
         end interface
-        empty_func_c = empty_func()
-    end function empty_func_c
+        fw_ret_arg = empty_func()
+    end subroutine empty_func_c
 '''
     buf = CodeBuffer()
     empty_func_wrapper.generate_wrapper(buf)
@@ -204,10 +204,10 @@ def test_logical_function():
     buf = CodeBuffer()
     lgcl_fun_wrapped.generate_wrapper(buf)
     fort_file = '''\
-    function lgcl_fun_c() bind(c, name="lgcl_fun_c")
+    subroutine lgcl_fun_c(fw_ret_arg) bind(c, name="lgcl_fun_c")
         use fwrap_ktp_mod
         implicit none
-        integer(kind=fwrap_lgcl) :: lgcl_fun_c
+        integer(kind=fwrap_lgcl), intent(out) :: fw_ret_arg
         interface
             function lgcl_fun()
                 use fwrap_ktp_mod
@@ -215,8 +215,8 @@ def test_logical_function():
                 integer(kind=fwrap_lgcl) :: lgcl_fun
             end function lgcl_fun
         end interface
-        lgcl_fun_c = lgcl_fun()
-    end function lgcl_fun_c
+        fw_ret_arg = lgcl_fun()
+    end subroutine lgcl_fun_c
 '''
     compare(fort_file, buf.getvalue())
 
@@ -600,7 +600,7 @@ class test_arg_wrapper_manager(object):
         self.args = [self.lgcl1, self.lgcl2, self.intarg]
         self.l1wrap = fc_wrap.ArgWrapper(self.lgcl1)
         self.l2wrap = fc_wrap.ArgWrapper(self.lgcl2)
-        self.am = fc_wrap.ArgWrapperManager(self.args)
+        self.am = fc_wrap.ArgWrapperManager(self.args, isfunction=False)
 
     def test_arg_declarations(self):
         decls = '''\
@@ -633,8 +633,8 @@ class test_arg_manager_return(object):
         dint = pyf.IntegerType(fw_ktp='int')
         self.lgcl = pyf.Argument(name='ll', dtype=dlgcl, intent='out', is_return_arg=True)
         self.int = pyf.Argument(name='int', dtype=dint, intent='out', is_return_arg=True)
-        self.am_lgcl = fc_wrap.ArgWrapperManager([], self.lgcl)
-        self.am_int = fc_wrap.ArgWrapperManager([], self.int)
+        self.am_lgcl = fc_wrap.ArgWrapperManager([self.lgcl], isfunction=True)
+        self.am_int = fc_wrap.ArgWrapperManager([self.int], isfunction=True)
 
     def test_declarations(self):
         declaration = '''\
@@ -656,7 +656,7 @@ class test_c_proto_generation(object):
 
     def test_c_proto_array_args(self):
         args = [pyf.Argument(name='array', dtype=pyf.default_real, dimension=(':',)*3, intent='out')]
-        arg_man = fc_wrap.ArgWrapperManager(args)
+        arg_man = fc_wrap.ArgWrapperManager(args, isfunction=False)
         eq_(arg_man.c_proto_args(), ['fwrap_npy_intp *array_d1',
                                      'fwrap_npy_intp *array_d2',
                                      'fwrap_npy_intp *array_d3',
@@ -665,10 +665,10 @@ class test_c_proto_generation(object):
     def test_c_proto_return_type(self):
         for dtype in (pyf.default_real, pyf.default_integer):
             return_arg = pyf.Argument(name='ret_arg', dtype=dtype, is_return_arg=True)
-            am = fc_wrap.ArgWrapperManager([], return_arg)
-            eq_(am.c_proto_return_type(), dtype.fw_ktp)
+            am = fc_wrap.ArgWrapperManager([return_arg], isfunction=True)
+            eq_(am.c_proto_return_type(), 'void')
 
-        am_subr = fc_wrap.ArgWrapperManager([])
+        am_subr = fc_wrap.ArgWrapperManager([], isfunction=False)
         eq_(am_subr.c_proto_return_type(), 'void')
 
     def test_c_prototype_empty(self):
@@ -676,7 +676,7 @@ class test_c_proto_generation(object):
                           args=(),
                           return_type=pyf.default_integer)
         empty_func_wrapper = fc_wrap.FunctionWrapper(wrapped=empty_func)
-        eq_(empty_func_wrapper.c_prototype(), 'fwrap_default_integer empty_func_c();')
+        eq_(empty_func_wrapper.c_prototype(), 'void empty_func_c(fwrap_default_integer *fw_ret_arg);')
         empty_subr = pyf.Subroutine(name='empty_subr',
                             args=())
         empty_subr_wrapper = fc_wrap.SubroutineWrapper(wrapped=empty_subr)
@@ -687,13 +687,13 @@ class test_c_proto_generation(object):
                 pyf.Argument(name='array', dtype=pyf.default_real, dimension=(':',)*3, intent='out')]
         func = pyf.Function(name='func', args=args, return_type=pyf.default_integer)
         func_wrapper = fc_wrap.FunctionWrapper(wrapped=func)
-        eq_(func_wrapper.c_prototype(), "fwrap_default_integer func_c("
+        eq_(func_wrapper.c_prototype(), "void func_c"
+                                        "(fwrap_default_integer *fw_ret_arg, "
                                         "fwrap_default_integer *int_arg, "
                                         "fwrap_npy_intp *array_d1, "
                                         "fwrap_npy_intp *array_d2, "
                                         "fwrap_npy_intp *array_d3, "
                                         "fwrap_default_real *array);")
-
 
 # many_arrays_text#{{{
 many_arrays_text = '''\

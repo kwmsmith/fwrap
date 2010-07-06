@@ -60,10 +60,10 @@ end function empty_func
     def test_generate_fc_f(self):
         fname, buf = main.generate_fc_f(self.fc_wrap, self.options)
         fc = '''\
-        function empty_func_c() bind(c, name="empty_func_c")
+        subroutine empty_func_c(fw_ret_arg) bind(c, name="empty_func_c")
             use fwrap_ktp_mod
             implicit none
-            integer(kind=fwrap_default_integer) :: empty_func_c
+            integer(kind=fwrap_default_integer), intent(out) :: fw_ret_arg
             interface
                 function empty_func()
                     use fwrap_ktp_mod
@@ -71,8 +71,8 @@ end function empty_func
                     integer(kind=fwrap_default_integer) :: empty_func
                 end function empty_func
             end interface
-            empty_func_c = empty_func()
-        end function empty_func_c
+            fw_ret_arg = empty_func()
+        end subroutine empty_func_c
         '''
         compare(fc, buf.getvalue())
 
@@ -81,7 +81,7 @@ end function empty_func
         header = '''\
         #include "fwrap_ktp_header.h"
 
-        fwrap_default_integer empty_func_c();
+        void empty_func_c(fwrap_default_integer *fw_ret_arg);
         '''
         compare(buf.getvalue(), header)
         eq_(fname, constants.FC_HDR_TMPL % self.options.projectname)
@@ -92,7 +92,7 @@ end function empty_func
         from fwrap_ktp cimport *
 
         cdef extern from "DP_fc.h":
-            fwrap_default_integer empty_func_c()
+            void empty_func_c(fwrap_default_integer *fw_ret_arg)
         '''
         compare(header, buf.getvalue())
 
@@ -112,9 +112,9 @@ end function empty_func
 cdef extern from "string.h":
     void *memcpy(void *dest, void *src, size_t n)
 cpdef api object empty_func():
-    cdef fwrap_default_integer fwrap_return_var
-    fwrap_return_var = empty_func_c()
-    return (fwrap_return_var,)
+    cdef fwrap_default_integer fw_ret_arg
+    empty_func_c(&fw_ret_arg)
+    return (fw_ret_arg,)
 '''
         compare(test_str, buf.getvalue())
 

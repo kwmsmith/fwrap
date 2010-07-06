@@ -70,8 +70,7 @@ class test_cy_mgr_intents(object):
         self.intents = ('in', 'out', 'inout')
         names = ['name'+str(i) for i in range(3)]
         self.caws = make_caws(self.dts, names, self.intents)
-        self.mgr = cy_wrap.CyArgWrapperManager(args=self.caws,
-                                    return_type_name='fwrap_default_integer')
+        self.mgr = cy_wrap.CyArgWrapperManager(args=self.caws)
 
     def test_arg_declarations(self):
         eq_(self.mgr.arg_declarations(), ['fwrap_default_integer name0',
@@ -324,15 +323,11 @@ class test_cmplx_args(object):
 
     def test_pre_call_code(self):
         eq_(self.intent_in.pre_call_code(), [])
-                # ['fwrap_default_complex_from_parts(name.real, name.imag, fw_name)'])
         eq_(self.intent_out.pre_call_code(), [])
 
     def test_post_call_code(self):
         eq_(self.intent_out.post_call_code(), [])
-                # ['name.real = fwrap_default_complex_creal(fw_name)',
-                 # 'name.imag = fwrap_default_complex_cimag(fw_name)'])
-        eq_(self.intent_in.post_call_code(),
-                [])
+        eq_(self.intent_in.post_call_code(), [])
 
     def test_call_arg_list(self):
         eq_(self.intent_in.call_arg_list(), ['&name'])
@@ -355,10 +350,7 @@ class test_cy_arg_wrapper_mgr(object):
                     intent='in')
             fwarg = fc_wrap.ArgWrapper(arg)
             self.cy_args.append(cy_wrap.CyArgWrapper(fwarg))
-        self.rtn = "fwrap_default_integer"
-        self.mgr = cy_wrap.CyArgWrapperManager(
-                        args=self.cy_args,
-                        return_type_name=self.rtn)
+        self.mgr = cy_wrap.CyArgWrapperManager(args=self.cy_args)
 
     def test_arg_declarations(self):
         eq_(self.mgr.arg_declarations(),
@@ -367,10 +359,6 @@ class test_cy_arg_wrapper_mgr(object):
     def test_call_arg_list(self):
         eq_(self.mgr.call_arg_list(),
                 ["&%s" % cy_arg.intern_name() for cy_arg in self.cy_args])
-
-    def test_return_arg_declaration(self):
-        eq_(self.mgr.return_arg_declaration(),
-                ["cdef %s fwrap_return_var" % self.rtn])
 
 class test_empty_ret_tuple(object):
 
@@ -430,11 +418,12 @@ class test_cy_proc_wrapper(object):
                 ' &real_arg)')
 
     def test_func_call(self):
-        eq_(self.cy_func_wrapper.proc_call(),
-                'fwrap_return_var = '
-                'fort_func_c(&int_arg_in,'
-                ' &int_arg_inout, &int_arg_out,'
-                ' &real_arg)')
+        eq_(self.cy_func_wrapper.proc_call(), 'fort_func_c'
+                                              '(&fw_ret_arg, '
+                                              '&int_arg_in, '
+                                              '&int_arg_inout, '
+                                              '&int_arg_out, '
+                                              '&real_arg)')
 
     def test_subr_declarations(self):
         buf = CodeBuffer()
@@ -445,8 +434,8 @@ class test_cy_proc_wrapper(object):
         buf = CodeBuffer()
         self.cy_func_wrapper.temp_declarations(buf)
         decls = '''\
-                cdef fwrap_default_integer int_arg_out
-                cdef fwrap_default_integer fwrap_return_var
+        cdef fwrap_default_integer fw_ret_arg
+        cdef fwrap_default_integer int_arg_out
                 '''
         compare(buf.getvalue(), decls)
 
@@ -466,9 +455,9 @@ class test_cy_proc_wrapper(object):
         self.cy_func_wrapper.generate_wrapper(buf)
         cy_wrapper = '''\
         cpdef api object fort_func(fwrap_default_integer int_arg_in, fwrap_default_integer int_arg_inout, fwrap_default_real real_arg):
+            cdef fwrap_default_integer fw_ret_arg
             cdef fwrap_default_integer int_arg_out
-            cdef fwrap_default_integer fwrap_return_var
-            fwrap_return_var = fort_func_c(&int_arg_in, &int_arg_inout, &int_arg_out, &real_arg)
-            return (fwrap_return_var, int_arg_inout, int_arg_out, real_arg,)
+            fort_func_c(&fw_ret_arg, &int_arg_in, &int_arg_inout, &int_arg_out, &real_arg)
+            return (fw_ret_arg, int_arg_inout, int_arg_out, real_arg,)
         '''
         compare(cy_wrapper, buf.getvalue())

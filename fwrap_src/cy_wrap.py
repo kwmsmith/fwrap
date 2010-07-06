@@ -143,23 +143,11 @@ class _CyCmplxArg(_CyArgWrapper):
 
     def intern_declarations(self):
         return super(_CyCmplxArg, self).intern_declarations()
-        # return ids + ['cdef %s %s' % (self.arg.get_ktp(), self.intern_name)]
 
     def pre_call_code(self):
-        # if self.arg.intent in ('in', 'inout', None):
-            # d = {'argname' : self.arg.get_name(),
-                 # 'ktp' : self.arg.get_ktp(),
-                 # 'intern_name' : self.intern_name}
-            # return ['%(ktp)s_from_parts(%(argname)s.real, %(argname)s.imag, %(intern_name)s)' % d]
         return []
 
     def post_call_code(self):
-        # if self.arg.intent in ('out', 'inout', None):
-            # d = {'argname' : self.arg.get_name(),
-                 # 'ktp' : self.arg.get_ktp(),
-                 # 'intern_name' : self.intern_name}
-            # return ('%(argname)s.real = %(ktp)s_creal(%(intern_name)s)\n'
-                    # '%(argname)s.imag = %(ktp)s_cimag(%(intern_name)s)' % d).splitlines()
         return []
 
     def call_arg_list(self):
@@ -240,9 +228,8 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
 FW_RETURN_VAR_NAME = 'fwrap_return_var'
 class CyArgWrapperManager(object):
 
-    def __init__(self, args, return_type_name):
+    def __init__(self, args):
         self.args = args
-        self.return_type_name = return_type_name
 
     @classmethod
     def from_fwrapped_proc(cls, fw_proc):
@@ -253,11 +240,7 @@ class CyArgWrapperManager(object):
                 args.append(CyArrayArgWrapper(fw_arg))
             else:
                 args.append(CyArgWrapper(fw_arg))
-        return_wpr = fw_arg_man.return_arg_wrapper
-        rtn = 'object'
-        if return_wpr:
-            rtn = return_wpr.get_ktp()
-        return cls(args=args, return_type_name=rtn)
+        return cls(args=args)
 
     def call_arg_list(self):
         cal = []
@@ -277,8 +260,8 @@ class CyArgWrapperManager(object):
             decls.extend(arg.intern_declarations())
         return decls
 
-    def return_arg_declaration(self):
-        return ["cdef %s %s" % (self.return_type_name, FW_RETURN_VAR_NAME)]
+    # def _return_arg_declaration(self):
+        # return ["cdef %s %s" % (self.return_type_name, FW_RETURN_VAR_NAME)]
 
     def return_tuple_list(self):
         rtl = []
@@ -349,22 +332,22 @@ class ProcWrapper(object):
         proc_call = "%(call_name)s(%(call_arg_list)s)" % {
                 'call_name' : self.wrapped.name,
                 'call_arg_list' : ', '.join(self.arg_mgr.call_arg_list())}
-        if self.wrapped.kind == 'subroutine':
-            return proc_call
-        else:
-            return '%s = %s' % (FW_RETURN_VAR_NAME, proc_call)
+        # if self.wrapped.kind == 'subroutine':
+        return proc_call
+        # else:
+            # return '%s = %s' % (FW_RETURN_VAR_NAME, proc_call)
 
     def temp_declarations(self, buf):
         decls = self.arg_mgr.intern_declarations()
-        if self.wrapped.kind == 'function':
-            decls.extend(self.arg_mgr.return_arg_declaration())
+        # if self.wrapped.kind == 'function':
+            # decls.extend(self.arg_mgr.return_arg_declaration())
         for line in decls:
             buf.putln(line)
 
     def return_tuple(self):
         ret_arg_list = []
-        if self.wrapped.kind == 'function':
-            ret_arg_list.append(FW_RETURN_VAR_NAME)
+        # if self.wrapped.kind == 'function':
+            # ret_arg_list.append(FW_RETURN_VAR_NAME)
         ret_arg_list.extend(self.arg_mgr.return_tuple_list())
         if ret_arg_list:
             return "return (%s,)" % ", ".join(ret_arg_list)

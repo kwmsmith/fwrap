@@ -47,7 +47,7 @@ class ProcWrapper(object):
         return self.wrapped.name
 
     def proc_end(self):
-        return "end %s %s" % (self.kind, self.name)
+        return "end subroutine %s" % self.name
 
     def proc_preamble(self, ktp_mod, buf):
         buf.putln('use %s' % ktp_mod)
@@ -68,9 +68,8 @@ class ProcWrapper(object):
         buf.putln(self.proc_end())
 
     def proc_declaration(self):
-        return '%s %s(%s) bind(c, name="%s")' % \
-                (self.kind, self.name,
-                        ', '.join(self.extern_arg_list()),
+        return 'subroutine %s(%s) bind(c, name="%s")' % \
+                (self.name, ', '.join(self.extern_arg_list()),
                         self.name)
 
     def temp_declarations(self, buf):
@@ -114,20 +113,22 @@ class ProcWrapper(object):
 
 class FunctionWrapper(ProcWrapper):
 
+    RETURN_ARG_NAME = 'fw_ret_arg'
+
     def __init__(self, wrapped):
         self.kind = 'function'
         self.name = constants.PROC_SUFFIX_TMPL % wrapped.name
         self.wrapped = wrapped
-        ra = pyf.Argument(name=self.name,
+        ra = pyf.Argument(name=self.RETURN_ARG_NAME,
                 dtype=wrapped.return_arg.dtype,
-                intent='out', is_return_arg=True)
-        self.arg_man = ArgWrapperManager(wrapped.args, ra)
+                intent='out')
+        self.arg_man = ArgWrapperManager([ra] + list(wrapped.args), isfunction=True)
 
     def return_spec_declaration(self):
         return self.arg_man.return_spec_declaration()
 
     def proc_result_name(self):
-        return self.arg_man.return_var_name()
+        return self.RETURN_ARG_NAME
 
 class SubroutineWrapper(ProcWrapper):
 
@@ -135,15 +136,14 @@ class SubroutineWrapper(ProcWrapper):
         self.kind = 'subroutine'
         self.name = constants.PROC_SUFFIX_TMPL % wrapped.name
         self.wrapped = wrapped
-        self.arg_man = ArgWrapperManager(wrapped.args)
+        self.arg_man = ArgWrapperManager(wrapped.args, isfunction=False)
 
 class ArgWrapperManager(object):
     
-    def __init__(self, args, return_arg=None):
+    def __init__(self, args, isfunction):
         self._orig_args = args
-        self._orig_return_arg = return_arg
+        self.isfunction = isfunction
         self.arg_wrappers = None
-        self.return_arg_wrapper = None
         self._gen_wrappers()
 
     def _gen_wrappers(self):
@@ -151,14 +151,15 @@ class ArgWrapperManager(object):
         for arg in self._orig_args:
             wargs.append(ArgWrapperFactory(arg))
         self.arg_wrappers = wargs
-        arg = self._orig_return_arg
-        if arg:
-            self.return_arg_wrapper = ArgWrapperFactory(arg)
 
     def call_arg_list(self):
         cl = []
-        for argw in self.arg_wrappers:
-            cl.append(argw.intern_name())
+        if not self.isfunction:
+            for argw in self.arg_wrappers:
+                cl.append(argw.intern_name())
+        else:
+            cl = [argw.intern_name() for argw in self.arg_wrappers 
+                    if argw.intern_name() != FunctionWrapper.RETURN_ARG_NAME]
         return cl
 
     def extern_arg_list(self):
@@ -174,17 +175,12 @@ class ArgWrapperManager(object):
         return ret
 
     def c_proto_return_type(self):
-        if self.return_arg_wrapper is None:
-            return 'void'
-        else:
-            return self.return_arg_wrapper.get_ktp()
+        return 'void'
 
     def arg_declarations(self):
         decls = []
         for argw in self.arg_wrappers:
             decls.extend(argw.extern_declarations())
-        if self.return_arg_wrapper:
-            decls.extend(self.return_arg_wrapper.extern_declarations())
         return decls
 
     def __return_spec_declaration(self):
@@ -196,8 +192,6 @@ class ArgWrapperManager(object):
         decls = []
         for argw in self.arg_wrappers:
             decls.extend(argw.intern_declarations())
-        if self.return_arg_wrapper:
-            decls.extend(self.return_arg_wrapper.intern_declarations())
         return decls
 
     def pre_call_code(self):
@@ -211,15 +205,13 @@ class ArgWrapperManager(object):
     def post_call_code(self):
         all_pcc = []
         wpprs = self.arg_wrappers[:]
-        if self.return_arg_wrapper:
-            wpprs.append(self.return_arg_wrapper)
         for argw in wpprs:
             pcc = argw.post_call_code()
             if pcc:
                 all_pcc.extend(pcc)
         return all_pcc
 
-    def return_var_name(self):
+    def _return_var_name(self):
         return self.return_arg_wrapper.intern_name()
 
 def ArgWrapperFactory(arg):
