@@ -144,12 +144,6 @@ class _CyCmplxArg(_CyArgWrapper):
     def intern_declarations(self):
         return super(_CyCmplxArg, self).intern_declarations()
 
-    def pre_call_code(self):
-        return []
-
-    def post_call_code(self):
-        return []
-
     def call_arg_list(self):
         return ['&%s' % self.get_name()]
 
