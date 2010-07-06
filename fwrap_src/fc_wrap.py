@@ -453,6 +453,8 @@ class CharArrayArgWrapper(ArrayArgWrapper):
         return [tmpl % D]
 
     def post_call_code(self):
+        if self._orig_arg.intent == "in":
+            return []
         tmpl = "%(name)s = reshape(transfer(%(intern)s, %(name)s), shape(%(name)s))"
         D = {"intern" : self.intern_name(), "name" : self._orig_arg.name}
         return [tmpl % D]

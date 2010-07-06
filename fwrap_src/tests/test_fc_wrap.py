@@ -370,9 +370,17 @@ class test_char_array_arg_wrapper(object):
                                                     odecl="character(*)"),
                                   dimension=('n1',),
                                   intent='inout')
+        charr_in = pyf.Argument('charrin',
+                                pyf.CharacterType("char_in",
+                                                  len="20",
+                                                  odecl="character(20"),
+                                dimension=(":",),
+                                intent="in")
         self.fc_charr1 = fc_wrap.CharArrayArgWrapper(charr1)
         self.fc_charr3 = fc_wrap.CharArrayArgWrapper(charr3)
         self.fc_charr_star = fc_wrap.CharArrayArgWrapper(charr_star)
+        self.fc_charr_in = fc_wrap.CharArrayArgWrapper(charr_in)
+
 
     def test_extern_decls(self):
         decls1 = '''\
@@ -434,6 +442,8 @@ character(kind=fwrap_char_xX), dimension(cs_d1, cs_d2), intent(inout) :: cs
                 ["charr3 = reshape(transfer(fw_charr3, charr3), shape(charr3))"])
         eq_(self.fc_charr_star.post_call_code(),
                 ["cs = reshape(transfer(fw_cs, cs), shape(cs))"])
+        eq_(self.fc_charr_in.post_call_code(),
+                [])
  
 class test_array_arg_wrapper(object):
 

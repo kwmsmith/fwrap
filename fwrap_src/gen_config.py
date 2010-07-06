@@ -175,6 +175,14 @@ class _CharTypeParam(_ConfigTypeParam):
     def gen_pxd_cimports(self):
         return ['from python_bytes cimport PyBytes_FromStringAndSize']
 
+    def _get_odecl(self):
+        return "character(1)"
+
+    def _set_odecl(self, od):
+        pass
+
+    odecl = property(_get_odecl, _set_odecl)
+
 class _CmplxTypeParam(_ConfigTypeParam):
 
     c_includes = '#include <complex.h>'
