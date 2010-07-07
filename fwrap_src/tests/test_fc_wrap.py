@@ -7,6 +7,7 @@ from tutils import compare
 from nose.tools import ok_, eq_, set_trace
 
 def test_generate_fc_h():
+    return_arg = pyf.Argument(name="two_arg", dtype=pyf.default_real)
     two_arg_func = pyf.Function(
             name='two_arg',
             args=[pyf.Argument(name='a',dtype=pyf.default_integer,
@@ -18,7 +19,7 @@ def test_generate_fc_h():
                   pyf.Argument(name='d', dtype=pyf.default_integer,
                                 intent='in'),
                   ],
-            return_type=pyf.default_real)
+            return_arg=return_arg)
     ta_wrp = fc_wrap.FunctionWrapper(wrapped=two_arg_func)
     ast = [ta_wrp]
     buf = CodeBuffer()
@@ -32,13 +33,14 @@ def test_generate_fc_h():
     compare(buf.getvalue(), code)
 
 def test_generate_fc_pxd():
+    return_arg = pyf.Argument(name="two_arg", dtype=pyf.default_real)
     two_arg_func = pyf.Function(
             name='two_arg',
             args=[pyf.Argument(name='a',dtype=pyf.default_integer,
                                 intent='in'),
                   pyf.Argument(name='b', dtype=pyf.default_integer,
                                 intent='in')],
-            return_type=pyf.default_real)
+            return_arg=return_arg)
     ta_wrp = fc_wrap.FunctionWrapper(wrapped=two_arg_func)
     ast = [ta_wrp]
     buf = CodeBuffer()
@@ -80,9 +82,10 @@ def test_gen_fortran_one_arg_func():
     compare(fort_file, buf.getvalue())
 
 def test_gen_empty_func_wrapper():
+    return_arg = pyf.Argument("empty_func", dtype=pyf.default_integer)
     empty_func = pyf.Function(name='empty_func',
                       args=(),
-                      return_type=pyf.default_integer)
+                      return_arg=return_arg)
     empty_func_wrapper = fc_wrap.FunctionWrapper(wrapped=empty_func)
                       
     empty_func_wrapped = '''\
@@ -135,11 +138,12 @@ def test_gen_iface():
     end interface
 '''
 
+    return_arg = pyf.Argument(name="one_arg_func", dtype=pyf.default_integer)
     one_arg_func = pyf.Function(name='one_arg_func',
                         args=[pyf.Argument(name='arg1',
                                            dtype=pyf.default_real,
                                            intent='inout')],
-                        return_type=pyf.default_integer)
+                        return_arg=return_arg)
     one_arg_func_iface = '''\
     interface
         function one_arg_func(arg1)
@@ -151,9 +155,10 @@ def test_gen_iface():
     end interface
 '''
 
+    return_arg = pyf.Argument(name="one_arg_func", dtype=pyf.default_integer)
     empty_func = pyf.Function(name='empty_func',
                       args=(),
-                      return_type=pyf.default_integer)
+                      return_arg=return_arg)
     empty_func_iface = '''\
     interface
         function empty_func()
@@ -198,8 +203,9 @@ def test_intent_hide():
     compare(check, buf.getvalue())
 
 def test_logical_function():
+    return_arg = pyf.Argument('lgcl_fun', dtype=pyf.LogicalType(fw_ktp='lgcl'))
     lgcl_fun = pyf.Function(name='lgcl_fun', args=[],
-                            return_type=pyf.LogicalType(fw_ktp='lgcl'))
+                            return_arg=return_arg)
     lgcl_fun_wrapped = fc_wrap.FunctionWrapper(wrapped=lgcl_fun)
     buf = CodeBuffer()
     lgcl_fun_wrapped.generate_wrapper(buf)
@@ -650,9 +656,9 @@ class test_c_proto_generation(object):
     def test_c_proto_args(self):
         args = [pyf.Argument(name='int_arg', dtype=pyf.default_integer, intent='in'),
                 pyf.Argument(name='real_arg',dtype=pyf.default_real,    intent='out')]
-        return_type = pyf.Argument(name='fname', dtype=pyf.default_real, intent='out', is_return_arg=True)
-        arg_man = fc_wrap.ArgWrapperManager(args, return_type)
-        eq_(arg_man.c_proto_args(), ['fwrap_default_integer *int_arg', 'fwrap_default_real *real_arg'])
+        return_arg = pyf.Argument(name='fname', dtype=pyf.default_real)
+        arg_man = fc_wrap.ArgWrapperManager([return_arg]+args, isfunction=True)
+        eq_(arg_man.c_proto_args(), ['fwrap_default_real *fname', 'fwrap_default_integer *int_arg', 'fwrap_default_real *real_arg'])
 
     def test_c_proto_array_args(self):
         args = [pyf.Argument(name='array', dtype=pyf.default_real, dimension=(':',)*3, intent='out')]
@@ -672,9 +678,10 @@ class test_c_proto_generation(object):
         eq_(am_subr.c_proto_return_type(), 'void')
 
     def test_c_prototype_empty(self):
+        return_arg = pyf.Argument(name="empty_func", dtype=pyf.default_integer)
         empty_func = pyf.Function(name='empty_func',
                           args=(),
-                          return_type=pyf.default_integer)
+                          return_arg=return_arg)
         empty_func_wrapper = fc_wrap.FunctionWrapper(wrapped=empty_func)
         eq_(empty_func_wrapper.c_prototype(), 'void empty_func_c(fwrap_default_integer *fw_ret_arg);')
         empty_subr = pyf.Subroutine(name='empty_subr',
@@ -685,7 +692,8 @@ class test_c_proto_generation(object):
     def test_c_prototype_args(self):
         args = [pyf.Argument(name='int_arg', dtype=pyf.default_integer, intent='in'),
                 pyf.Argument(name='array', dtype=pyf.default_real, dimension=(':',)*3, intent='out')]
-        func = pyf.Function(name='func', args=args, return_type=pyf.default_integer)
+        return_arg = pyf.Argument(name="func", dtype=pyf.default_integer)
+        func = pyf.Function(name='func', args=args, return_arg=return_arg)
         func_wrapper = fc_wrap.FunctionWrapper(wrapped=func)
         eq_(func_wrapper.c_prototype(), "void func_c"
                                         "(fwrap_default_integer *fw_ret_arg, "

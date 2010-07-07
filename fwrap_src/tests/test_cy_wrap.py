@@ -380,10 +380,11 @@ class test_cy_proc_wrapper(object):
         real_arg = pyf.Argument("real_arg", pyf.default_real)
         all_args = [int_arg_in, int_arg_inout, int_arg_out, real_arg]
 
+        return_arg = pyf.Argument(name="fort_func", dtype=pyf.default_integer)
         pyf_func = pyf.Function(
                                 name="fort_func",
                                 args=all_args,
-                                return_type=pyf.default_integer)
+                                return_arg=return_arg)
         func_wrapper = fc_wrap.FunctionWrapper(
                                 wrapped=pyf_func)
         self.cy_func_wrapper = cy_wrap.ProcWrapper(

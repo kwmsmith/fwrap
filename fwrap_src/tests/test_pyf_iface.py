@@ -3,16 +3,19 @@ from nose.tools import ok_, eq_, set_trace, assert_raises
 
 class test_program_units(object):
     def test_function(self):
+        return_arg = pyf.Argument('fort_function', dtype=pyf.default_integer)
         ffun = pyf.Function(name="fort_function",
                 args=(),
-                return_type=pyf.default_integer)
+                return_arg=return_arg)
         ok_(ffun.name == 'fort_function')
         ok_(ffun.return_arg.dtype is pyf.default_integer)
 
     def test_function_args(self):
-        pyf.Function(name="ffun",
+        name = 'ffun'
+        return_arg = pyf.Argument(name, dtype=pyf.default_integer)
+        pyf.Function(name=name,
                 args=('a', 'b', 'c'),
-                return_type=pyf.default_integer)
+                return_arg=return_arg)
 
     def test_subroutine(self):
         pyf.Subroutine(name='subr',
@@ -37,6 +40,22 @@ class test_program_units(object):
                     pyf.Use(mod1, only=('i', 'r')),
                     ]
                 )
+
+def test_func_return_array():
+    args = [pyf.Argument(name='a', dtype=pyf.default_integer, intent='in'),
+            pyf.Argument(name='b', dtype=pyf.default_integer, intent='in')],
+    return_arg = pyf.Argument(name="arr_fun", 
+                              dtype=pyf.default_real, 
+                              dimension=('a', 'b'))
+    arrfun = pyf.Function(name="arr_fun", 
+                            args=args, 
+                            return_arg=return_arg)
+    
+    
+
+
+
+
 
 def test_valid_proc_name():
     ok_(pyf.Procedure('name', ()))

@@ -50,9 +50,10 @@ end function empty_func
         self.options.projectname = "DP"
 
     def test_generate_ast(self):
+        return_arg = pyf.Argument('empty_func', dtype=pyf.default_integer)
         empty_func = pyf.Function(name='empty_func',
                         args=(),
-                        return_type=pyf.default_integer)
+                        return_arg=return_arg)
         eq_(self.ast[0].name, empty_func.name)
         eq_(self.ast[0].return_arg.name, empty_func.return_arg.name)
         eq_(len(self.ast[0].args), len(empty_func.args))

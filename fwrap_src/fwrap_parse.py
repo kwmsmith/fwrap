@@ -14,9 +14,8 @@ def generate_ast(fsrcs):
             if proc.blocktype == 'subroutine':
                 ast.append(pyf.Subroutine(name=proc.name, args=fargs))
             elif proc.blocktype == 'function':
-                ret_type = get_rettype(proc)
                 ast.append(pyf.Function(name=proc.name, args=fargs,
-                    return_type=pyf.default_integer))
+                    return_arg=_get_ret_arg(proc)))
             else:
                 raise RuntimeError("unsupported Fortran construct %r." % proc)
     return ast
@@ -25,33 +24,39 @@ def generate_ast(fsrcs):
 def is_proc(proc):
     return proc.blocktype in ('subroutine', 'function')
 
-def get_rettype(proc):
+def _get_ret_arg(proc):
     ret_var = proc.get_variable(proc.result)
-    return _get_dtype(ret_var.get_typedecl())
+    ret_arg = _get_arg(ret_var)
+    ret_arg.intent = None
+    return ret_arg
+
+def _get_arg(p_arg):
+    p_typedecl = p_arg.get_typedecl()
+    dtype = _get_dtype(p_typedecl)
+    name = p_arg.name
+    intent = _get_intent(p_arg)
+    if p_arg.is_scalar():
+        return pyf.Argument(name=name, dtype=dtype, intent=intent)
+    elif p_arg.is_array():
+        p_dims = p_arg.get_array_spec()
+        dims = []
+        for dim in p_dims:
+            if dim == ('',''):
+                dims.append(':')
+            elif len(dim) == 1:
+                dims.append(dim[0])
+            else:
+                raise RuntimeError("can't handle dimension(x:y) declarations yet...")
+        return pyf.Argument(name=name, dtype=dtype, intent=intent, dimension=dims)
+    else:
+        raise RuntimeError("argument %s is neither a scalar or an array (derived type?)" % p_arg)
+
 
 def _get_args(proc):
     args = []
     for argname in proc.args:
         p_arg = proc.get_variable(argname)
-        p_typedecl = p_arg.get_typedecl()
-        dtype = _get_dtype(p_typedecl)
-        name = p_arg.name
-        intent = _get_intent(p_arg)
-        if p_arg.is_scalar():
-            args.append(pyf.Argument(name=name, dtype=dtype, intent=intent))
-        elif p_arg.is_array():
-            p_dims = p_arg.get_array_spec()
-            dims = []
-            for dim in p_dims:
-                if dim == ('',''):
-                    dims.append(':')
-                elif len(dim) == 1:
-                    dims.append(dim[0])
-                else:
-                    raise RuntimeError("can't handle dimension(x:y) declarations yet...")
-            args.append(pyf.Argument(name=name, dtype=dtype, intent=intent, dimension=dims))
-        else:
-            raise RuntimeError("argument %s is neither a scalar or an array (derived type?)" % p_arg)
+        args.append(_get_arg(p_arg))
     return args
 
 def _get_intent(arg):

@@ -158,7 +158,9 @@ class Argument(object):
 
     def _get_name(self):
         return self._var.name
-    name = property(_get_name)
+    def _set_name(self, name):
+        self._var.name = name
+    name = property(_get_name, _set_name)
 
     def _get_dtype(self):
         return self._var.dtype
@@ -284,9 +286,10 @@ class Procedure(object):
 
 class Function(Procedure):
     
-    def __init__(self, name, args, return_type):
+    def __init__(self, name, args, return_arg):
         super(Function, self).__init__(name, args)
-        self.return_arg = Argument(name=name, dtype=return_type, intent='out', is_return_arg=True)
+        self.return_arg = return_arg
+        self.return_arg.name = self.name
         self.kind = 'function'
         self.arg_man = ArgManager(self.args, self.return_arg)
 
