@@ -1,5 +1,7 @@
+import os
 import tempfile
 
+import fwrap_src.fc_wrap as fc_wrap
 from fwrap_src import constants
 from fwrap_src import main
 from cStringIO import StringIO
@@ -21,10 +23,10 @@ end function empty_func
 '''
 
     def setup(self):
-        self.build_dir = tempfile.mkdtemp()
-        self.source_file = os.path.join(build_dir,'source.f90')
+        self.out_dir = tempfile.mkdtemp()
+        self.source_file = os.path.join(self.out_dir,'source.f90')
         file = open(self.source_file,'w')
-        file.write(fsrc)
+        file.write(self.fsrc)
         file.close()
         self.name = 'test'
         
@@ -120,4 +122,7 @@ end function empty_func
             eq_(sorted(ctp.keys()), ['basetype', 'fwrap_name', 'lang', 'odecl'])
             
     def teardown(self):
-        os.removedirs(self.build_dir)
+        for root,dirs,files in os.walk(self.out_dir):
+            print files
+            os.remove(files)
+        os.removedirs(self.out_dir)
