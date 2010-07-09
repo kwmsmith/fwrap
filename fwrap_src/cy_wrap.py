@@ -49,6 +49,8 @@ class _CyCharArg(_CyArgWrapper):
     def __init__(self, arg):
         super(_CyCharArg, self).__init__(arg)
         self.intern_name = 'fw_%s' % self.name
+        self.intern_len_name = '%s_len' % self.intern_name
+        self.intern_buf_name = '%s_buf' % self.intern_name
 
     def extern_declarations(self):
         if self.arg.intent in ('in', 'inout', None):
@@ -57,20 +59,14 @@ class _CyCharArg(_CyArgWrapper):
             return ['%s %s' % (self.cy_dtype_name(), self.arg.name)]
         return []
         
-    def intern_len_name(self):
-        return '%s_len' % self.intern_name
-
-    def intern_buf_name(self):
-        return '%s_buf' % self.intern_name
-
     def cy_dtype_name(self):
         return 'bytes'
 
     def intern_declarations(self):
         ret = ['cdef bytes %s' % self.intern_name,
-                'cdef fwrap_npy_intp %s' % self.intern_len_name()]
+                'cdef fwrap_npy_intp %s' % self.intern_len_name]
         if self.arg.intent in ('out', 'inout', None):
-            ret.append('cdef char *%s' % self.intern_buf_name())
+            ret.append('cdef char *%s' % self.intern_buf_name)
         return ret
 
     def get_len(self):
@@ -87,18 +83,18 @@ class _CyCharArg(_CyArgWrapper):
         return len_str
 
     def _in_pre_call_code(self):
-        return ['%s = len(%s)' % (self.intern_len_name(), self.name),
+        return ['%s = len(%s)' % (self.intern_len_name, self.name),
                 '%s = %s' % (self.intern_name, self.name)]
         
     def _out_pre_call_code(self):
         len_str = self._len_str()
-        return ['%s = %s' % (self.intern_len_name(), len_str),
+        return ['%s = %s' % (self.intern_len_name, len_str),
                self._fromstringandsize_call(),
-               '%s = <char*>%s' % (self.intern_buf_name(), self.intern_name),]
+               '%s = <char*>%s' % (self.intern_buf_name, self.intern_name),]
 
     def _inout_pre_call_code(self):
        ret = self._out_pre_call_code()
-       ret += ['memcpy(%s, <char*>%s, %s+1)' % (self.intern_buf_name(), self.name, self.intern_len_name())]
+       ret += ['memcpy(%s, <char*>%s, %s+1)' % (self.intern_buf_name, self.name, self.intern_len_name)]
        return ret
 
     def pre_call_code(self):
@@ -111,14 +107,14 @@ class _CyCharArg(_CyArgWrapper):
 
     def _fromstringandsize_call(self):
         return '%s = PyBytes_FromStringAndSize(NULL, %s)' % \
-                    (self.intern_name, self.intern_len_name())
+                    (self.intern_name, self.intern_len_name)
 
 
     def call_arg_list(self):
         if self.arg.intent == 'in':
-            return ['&%s' % self.intern_len_name(), '<char*>%s' % self.intern_name]
+            return ['&%s' % self.intern_len_name, '<char*>%s' % self.intern_name]
         else:
-            return ['&%s' % self.intern_len_name(), self.intern_buf_name()]
+            return ['&%s' % self.intern_len_name, self.intern_buf_name]
 
     def return_tuple_list(self):
         if self.arg.intent in ('out', 'inout', None):
