@@ -172,9 +172,9 @@ class ArgWrapperManager(object):
         self.arg_wrappers = wargs
 
     def call_arg_list(self):
-        cl = [argw.intern_name() for argw in self.arg_wrappers 
-                if (argw.intern_name() != FunctionWrapper.RETURN_ARG_NAME and
-                    argw.intern_name() != ProcWrapper.ERR_NAME)]
+        cl = [argw.intern_name for argw in self.arg_wrappers 
+                if (argw.intern_name != FunctionWrapper.RETURN_ARG_NAME and
+                    argw.intern_name != ProcWrapper.ERR_NAME)]
         return cl
 
     def extern_arg_list(self):
@@ -227,7 +227,7 @@ class ArgWrapperManager(object):
         return all_pcc
 
     def _return_var_name(self):
-        return self.return_arg_wrapper.intern_name()
+        return self.return_arg_wrapper.intern_name
 
 def ArgWrapperFactory(arg):
     if getattr(arg, 'dimension', None):
@@ -264,11 +264,13 @@ class ArgWrapper(ArgWrapperBase):
         self._intern_var = None
         self.dtype = self._extern_arg.dtype
 
-    def intern_name(self):
+    def _get_intern_name(self):
         if self._intern_var:
             return self._intern_var.name
         else:
             return self._extern_arg.name
+
+    intern_name = property(_get_intern_name)
 
     def get_ktp(self):
         return self._extern_arg.ktp
@@ -313,6 +315,7 @@ class CharArgWrapper(ArgWrapperBase):
                                        intent='inout',
                                        dimension=[self.len_arg.name])
         self.dtype = self.intern_arg.dtype
+        self.intern_name = self.intern_arg.name
 
     def is_assumed_size(self):
         return self.intern_arg.dtype.len == '*'
@@ -352,9 +355,6 @@ class CharArgWrapper(ArgWrapperBase):
     def get_name(self):
         return self.extern_arg.name
 
-    def intern_name(self):
-        return self.intern_arg.name
-
     def get_ktp(self):
         return self.extern_arg.ktp
 
@@ -368,9 +368,7 @@ class HideArgWrapper(ArgWrapperBase):
                 pyf.Var(name=arg.name, dtype=arg.dtype, dimension=None)
         self.value = arg.value
         assert self.value is not None
-
-    def intern_name(self):
-        return self._intern_var.name
+        self.intern_name = self._intern_var.name
 
     def extern_arg_list(self):
         return []
@@ -396,6 +394,7 @@ class ArrayArgWrapper(ArgWrapperBase):
         self._intern_arr = None
         self._dims = arg.dimension
         self._set_extern_args(ndims=len(self._dims))
+        self.intern_name = self._intern_arr.name
 
     def _set_extern_args(self, ndims):
         orig_name = self._orig_arg.name
@@ -422,9 +421,6 @@ class ArrayArgWrapper(ArgWrapperBase):
         return [arg.c_declaration() for arg in self._arr_dims] + \
                 [self._intern_arr.c_declaration()]
 
-    def intern_name(self):
-        return self._intern_arr.name
-
     def extern_arg_list(self):
         return [arg.name for arg in self._arr_dims] + \
                 [self._intern_arr.name]
@@ -445,6 +441,7 @@ class CharArrayArgWrapper(ArrayArgWrapper):
                                       dtype=self._orig_arg.dtype,
                                       dimension=[dim.name for dim in self._arr_dims[1:]],
                                       intent=None)
+        self.intern_name = self._copy_arr.name
 
     def is_assumed_size(self):
         return self._orig_arg.dtype.len == '*'
@@ -456,18 +453,15 @@ class CharArrayArgWrapper(ArrayArgWrapper):
 
     def pre_call_code(self):
         tmpl = "%(intern)s = reshape(transfer(%(name)s, %(intern)s), shape(%(intern)s))"
-        D = {"intern" : self.intern_name(), "name" : self._orig_arg.name}
+        D = {"intern" : self.intern_name, "name" : self._orig_arg.name}
         return [tmpl % D]
 
     def post_call_code(self):
         if self._orig_arg.intent == "in":
             return []
         tmpl = "%(name)s = reshape(transfer(%(intern)s, %(name)s), shape(%(name)s))"
-        D = {"intern" : self.intern_name(), "name" : self._orig_arg.name}
+        D = {"intern" : self.intern_name, "name" : self._orig_arg.name}
         return [tmpl % D]
-
-    def intern_name(self):
-        return self._copy_arr.name
 
 class LogicalWrapper(ArgWrapper):
 

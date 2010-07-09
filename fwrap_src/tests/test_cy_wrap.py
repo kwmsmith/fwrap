@@ -98,7 +98,7 @@ class test_cy_arg_wrapper(object):
 
     def test_intern_name(self):
         for dt, caw in zip(self.dts, self.caws):
-            eq_(caw.intern_name(), "foo")
+            eq_(caw.intern_name, "foo")
 
 class test_cy_char_array_arg_wrapper(object):
 
@@ -358,7 +358,7 @@ class test_cy_arg_wrapper_mgr(object):
 
     def test_call_arg_list(self):
         eq_(self.mgr.call_arg_list(),
-                ["&%s" % cy_arg.intern_name() for cy_arg in self.cy_args])
+                ["&%s" % cy_arg.intern_name for cy_arg in self.cy_args])
 
 class test_empty_ret_tuple(object):
 
