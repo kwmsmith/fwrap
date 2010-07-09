@@ -42,7 +42,9 @@ class _CyArgWrapper(object):
         return []
 
     def return_tuple_list(self):
-        if self.arg.intent in ('out', 'inout', None):
+        if self.arg.get_name() == constants.ERR_NAME:
+            return []
+        elif self.arg.intent in ('out', 'inout', None):
             return [self.arg.get_name()]
         return []
 
@@ -349,12 +351,19 @@ class ProcWrapper(object):
         for line in self.arg_mgr.post_call_code():
             buf.putln(line)
 
+    def check_error(self, buf):
+        ck_err = '''\
+if fw_iserr__ != FW_NO_ERR__:
+    raise RuntimeError("an error was encountered when calling the '%s' wrapper.")''' % self.name
+        buf.putlines(ck_err)
+
     def generate_wrapper(self, buf):
         buf.putln(self.proc_declaration())
         buf.indent()
         self.temp_declarations(buf)
         self.pre_call_code(buf)
         buf.putln(self.proc_call())
+        self.check_error(buf)
         self.post_call_code(buf)
         rt = self.return_tuple()
         if rt: buf.putln(rt)

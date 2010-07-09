@@ -17,6 +17,8 @@ module fwrap_ktp_mod
     use iso_c_binding
     implicit none
 ''')
+        for err_name in sorted(constants.ERR_CODES):
+            f_out.write("    integer, parameter :: %s = %d\n" % (err_name, constants.ERR_CODES[err_name]))
         for ctp in ctps:
             for line in ctp.gen_f_mod():
                 f_out.write('    %s\n' % line)
@@ -38,6 +40,8 @@ def write_header(fname, ctps):
     try:
         h_out.write("#ifndef %s\n" % fname.upper().replace('.','_'))
         h_out.write("#define %s\n" % fname.upper().replace('.', '_'))
+        for err_name in sorted(constants.ERR_CODES):
+            h_out.write("#define %s %d\n" % (err_name, constants.ERR_CODES[err_name]))
         for incl in get_c_includes(ctps):
             if incl: h_out.write(incl+'\n')
         for ctp in ctps:
@@ -70,6 +74,10 @@ def write_pxd(fname, h_name, ctps):
         extern_block = extern_block.getvalue()
         if extern_block.rstrip():
             pxd_out.write('cdef extern from "%s":\n' % h_name)
+            pxd_out.write("    enum:\n")
+            for err_name in sorted(constants.ERR_CODES):
+                pxd_out.write("        %s = %d\n" %\
+                        (err_name, constants.ERR_CODES[err_name]))
             pxd_out.write(extern_block)
     finally:
         pxd_out.close()

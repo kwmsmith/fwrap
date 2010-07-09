@@ -416,7 +416,7 @@ class test_cy_proc_wrapper(object):
         eq_(self.cy_subr_wrapper.proc_call(),
                 'fort_subr_c(&int_arg_in,'
                 ' &int_arg_inout, &int_arg_out,'
-                ' &real_arg)')
+                ' &real_arg, &fw_iserr__)')
 
     def test_func_call(self):
         eq_(self.cy_func_wrapper.proc_call(), 'fort_func_c'
@@ -424,12 +424,14 @@ class test_cy_proc_wrapper(object):
                                               '&int_arg_in, '
                                               '&int_arg_inout, '
                                               '&int_arg_out, '
-                                              '&real_arg)')
+                                              '&real_arg, '
+                                              '&fw_iserr__)')
 
     def test_subr_declarations(self):
         buf = CodeBuffer()
         self.cy_subr_wrapper.temp_declarations(buf)
-        compare(buf.getvalue(), 'cdef fwrap_default_integer int_arg_out')
+        compare(buf.getvalue(), 'cdef fwrap_default_integer int_arg_out\n'
+                                'cdef fwrap_default_integer fw_iserr__')
 
     def test_func_declarations(self):
         buf = CodeBuffer()
@@ -437,6 +439,7 @@ class test_cy_proc_wrapper(object):
         decls = '''\
         cdef fwrap_default_integer fw_ret_arg
         cdef fwrap_default_integer int_arg_out
+        cdef fwrap_default_integer fw_iserr__
                 '''
         compare(buf.getvalue(), decls)
 
@@ -446,7 +449,10 @@ class test_cy_proc_wrapper(object):
         cy_wrapper = '''\
         cpdef api object fort_subr(fwrap_default_integer int_arg_in, fwrap_default_integer int_arg_inout, fwrap_default_real real_arg):
             cdef fwrap_default_integer int_arg_out
-            fort_subr_c(&int_arg_in, &int_arg_inout, &int_arg_out, &real_arg)
+            cdef fwrap_default_integer fw_iserr__
+            fort_subr_c(&int_arg_in, &int_arg_inout, &int_arg_out, &real_arg, &fw_iserr__)
+            if fw_iserr__ != FW_NO_ERR__:
+                raise RuntimeError("an error was encountered when calling the 'fort_subr' wrapper.")
             return (int_arg_inout, int_arg_out, real_arg,)
 '''
         compare(cy_wrapper, buf.getvalue())
@@ -458,7 +464,10 @@ class test_cy_proc_wrapper(object):
         cpdef api object fort_func(fwrap_default_integer int_arg_in, fwrap_default_integer int_arg_inout, fwrap_default_real real_arg):
             cdef fwrap_default_integer fw_ret_arg
             cdef fwrap_default_integer int_arg_out
-            fort_func_c(&fw_ret_arg, &int_arg_in, &int_arg_inout, &int_arg_out, &real_arg)
+            cdef fwrap_default_integer fw_iserr__
+            fort_func_c(&fw_ret_arg, &int_arg_in, &int_arg_inout, &int_arg_out, &real_arg, &fw_iserr__)
+            if fw_iserr__ != FW_NO_ERR__:
+                raise RuntimeError("an error was encountered when calling the 'fort_func' wrapper.")
             return (fw_ret_arg, int_arg_inout, int_arg_out, real_arg,)
         '''
         compare(cy_wrapper, buf.getvalue())

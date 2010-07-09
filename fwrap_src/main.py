@@ -24,7 +24,7 @@ def wrap(source_files, options):
     cy_ast = wrap_cy(fc_ast)
 
     # gens = [(generate_genconfig, f_ast),
-    gens = [(generate_type_specs, f_ast),
+    gens = [(generate_type_specs, fc_ast),
             (generate_fc_f, fc_ast),
             (generate_fc_h, fc_ast),
             (generate_fc_pxd, fc_ast),

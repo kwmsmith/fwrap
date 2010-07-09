@@ -28,7 +28,7 @@ def test_generate_fc_h():
     code = '''\
     #include "foobar"
     
-    void two_arg_c(fwrap_default_real *fw_ret_arg, fwrap_default_integer *a, fwrap_default_integer *b, fwrap_default_integer *c, fwrap_default_integer *d);
+    void two_arg_c(fwrap_default_real *fw_ret_arg, fwrap_default_integer *a, fwrap_default_integer *b, fwrap_default_integer *c, fwrap_default_integer *d, fwrap_default_integer *fw_iserr__);
     '''
     compare(buf.getvalue(), code)
 
@@ -50,7 +50,7 @@ def test_generate_fc_pxd():
     from fwrap_ktp cimport *
 
     cdef extern from "foobar":
-        void two_arg_c(fwrap_default_real *fw_ret_arg, fwrap_default_integer *a, fwrap_default_integer *b)
+        void two_arg_c(fwrap_default_real *fw_ret_arg, fwrap_default_integer *a, fwrap_default_integer *b, fwrap_default_integer *fw_iserr__)
     '''
     compare(buf.getvalue(), code)
 
@@ -65,10 +65,11 @@ def test_gen_fortran_one_arg_func():
     buf = CodeBuffer()
     one_arg_wrapped.generate_wrapper(buf)
     fort_file = '''\
-    subroutine one_arg_c(a) bind(c, name="one_arg_c")
+    subroutine one_arg_c(a, fw_iserr__) bind(c, name="one_arg_c")
         use fwrap_ktp_mod
         implicit none
         integer(kind=fwrap_default_integer), intent(in) :: a
+        integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
         interface
             subroutine one_arg(a)
                 use fwrap_ktp_mod
@@ -76,7 +77,9 @@ def test_gen_fortran_one_arg_func():
                 integer(kind=fwrap_default_integer), intent(in) :: a
             end subroutine one_arg
         end interface
+        fw_iserr__ = FW_INIT_ERR__
         call one_arg(a)
+        fw_iserr__ = FW_NO_ERR__
     end subroutine one_arg_c
 '''
     compare(fort_file, buf.getvalue())
@@ -89,10 +92,11 @@ def test_gen_empty_func_wrapper():
     empty_func_wrapper = fc_wrap.FunctionWrapper(wrapped=empty_func)
                       
     empty_func_wrapped = '''\
-    subroutine empty_func_c(fw_ret_arg) bind(c, name="empty_func_c")
+    subroutine empty_func_c(fw_ret_arg, fw_iserr__) bind(c, name="empty_func_c")
         use fwrap_ktp_mod
         implicit none
         integer(kind=fwrap_default_integer), intent(out) :: fw_ret_arg
+        integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
         interface
             function empty_func()
                 use fwrap_ktp_mod
@@ -100,7 +104,9 @@ def test_gen_empty_func_wrapper():
                 integer(kind=fwrap_default_integer) :: empty_func
             end function empty_func
         end interface
+        fw_iserr__ = FW_INIT_ERR__
         fw_ret_arg = empty_func()
+        fw_iserr__ = FW_NO_ERR__
     end subroutine empty_func_c
 '''
     buf = CodeBuffer()
@@ -185,9 +191,10 @@ def test_intent_hide():
     buf = CodeBuffer()
     wppr.generate_wrapper(buf)
     check = '''\
-    subroutine hide_subr_c() bind(c, name="hide_subr_c")
+    subroutine hide_subr_c(fw_iserr__) bind(c, name="hide_subr_c")
         use fwrap_ktp_mod
         implicit none
+        integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
         interface
             subroutine hide_subr(hide_arg)
                 use fwrap_ktp_mod
@@ -196,8 +203,10 @@ def test_intent_hide():
             end subroutine hide_subr
         end interface
         integer(kind=fwrap_default_integer) :: hide_arg
+        fw_iserr__ = FW_INIT_ERR__
         hide_arg = (10)
         call hide_subr(hide_arg)
+        fw_iserr__ = FW_NO_ERR__
     end subroutine hide_subr_c
 '''
     compare(check, buf.getvalue())
@@ -210,10 +219,11 @@ def test_logical_function():
     buf = CodeBuffer()
     lgcl_fun_wrapped.generate_wrapper(buf)
     fort_file = '''\
-    subroutine lgcl_fun_c(fw_ret_arg) bind(c, name="lgcl_fun_c")
+    subroutine lgcl_fun_c(fw_ret_arg, fw_iserr__) bind(c, name="lgcl_fun_c")
         use fwrap_ktp_mod
         implicit none
         integer(kind=fwrap_lgcl), intent(out) :: fw_ret_arg
+        integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
         interface
             function lgcl_fun()
                 use fwrap_ktp_mod
@@ -221,7 +231,9 @@ def test_logical_function():
                 integer(kind=fwrap_lgcl) :: lgcl_fun
             end function lgcl_fun
         end interface
+        fw_iserr__ = FW_INIT_ERR__
         fw_ret_arg = lgcl_fun()
+        fw_iserr__ = FW_NO_ERR__
     end subroutine lgcl_fun_c
 '''
     compare(fort_file, buf.getvalue())
@@ -235,10 +247,11 @@ def test_logical_wrapper():
     buf = CodeBuffer()
     lgcl_arg_wrapped.generate_wrapper(buf)
     fort_file = '''\
-    subroutine lgcl_arg_c(lgcl) bind(c, name="lgcl_arg_c")
+    subroutine lgcl_arg_c(lgcl, fw_iserr__) bind(c, name="lgcl_arg_c")
         use fwrap_ktp_mod
         implicit none
         integer(kind=fwrap_lgcl_ktp), intent(inout) :: lgcl
+        integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
         interface
             subroutine lgcl_arg(lgcl)
                 use fwrap_ktp_mod
@@ -246,7 +259,9 @@ def test_logical_wrapper():
                 integer(kind=fwrap_lgcl_ktp), intent(inout) :: lgcl
             end subroutine lgcl_arg
         end interface
+        fw_iserr__ = FW_INIT_ERR__
         call lgcl_arg(lgcl)
+        fw_iserr__ = FW_NO_ERR__
     end subroutine lgcl_arg_c
 '''
     compare(fort_file, buf.getvalue())
@@ -262,12 +277,13 @@ def test_assumed_shape_int_array():
     buf = CodeBuffer()
     arr_arg_wrapped.generate_wrapper(buf)
     fort_file = '''\
-    subroutine arr_arg_c(arr_d1, arr_d2, arr) bind(c, name="arr_arg_c")
+    subroutine arr_arg_c(arr_d1, arr_d2, arr, fw_iserr__) bind(c, name="arr_arg_c")
         use fwrap_ktp_mod
         implicit none
         integer(kind=fwrap_npy_intp), intent(in) :: arr_d1
         integer(kind=fwrap_npy_intp), intent(in) :: arr_d2
         integer(kind=fwrap_default_integer), dimension(arr_d1, arr_d2), intent(inout) :: arr
+        integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
         interface
             subroutine arr_arg(arr)
                 use fwrap_ktp_mod
@@ -275,7 +291,9 @@ def test_assumed_shape_int_array():
                 integer(kind=fwrap_default_integer), dimension(:, :), intent(inout) :: arr
             end subroutine arr_arg
         end interface
+        fw_iserr__ = FW_INIT_ERR__
         call arr_arg(arr)
+        fw_iserr__ = FW_NO_ERR__
     end subroutine arr_arg_c
 '''
     compare(fort_file, buf.getvalue())
@@ -295,7 +313,7 @@ def test_explicit_shape_int_array():
     buf = CodeBuffer()
     arr_arg_wrapped.generate_wrapper(buf)
     fort_file = '''\
-    subroutine arr_arg_c(arr_d1, arr_d2, arr, d1, d2) bind(c, name="arr_arg_c")
+    subroutine arr_arg_c(arr_d1, arr_d2, arr, d1, d2, fw_iserr__) bind(c, name="arr_arg_c")
         use fwrap_ktp_mod
         implicit none
         integer(kind=fwrap_npy_intp), intent(in) :: arr_d1
@@ -303,6 +321,7 @@ def test_explicit_shape_int_array():
         integer(kind=fwrap_default_integer), dimension(arr_d1, arr_d2), intent(inout) :: arr
         integer(kind=fwrap_default_integer), intent(in) :: d1
         integer(kind=fwrap_default_integer), intent(in) :: d2
+        integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
         interface
             subroutine arr_arg(arr, d1, d2)
                 use fwrap_ktp_mod
@@ -312,7 +331,9 @@ def test_explicit_shape_int_array():
                 integer(kind=fwrap_default_integer), dimension(d1, d2), intent(inout) :: arr
             end subroutine arr_arg
         end interface
+        fw_iserr__ = FW_INIT_ERR__
         call arr_arg(arr, d1, d2)
+        fw_iserr__ = FW_NO_ERR__
     end subroutine arr_arg_c
 '''
     compare(fort_file, buf.getvalue())
@@ -683,11 +704,11 @@ class test_c_proto_generation(object):
                           args=(),
                           return_arg=return_arg)
         empty_func_wrapper = fc_wrap.FunctionWrapper(wrapped=empty_func)
-        eq_(empty_func_wrapper.c_prototype(), 'void empty_func_c(fwrap_default_integer *fw_ret_arg);')
+        eq_(empty_func_wrapper.c_prototype(), 'void empty_func_c(fwrap_default_integer *fw_ret_arg, fwrap_default_integer *fw_iserr__);')
         empty_subr = pyf.Subroutine(name='empty_subr',
                             args=())
         empty_subr_wrapper = fc_wrap.SubroutineWrapper(wrapped=empty_subr)
-        eq_(empty_subr_wrapper.c_prototype(), 'void empty_subr_c();')
+        eq_(empty_subr_wrapper.c_prototype(), 'void empty_subr_c(fwrap_default_integer *fw_iserr__);')
 
     def test_c_prototype_args(self):
         args = [pyf.Argument(name='int_arg', dtype=pyf.default_integer, intent='in'),
@@ -701,11 +722,12 @@ class test_c_proto_generation(object):
                                         "fwrap_npy_intp *array_d1, "
                                         "fwrap_npy_intp *array_d2, "
                                         "fwrap_npy_intp *array_d3, "
-                                        "fwrap_default_real *array);")
+                                        "fwrap_default_real *array, "
+                                        "fwrap_default_integer *fw_iserr__);")
 
 # many_arrays_text#{{{
 many_arrays_text = '''\
-subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assumed_shape_d1, assumed_shape_d2, assumed_shape, explicit_shape_d1, explicit_shape_d2, explicit_shape, c1, c2) bind(c, name="arr_args_c")
+subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assumed_shape_d1, assumed_shape_d2, assumed_shape, explicit_shape_d1, explicit_shape_d2, explicit_shape, c1, c2, fw_iserr__) bind(c, name="arr_args_c")
     use fwrap_ktp_mod
     implicit none
     integer(kind=fwrap_npy_intp), intent(in) :: assumed_size_d1
@@ -720,6 +742,7 @@ subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assume
     complex(kind=fwrap_default_complex), dimension(explicit_shape_d1, explicit_shape_d2), intent(inout) :: explicit_shape
     integer(kind=fwrap_default_integer), intent(inout) :: c1
     integer(kind=fwrap_default_integer) :: c2
+    integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
     interface
         subroutine arr_args(assumed_size, d1, assumed_shape, explicit_shape, c1, c2)
             use fwrap_ktp_mod
@@ -732,7 +755,9 @@ subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assume
             complex(kind=fwrap_default_complex), dimension(c1, c2), intent(inout) :: explicit_shape
         end subroutine arr_args
     end interface
+    fw_iserr__ = FW_INIT_ERR__
     call arr_args(assumed_size, d1, assumed_shape, explicit_shape, c1, c2)
+    fw_iserr__ = FW_NO_ERR__
 end subroutine arr_args_c
 '''
 #}}}

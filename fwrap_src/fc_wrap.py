@@ -43,6 +43,27 @@ def generate_interface(proc, buf, gmn=constants.KTP_MOD_NAME):
 
 class ProcWrapper(object):
 
+    ERR_NAME = constants.ERR_NAME
+
+    def __init__(self, wrapped):
+        self.name = constants.PROC_SUFFIX_TMPL % wrapped.name
+        self.wrapped = wrapped
+        self.err_arg = pyf.Argument(name=self.ERR_NAME,
+                                    dtype=pyf.default_integer,
+                                    intent="out")
+        self.arg_man = None
+        self._get_arg_man()
+
+    def _get_arg_man(self):
+        args = list(self.wrapped.args)+[self.err_arg]
+        self.arg_man = ArgWrapperManager(args, isfunction=False)
+
+    def init_err(self):
+        return "%s = FW_INIT_ERR__" % self.ERR_NAME
+
+    def no_err(self):
+        return "%s = FW_NO_ERR__" % self.ERR_NAME
+
     def wrapped_name(self):
         return self.wrapped.name
 
@@ -61,9 +82,11 @@ class ProcWrapper(object):
         self.proc_preamble(gmn, buf)
         generate_interface(self.wrapped, buf, gmn)
         self.temp_declarations(buf)
+        buf.putln(self.init_err())
         self.pre_call_code(buf)
         self.proc_call(buf)
         self.post_call_code(buf)
+        buf.putln(self.no_err())
         buf.dedent()
         buf.putln(self.proc_end())
 
@@ -109,32 +132,30 @@ class ProcWrapper(object):
         return '%s %s(%s)' % (self.arg_man.c_proto_return_type(), self.name, args)
 
     def all_dtypes(self):
-        return self.wrapped.all_dtypes()
+        return self.wrapped.all_dtypes() + [self.err_arg.dtype]
+
+class SubroutineWrapper(ProcWrapper):
+    pass
 
 class FunctionWrapper(ProcWrapper):
 
-    RETURN_ARG_NAME = 'fw_ret_arg'
+    RETURN_ARG_NAME = constants.RETURN_ARG_NAME
 
     def __init__(self, wrapped):
-        self.name = constants.PROC_SUFFIX_TMPL % wrapped.name
-        self.wrapped = wrapped
+        super(FunctionWrapper, self).__init__(wrapped)
+
+    def _get_arg_man(self):
         ra = pyf.Argument(name=self.RETURN_ARG_NAME,
-                dtype=wrapped.return_arg.dtype,
+                dtype=self.wrapped.return_arg.dtype,
                 intent='out')
-        self.arg_man = ArgWrapperManager([ra] + list(wrapped.args), isfunction=True)
+        args = [ra] + list(self.wrapped.args) + [self.err_arg]
+        self.arg_man = ArgWrapperManager(args, isfunction=True)
 
     def return_spec_declaration(self):
         return self.arg_man.return_spec_declaration()
 
     def proc_result_name(self):
         return self.RETURN_ARG_NAME
-
-class SubroutineWrapper(ProcWrapper):
-
-    def __init__(self, wrapped):
-        self.name = constants.PROC_SUFFIX_TMPL % wrapped.name
-        self.wrapped = wrapped
-        self.arg_man = ArgWrapperManager(wrapped.args, isfunction=False)
 
 class ArgWrapperManager(object):
     
@@ -151,13 +172,9 @@ class ArgWrapperManager(object):
         self.arg_wrappers = wargs
 
     def call_arg_list(self):
-        cl = []
-        if not self.isfunction:
-            for argw in self.arg_wrappers:
-                cl.append(argw.intern_name())
-        else:
-            cl = [argw.intern_name() for argw in self.arg_wrappers 
-                    if argw.intern_name() != FunctionWrapper.RETURN_ARG_NAME]
+        cl = [argw.intern_name() for argw in self.arg_wrappers 
+                if (argw.intern_name() != FunctionWrapper.RETURN_ARG_NAME and
+                    argw.intern_name() != ProcWrapper.ERR_NAME)]
         return cl
 
     def extern_arg_list(self):

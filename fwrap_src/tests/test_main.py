@@ -61,10 +61,11 @@ end function empty_func
     def test_generate_fc_f(self):
         fname, buf = main.generate_fc_f(self.fc_wrap, self.options)
         fc = '''\
-        subroutine empty_func_c(fw_ret_arg) bind(c, name="empty_func_c")
+        subroutine empty_func_c(fw_ret_arg, fw_iserr__) bind(c, name="empty_func_c")
             use fwrap_ktp_mod
             implicit none
             integer(kind=fwrap_default_integer), intent(out) :: fw_ret_arg
+            integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
             interface
                 function empty_func()
                     use fwrap_ktp_mod
@@ -72,7 +73,9 @@ end function empty_func
                     integer(kind=fwrap_default_integer) :: empty_func
                 end function empty_func
             end interface
+            fw_iserr__ = FW_INIT_ERR__
             fw_ret_arg = empty_func()
+            fw_iserr__ = FW_NO_ERR__
         end subroutine empty_func_c
         '''
         compare(fc, buf.getvalue())
@@ -82,7 +85,7 @@ end function empty_func
         header = '''\
         #include "fwrap_ktp_header.h"
 
-        void empty_func_c(fwrap_default_integer *fw_ret_arg);
+        void empty_func_c(fwrap_default_integer *fw_ret_arg, fwrap_default_integer *fw_iserr__);
         '''
         compare(buf.getvalue(), header)
         eq_(fname, constants.FC_HDR_TMPL % self.options.projectname)
@@ -93,7 +96,7 @@ end function empty_func
         from fwrap_ktp cimport *
 
         cdef extern from "DP_fc.h":
-            void empty_func_c(fwrap_default_integer *fw_ret_arg)
+            void empty_func_c(fwrap_default_integer *fw_ret_arg, fwrap_default_integer *fw_iserr__)
         '''
         compare(header, buf.getvalue())
 
@@ -114,7 +117,10 @@ cdef extern from "string.h":
     void *memcpy(void *dest, void *src, size_t n)
 cpdef api object empty_func():
     cdef fwrap_default_integer fw_ret_arg
-    empty_func_c(&fw_ret_arg)
+    cdef fwrap_default_integer fw_iserr__
+    empty_func_c(&fw_ret_arg, &fw_iserr__)
+    if fw_iserr__ != FW_NO_ERR__:
+        raise RuntimeError("an error was encountered when calling the 'empty_func' wrapper.")
     return (fw_ret_arg,)
 '''
         compare(test_str, buf.getvalue())
