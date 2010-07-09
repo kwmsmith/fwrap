@@ -263,6 +263,7 @@ class ArgWrapper(ArgWrapperBase):
         self._extern_arg = arg
         self._intern_var = None
         self.dtype = self._extern_arg.dtype
+        self.name = self._extern_arg.name
 
     def _get_intern_name(self):
         if self._intern_var:
@@ -274,9 +275,6 @@ class ArgWrapper(ArgWrapperBase):
 
     def get_ktp(self):
         return self._extern_arg.ktp
-
-    def get_name(self):
-        return self._extern_arg.name
 
     def extern_arg_list(self):
         return [self._extern_arg.name]
@@ -316,6 +314,7 @@ class CharArgWrapper(ArgWrapperBase):
                                        dimension=[self.len_arg.name])
         self.dtype = self.intern_arg.dtype
         self.intern_name = self.intern_arg.name
+        self.name = self.extern_arg.name
 
     def is_assumed_size(self):
         return self.intern_arg.dtype.len == '*'
@@ -351,9 +350,6 @@ class CharArgWrapper(ArgWrapperBase):
         return [self._transfer_templ % (self.extern_arg.name,
                                            self.intern_arg.name,
                                            self.extern_arg.name)]
-
-    def get_name(self):
-        return self.extern_arg.name
 
     def get_ktp(self):
         return self.extern_arg.ktp

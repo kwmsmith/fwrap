@@ -12,26 +12,24 @@ class _CyArgWrapper(object):
 
     def __init__(self, arg):
         self.arg = arg
-        self.intern_name = self.arg.get_name()
+        self.intern_name = self.arg.name
+        self.name = self.arg.name
 
     def cy_dtype_name(self):
         return self.arg.get_ktp()
 
     def extern_declarations(self):
         if self.arg.intent in ('in', 'inout', None):
-            return ["%s %s" % (self.cy_dtype_name(), self.arg.get_name())]
+            return ["%s %s" % (self.cy_dtype_name(), self.arg.name)]
         return []
 
     def intern_declarations(self):
         if self.arg.intent == 'out':
-            return ["cdef %s %s" % (self.cy_dtype_name(), self.arg.get_name())]
+            return ["cdef %s %s" % (self.cy_dtype_name(), self.arg.name)]
         return []
 
     def call_arg_list(self):
-        return ["&%s" % self.arg.get_name()]
-
-    def get_name(self):
-        return self.arg.get_name()
+        return ["&%s" % self.arg.name]
 
     def post_call_code(self):
         return []
@@ -40,23 +38,23 @@ class _CyArgWrapper(object):
         return []
 
     def return_tuple_list(self):
-        if self.arg.get_name() == constants.ERR_NAME:
+        if self.arg.name == constants.ERR_NAME:
             return []
         elif self.arg.intent in ('out', 'inout', None):
-            return [self.arg.get_name()]
+            return [self.arg.name]
         return []
 
 class _CyCharArg(_CyArgWrapper):
 
     def __init__(self, arg):
         super(_CyCharArg, self).__init__(arg)
-        self.intern_name = 'fw_%s' % self.get_name()
+        self.intern_name = 'fw_%s' % self.name
 
     def extern_declarations(self):
         if self.arg.intent in ('in', 'inout', None):
-            return ["%s %s" % (self.cy_dtype_name(), self.arg.get_name())]
+            return ["%s %s" % (self.cy_dtype_name(), self.arg.name)]
         elif self.is_assumed_size():
-            return ['%s %s' % (self.cy_dtype_name(), self.arg.get_name())]
+            return ['%s %s' % (self.cy_dtype_name(), self.arg.name)]
         return []
         
     def intern_len_name(self):
@@ -83,14 +81,14 @@ class _CyCharArg(_CyArgWrapper):
 
     def _len_str(self):
         if self.is_assumed_size():
-            len_str = 'len(%s)' % self.get_name()
+            len_str = 'len(%s)' % self.name
         else:
             len_str = self.get_len()
         return len_str
 
     def _in_pre_call_code(self):
-        return ['%s = len(%s)' % (self.intern_len_name(), self.get_name()),
-                '%s = %s' % (self.intern_name, self.get_name())]
+        return ['%s = len(%s)' % (self.intern_len_name(), self.name),
+                '%s = %s' % (self.intern_name, self.name)]
         
     def _out_pre_call_code(self):
         len_str = self._len_str()
@@ -100,7 +98,7 @@ class _CyCharArg(_CyArgWrapper):
 
     def _inout_pre_call_code(self):
        ret = self._out_pre_call_code()
-       ret += ['memcpy(%s, <char*>%s, %s+1)' % (self.intern_buf_name(), self.get_name(), self.intern_len_name())]
+       ret += ['memcpy(%s, <char*>%s, %s+1)' % (self.intern_buf_name(), self.name, self.intern_len_name())]
        return ret
 
     def pre_call_code(self):
@@ -131,11 +129,9 @@ class _CyCmplxArg(_CyArgWrapper):
 
     def __init__(self, arg):
         super(_CyCmplxArg, self).__init__(arg)
-        self.intern_name = 'fw_%s' % self.arg.get_name()
+        self.intern_name = 'fw_%s' % self.arg.name
+        self.name = self.arg.name
 
-    def get_name(self):
-        return self.arg.get_name()
-    
     def cy_dtype_name(self):
         return "%s" % self.arg.get_ktp()
 
@@ -143,7 +139,7 @@ class _CyCmplxArg(_CyArgWrapper):
         return super(_CyCmplxArg, self).intern_declarations()
 
     def call_arg_list(self):
-        return ['&%s' % self.get_name()]
+        return ['&%s' % self.name]
 
 def CyArrayArgWrapper(arg):
     if arg.dtype.type == 'character':
