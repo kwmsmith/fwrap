@@ -264,6 +264,7 @@ class ArgWrapper(ArgWrapperBase):
         self._intern_var = None
         self.dtype = self._extern_arg.dtype
         self.name = self._extern_arg.name
+        self.ktp = self._extern_arg.ktp
 
     def _get_intern_name(self):
         if self._intern_var:
@@ -272,9 +273,6 @@ class ArgWrapper(ArgWrapperBase):
             return self._extern_arg.name
 
     intern_name = property(_get_intern_name)
-
-    def get_ktp(self):
-        return self._extern_arg.ktp
 
     def extern_arg_list(self):
         return [self._extern_arg.name]
@@ -315,6 +313,7 @@ class CharArgWrapper(ArgWrapperBase):
         self.dtype = self.intern_arg.dtype
         self.intern_name = self.intern_arg.name
         self.name = self.extern_arg.name
+        self.ktp = self.extern_arg.ktp
 
     def is_assumed_size(self):
         return self.intern_arg.dtype.len == '*'
@@ -350,9 +349,6 @@ class CharArgWrapper(ArgWrapperBase):
         return [self._transfer_templ % (self.extern_arg.name,
                                            self.intern_arg.name,
                                            self.extern_arg.name)]
-
-    def get_ktp(self):
-        return self.extern_arg.ktp
 
 
 class HideArgWrapper(ArgWrapperBase):
@@ -391,6 +387,7 @@ class ArrayArgWrapper(ArgWrapperBase):
         self._dims = arg.dimension
         self._set_extern_args(ndims=len(self._dims))
         self.intern_name = self._intern_arr.name
+        self.ktp = self._intern_arr.ktp
 
     def _set_extern_args(self, ndims):
         orig_name = self._orig_arg.name
@@ -402,9 +399,6 @@ class ArrayArgWrapper(ArgWrapperBase):
         self._intern_arr = pyf.Argument(name=orig_name, dtype=self._orig_arg.dtype,
                                           intent=self._orig_arg.intent,
                                           dimension=dims)
-
-    def get_ktp(self):
-        return self._intern_arr.ktp
 
     def get_ndims(self):
         return len(self._dims)
