@@ -63,12 +63,14 @@ def test_valid_proc_name():
 
 def test_valid_arg_name():
     ok_(pyf.Argument('name', pyf.default_integer))
-    assert_raises(pyf.InvalidNameException, pyf.Argument, '_a', pyf.default_integer)
+    assert_raises(pyf.InvalidNameException, 
+                        pyf.Argument, '_a', pyf.default_integer)
 
 class test_arg_manager(object):
     
     def test_declaration_order(self):
-        array_arg = pyf.Argument('arr', pyf.default_integer, 'in', dimension=('d1', 'd2'))
+        array_arg = pyf.Argument('arr', 
+                pyf.default_integer, 'in', dimension=('d1', 'd2'))
         d1 = pyf.Argument('d1', pyf.default_integer, 'in')
         d2 = pyf.Argument('d2', pyf.default_integer, 'in')
         am = pyf.ArgManager([array_arg, d2, d1])
@@ -80,11 +82,14 @@ integer(kind=fwrap_default_integer), dimension(d1, d2), intent(in) :: arr
         eq_(am.arg_declarations(), decls.splitlines())
 
 def test_parameter():
-    param = pyf.Parameter(name='FOO', dtype=pyf.default_integer, value='kind(1.0D0)')
+    param = pyf.Parameter(name='FOO', 
+                dtype=pyf.default_integer, value='kind(1.0D0)')
 
 def test_dtype():
-    assert_raises(pyf.InvalidNameException, pyf.IntegerType, 'selected_int_kind(10)')
-    assert_raises(pyf.InvalidNameException, pyf.RealType, 'selected_real_kind(10)')
+    assert_raises(pyf.InvalidNameException, 
+                        pyf.IntegerType, 'selected_int_kind(10)')
+    assert_raises(pyf.InvalidNameException, 
+                        pyf.RealType, 'selected_real_kind(10)')
 
 def test_valid_fort_name():
     ok_(pyf.valid_fort_name('F12_bar'))

@@ -131,4 +131,5 @@ cpdef api object empty_func():
         ctps = loads(buf.getvalue())
         for ctp in ctps:
             ok_(isinstance(ctp, dict))
-            eq_(sorted(ctp.keys()), ['basetype', 'fwrap_name', 'lang', 'odecl'])
+            eq_(sorted(ctp.keys()), 
+                    ['basetype', 'fwrap_name', 'lang', 'odecl'])
