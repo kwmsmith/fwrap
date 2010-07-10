@@ -16,7 +16,8 @@ def wrap_pyf_iface(ast):
     return fc_wrapper
 
 def generate_fc_pxd(ast, fc_header_name, buf):
-    buf.putln("from %s cimport *" % constants.KTP_PXD_HEADER_SRC.split('.')[0])
+    buf.putln("from %s cimport *" % 
+                constants.KTP_PXD_HEADER_SRC.split('.')[0])
     buf.putln('')
     buf.putln('cdef extern from "%s":' % fc_header_name)
     buf.indent()
@@ -129,7 +130,8 @@ class ProcWrapper(object):
 
     def cy_prototype(self):
         args = ", ".join(self.arg_man.c_proto_args())
-        return '%s %s(%s)' % (self.arg_man.c_proto_return_type(), self.name, args)
+        return ('%s %s(%s)' % (self.arg_man.c_proto_return_type(), 
+                                self.name, args))
 
     def all_dtypes(self):
         return self.wrapped.all_dtypes() + [self.err_arg.dtype]
@@ -392,13 +394,14 @@ class ArrayArgWrapper(ArgWrapperBase):
     def _set_extern_args(self, ndims):
         orig_name = self._orig_arg.name
         for idx in range(ndims):
-            self._arr_dims.append(pyf.Argument(name='%s_d%d' % (orig_name, idx+1),
-                                              dtype=pyf.dim_dtype,
-                                              intent='in'))
+            self._arr_dims.append(
+                    pyf.Argument(name='%s_d%d' % (orig_name, idx+1),
+                                 dtype=pyf.dim_dtype, intent='in'))
         dims = [dim.name for dim in self._arr_dims]
-        self._intern_arr = pyf.Argument(name=orig_name, dtype=self._orig_arg.dtype,
-                                          intent=self._orig_arg.intent,
-                                          dimension=dims)
+        self._intern_arr = pyf.Argument(name=orig_name, 
+                                        dtype=self._orig_arg.dtype,
+                                        intent=self._orig_arg.intent,
+                                        dimension=dims)
 
     def get_ndims(self):
         return len(self._dims)
@@ -427,10 +430,12 @@ class CharArrayArgWrapper(ArrayArgWrapper):
         # regenerate dims to account for character string length
         self._arr_dims = []
         self._set_extern_args(ndims=len(self._dims)+1)
-        self._copy_arr = pyf.Argument(name="fw_%s" % self._orig_arg.name,
-                                      dtype=self._orig_arg.dtype,
-                                      dimension=[dim.name for dim in self._arr_dims[1:]],
-                                      intent=None)
+        dim_ = [dim.name for dim in self._arr_dims[1:]]
+        self._copy_arr = pyf.Argument(
+                            name="fw_%s" % self._orig_arg.name,
+                            dtype=self._orig_arg.dtype,
+                            dimension=dim_,
+                            intent=None)
         self.intern_name = self._copy_arr.name
 
     def is_assumed_size(self):
@@ -438,18 +443,21 @@ class CharArrayArgWrapper(ArrayArgWrapper):
 
     def intern_declarations(self):
         if self.is_assumed_size():
-            return [self._copy_arr._var.declaration(len=self._arr_dims[0].name)]
+            decl = self._copy_arr._var.declaration
+            return [decl(len=self._arr_dims[0].name)]
         return [self._copy_arr._var.orig_declaration()]
 
     def pre_call_code(self):
-        tmpl = "%(intern)s = reshape(transfer(%(name)s, %(intern)s), shape(%(intern)s))"
+        tmpl = ("%(intern)s = reshape(transfer(%(name)s, "
+                "%(intern)s), shape(%(intern)s))")
         D = {"intern" : self.intern_name, "name" : self._orig_arg.name}
         return [tmpl % D]
 
     def post_call_code(self):
         if self._orig_arg.intent == "in":
             return []
-        tmpl = "%(name)s = reshape(transfer(%(intern)s, %(name)s), shape(%(name)s))"
+        tmpl = ("%(name)s = reshape(transfer(%(intern)s, "
+                "%(name)s), shape(%(name)s))")
         D = {"intern" : self.intern_name, "name" : self._orig_arg.name}
         return [tmpl % D]
 
@@ -458,7 +466,10 @@ class LogicalWrapper(ArgWrapper):
     def __init__(self, arg):
         super(LogicalWrapper, self).__init__(arg)
         dt = pyf.default_integer
-        self._extern_arg = pyf.Argument(name=arg.name, dtype=dt, intent=arg.intent, is_return_arg=arg.is_return_arg)
+        self._extern_arg = pyf.Argument(name=arg.name, 
+                                        dtype=dt, 
+                                        intent=arg.intent, 
+                                        is_return_arg=arg.is_return_arg)
         self._intern_var = pyf.Var(name=arg.name+'_tmp', dtype=arg.dtype)
 
     def pre_call_code(self):

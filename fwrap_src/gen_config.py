@@ -149,7 +149,8 @@ def ConfigTypeParam(basetype, odecl, fwrap_name, lang='fortran'):
         else:
             return _ConfigTypeParam(basetype, odecl, fwrap_name)
     else:
-        raise ValueError("unknown language '%s' not one of 'c' or 'fortran'" % lang)
+        raise ValueError(
+                "unknown language '%s' not one of 'c' or 'fortran'" % lang)
 
 class _ConfigTypeParam(object):
 
@@ -178,7 +179,8 @@ class _ConfigTypeParam(object):
 
     def gen_f_mod(self):
         self.check_init()
-        return ['integer, parameter :: %s = %s' % (self.fwrap_name, self.fc_type)]
+        return ['integer, parameter :: %s = %s' % 
+                (self.fwrap_name, self.fc_type)]
 
     def gen_c_extra(self):
         return []
@@ -244,7 +246,8 @@ class _CmplxTypeParam(_ConfigTypeParam):
              'ctype' : ctype}
         code = ('%(ctype)s %(fktp)s_creal(%(fktp)s fdc)\n'
                 '%(ctype)s %(fktp)s_cimag(%(fktp)s fdc)\n'
-                'void %(fktp)s_from_parts(%(ctype)s r, %(ctype)s i, %(fktp)s fc)\n' % d)
+                'void %(fktp)s_from_parts(%(ctype)s r, '
+                    '%(ctype)s i, %(fktp)s fc)\n' % d)
         return code.splitlines()
 
     def gen_pxd_extern_typedef(self):
@@ -253,7 +256,8 @@ class _CmplxTypeParam(_ConfigTypeParam):
 
     def gen_pxd_intern_typedef(self):
         self.check_init()
-        return ['ctypedef %s %s' % (self._c2cy_map[self.fc_type], self.fwrap_name)]
+        return ['ctypedef %s %s' % 
+                (self._c2cy_map[self.fc_type], self.fwrap_name)]
 
     def _cy_name(self):
         return "cy_%s" % self.fwrap_name
@@ -303,6 +307,8 @@ type_dict = {
         'integer' : ('c_signed_char', 'c_short', 'c_int',
                   'c_long', 'c_long_long'),
         'real' : ('c_float', 'c_double', 'c_long_double'),
-        'complex' : ('c_float_complex', 'c_double_complex', 'c_long_double_complex'),
+        'complex' : ('c_float_complex', 
+                     'c_double_complex', 
+                     'c_long_double_complex'),
         'character' : ('c_char',),
         }

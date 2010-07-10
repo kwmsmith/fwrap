@@ -46,10 +46,14 @@ def _get_arg(p_arg):
             elif len(dim) == 1:
                 dims.append(dim[0])
             else:
-                raise RuntimeError("can't handle dimension(x:y) declarations yet...")
-        return pyf.Argument(name=name, dtype=dtype, intent=intent, dimension=dims)
+                raise RuntimeError(
+                        "can't handle dimension(x:y) declarations yet...")
+        return pyf.Argument(name=name, 
+                dtype=dtype, intent=intent, dimension=dims)
     else:
-        raise RuntimeError("argument %s is neither a scalar or an array (derived type?)" % p_arg)
+        raise RuntimeError(
+                "argument %s is neither "
+                    "a scalar or an array (derived type?)" % p_arg)
 
 
 def _get_args(proc):
@@ -73,7 +77,9 @@ def _get_intent(arg):
     if not intents:
         raise RuntimeError("argument has no intent specified, '%s'" % arg)
     if len(intents) > 1:
-        raise RuntimeError("argument has multiple intents specified, '%s', %s" % (arg, intents))
+        raise RuntimeError(
+                "argument has multiple "
+                    "intents specified, '%s', %s" % (arg, intents))
     return intents[0]
 
 name2default = {
@@ -95,25 +101,33 @@ name2type = {
 
 def _get_dtype(typedecl):
     if not typedecl.is_intrinsic():
-        raise RuntimeError("only intrinsic types supported ATM... [%s]" % str(typedecl))
+        raise RuntimeError(
+                "only intrinsic types supported ATM... [%s]" % str(typedecl))
     length, kind = typedecl.selector
     if not kind and not length:
         return name2default[typedecl.name]
     if length and kind and typedecl.name != 'character':
-        raise RuntimeError("both length and kind specified for"
-                           " non-character intrinsic type: length: %s kind: %s" % (length, kind))
+        raise RuntimeError("both length and kind specified for "
+                               "non-character intrinsic type: "
+                               "length: %s kind: %s" % (length, kind))
     if typedecl.name == 'character':
         if length == '*':
             fw_ktp = '%s_xX' % (typedecl.name)
         else:
             fw_ktp = '%s_x%s' % (typedecl.name, length)
-        return pyf.CharacterType(fw_ktp=fw_ktp, odecl=typedecl.tostr().lower(), len=length)
+        return pyf.CharacterType(fw_ktp=fw_ktp, 
+                odecl=typedecl.tostr().lower(), len=length)
     if length and not kind:
-        return name2type[typedecl.name](fw_ktp="%s_x%s" % (typedecl.name, length), odecl=typedecl.tostr().lower())
+        return name2type[typedecl.name](fw_ktp="%s_x%s" % 
+                (typedecl.name, length), 
+                odecl=typedecl.tostr().lower())
     try:
         int(kind)
     except ValueError:
-        raise RuntimeError("only integer constant kind parameters supported ATM, given '%s'" % kind)
+        raise RuntimeError(
+                "only integer constant kind "
+                    "parameters supported ATM, given '%s'" % kind)
     if typedecl.name == 'doubleprecision':
         return pyf.default_dbl
-    return name2type[typedecl.name](fw_ktp="%s_%s" % (typedecl.name, kind), odecl=typedecl.tostr().lower())
+    return name2type[typedecl.name](fw_ktp="%s_%s" % 
+            (typedecl.name, kind), odecl=typedecl.tostr().lower())

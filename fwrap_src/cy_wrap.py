@@ -90,7 +90,8 @@ class _CyCharArg(_CyArgWrapper):
 
     def _inout_pre_call_code(self):
        ret = self._out_pre_call_code()
-       ret += ['memcpy(%s, <char*>%s, %s+1)' % (self.intern_buf_name, self.name, self.intern_len_name)]
+       ret += ['memcpy(%s, <char*>%s, %s+1)' % 
+               (self.intern_buf_name, self.name, self.intern_len_name)]
        return ret
 
     def pre_call_code(self):
@@ -108,7 +109,8 @@ class _CyCharArg(_CyArgWrapper):
 
     def call_arg_list(self):
         if self.arg.intent == 'in':
-            return ['&%s' % self.intern_len_name, '<char*>%s' % self.intern_name]
+            return ['&%s' % self.intern_len_name, 
+                    '<char*>%s' % self.intern_name]
         else:
             return ['&%s' % self.intern_len_name, self.intern_buf_name]
 
@@ -178,14 +180,17 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
 
     def intern_declarations(self):
         ret = super(CyCharArrayArgWrapper, self).intern_declarations()
-        return ret + ["cdef fwrap_npy_intp %s[%d]" % (self.shape_name, self.arg.get_ndims()+1)]
+        return ret + ["cdef fwrap_npy_intp %s[%d]" % 
+                (self.shape_name, self.arg.get_ndims()+1)]
     
     def pre_call_code(self):
         tmpl = ("%(odtype)s = %(name)s.dtype\n"
-                "for i in range(%(ndim)d): %(shape)s[i+1] = %(name)s.shape[i]\n"
+                "for i in range(%(ndim)d): "
+                "%(shape)s[i+1] = %(name)s.shape[i]\n"
                 "%(name)s.dtype = 'b'\n"
                 "%(intern)s = %(name)s\n"
-                "%(shape)s[0] = <fwrap_npy_intp>(%(name)s.shape[0]/%(shape)s[1])")
+                "%(shape)s[0] = <fwrap_npy_intp>"
+                "(%(name)s.shape[0]/%(shape)s[1])")
         D = {"odtype" : self.odtype_name,
              "ndim" : self.arg.get_ndims(),
              "name" : self.name,
@@ -198,7 +203,8 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
         return ["%s.dtype = %s" % (self.name, self.odtype_name)]
 
     def call_arg_list(self):
-        shapes = ["&%s[%d]" % (self.shape_name, i) for i in range(self.arg.get_ndims()+1)]
+        shapes = ["&%s[%d]" % (self.shape_name, i) 
+                    for i in range(self.arg.get_ndims()+1)]
         data = ["<%s*>%s.data" % (self.arg.ktp, self.intern_name)]
         return shapes + data
 

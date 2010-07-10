@@ -49,14 +49,17 @@ class test_cy_arg_intents(object):
         eq_(self.intent_out.call_arg_list(), ['&name'])
 
     def test_extern_declarations(self):
-        eq_(self.intent_in.extern_declarations(), ['fwrap_default_integer name'])
-        eq_(self.intent_inout.extern_declarations(), ['fwrap_default_logical name'])
+        eq_(self.intent_in.extern_declarations(),
+                ['fwrap_default_integer name'])
+        eq_(self.intent_inout.extern_declarations(),
+                ['fwrap_default_logical name'])
         eq_(self.intent_out.extern_declarations(), [])
 
     def test_intern_declarations(self):
         eq_(self.intent_in.intern_declarations(), [])
         eq_(self.intent_inout.intern_declarations(), [])
-        eq_(self.intent_out.intern_declarations(), ['cdef fwrap_default_real name'])
+        eq_(self.intent_out.intern_declarations(),
+                ['cdef fwrap_default_real name'])
 
     def test_return_tuple_list(self):
         eq_(self.intent_in.return_tuple_list(), [])
@@ -170,7 +173,8 @@ class test_cy_array_arg_wrapper(object):
                             dimension=[':']*1, intent='inout')
         fc_arg = fc_wrap.ArrayArgWrapper(arg1)
         self.cy_arg = cy_wrap.CyArrayArgWrapper(fc_arg)
-        self.cy_int_arg = cy_wrap.CyArrayArgWrapper(fc_wrap.ArrayArgWrapper(arg2))
+        self.cy_int_arg = cy_wrap.CyArrayArgWrapper(
+                            fc_wrap.ArrayArgWrapper(arg2))
 
     def test_extern_declarations(self):
         eq_(self.cy_arg.extern_declarations(), ['object array'])
@@ -213,9 +217,13 @@ class test_char_assumed_size(object):
         self.intents = ('in', 'out', 'inout', None)
         self.dtypes = [pyf.CharacterType('ch_xX',
                                         len='*',
-                                        odecl='character(len=*)') for _ in range(4)]
-        self.caws = make_caws(self.dtypes, ['name']*len(self.dtypes), self.intents)
-        self.intent_in, self.intent_out, self.intent_inout, self.no_intent = self.caws
+                                        odecl='character(len=*)')
+                                        for _ in range(4)]
+        self.caws = make_caws(self.dtypes, 
+                              ['name']*len(self.dtypes), 
+                              self.intents)
+        (self.intent_in, self.intent_out, 
+                self.intent_inout, self.no_intent) = self.caws
 
     def test_extern_declarations(self):
         eq_(self.intent_out.extern_declarations(),
@@ -240,8 +248,11 @@ class test_char_args(object):
                                         len=str(d),
                                         odecl='character(len=%d)'%d) \
                             for d in (10,20,30,40)]
-        self.caws = make_caws(self.dtypes, ['name']*len(self.dtypes), self.intents)
-        self.intent_in, self.intent_out, self.intent_inout, self.no_intent = self.caws
+        self.caws = make_caws(self.dtypes, 
+                                ['name']*len(self.dtypes), 
+                                self.intents)
+        (self.intent_in, self.intent_out, 
+                self.intent_inout, self.no_intent) = self.caws
 
     def test_extern_declarations(self):
         eq_(self.intent_in.extern_declarations(),
@@ -289,8 +300,10 @@ class test_char_args(object):
 
     def test_call_arg_list(self):
         eq_(self.intent_out.call_arg_list(), ['&fw_name_len', 'fw_name_buf'])
-        eq_(self.intent_in.call_arg_list(), ['&fw_name_len', '<char*>fw_name'])
-        eq_(self.intent_inout.call_arg_list(), ['&fw_name_len', 'fw_name_buf'])
+        eq_(self.intent_in.call_arg_list(), 
+                ['&fw_name_len', '<char*>fw_name'])
+        eq_(self.intent_inout.call_arg_list(), 
+                ['&fw_name_len', 'fw_name_buf'])
 
     def test_return_tuple_list(self):
         eq_(self.intent_inout.return_tuple_list(), ['fw_name'])
@@ -302,7 +315,9 @@ class test_cmplx_args(object):
     def setup(self):
         self.intents = ('in', 'out', 'inout', None)
         self.dts = ('default_complex',)*len(self.intents)
-        self.caws = make_caws(self.dts, ['name']*len(self.intents), self.intents)
+        self.caws = make_caws(self.dts, 
+                              ['name']*len(self.intents), 
+                              self.intents)
         self.intent_in, self.intent_out, self.intent_inout, \
                 self.intent_none = self.caws
 
@@ -375,7 +390,8 @@ class test_cy_proc_wrapper(object):
 
     def setup(self):
         int_arg_in = pyf.Argument("int_arg_in", pyf.default_integer, 'in')
-        int_arg_inout = pyf.Argument("int_arg_inout", pyf.default_integer, 'inout')
+        int_arg_inout = pyf.Argument("int_arg_inout",
+                                     pyf.default_integer, 'inout')
         int_arg_out = pyf.Argument("int_arg_out", pyf.default_integer, 'out')
         real_arg = pyf.Argument("real_arg", pyf.default_real)
         all_args = [int_arg_in, int_arg_inout, int_arg_out, real_arg]

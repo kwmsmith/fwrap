@@ -45,7 +45,8 @@ def parse_args():
     parser.add_option('--outdir',
                       dest='outdir',
                       default=None,
-                      help='output directory for fwrap sources, defaults to "%s"' % default_projname)
+                      help=('output directory for fwrap '
+                            'sources, defaults to "%s"' % default_projname))
     parser.add_option('--projname',
                       dest='projectname',
                       default=default_projname,

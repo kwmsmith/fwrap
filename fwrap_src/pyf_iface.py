@@ -27,7 +27,8 @@ class Dtype(object):
 
     def __init__(self, fw_ktp, odecl=None, lang='fortran'):
         if not valid_fort_name(fw_ktp):
-            raise InvalidNameException("%s is not a valid fortran parameter name." % fw_ktp)
+            raise InvalidNameException(
+                    "%s is not a valid fortran parameter name." % fw_ktp)
         self.fw_ktp = ktp_namer(fw_ktp)
         self.odecl = odecl
         self.type = None
@@ -44,7 +45,8 @@ class Dtype(object):
         return self.odecl
 
     def __str__(self):
-        return "%s(fw_ktp=%s, odecl=%s)" % (type(self), self.fw_ktp, self.odecl)
+        return ("%s(fw_ktp=%s, odecl=%s)" % 
+                (type(self), self.fw_ktp, self.odecl))
 
     def all_dtypes(self):
         return [self]
@@ -66,7 +68,9 @@ cdef extern from "string.h":
         adts = super(CharacterType, self).all_dtypes()
         return adts + [dim_dtype]
 
-default_character = CharacterType(fw_ktp="default_character", len='1', odecl="character(kind=kind('a'))")
+default_character = CharacterType(
+        fw_ktp="default_character", 
+        len='1', odecl="character(kind=kind('a'))")
 
 class IntegerType(Dtype):
 
@@ -74,7 +78,8 @@ class IntegerType(Dtype):
         super(IntegerType, self).__init__(fw_ktp, odecl, lang)
         self.type = 'integer'
 
-default_integer = IntegerType(fw_ktp='default_integer', odecl="integer(kind(0))")
+default_integer = IntegerType(
+        fw_ktp='default_integer', odecl="integer(kind(0))")
 
 dim_dtype = IntegerType(fw_ktp="npy_intp", odecl='npy_intp', lang='c')
 
@@ -86,7 +91,8 @@ class LogicalType(Dtype):
         if self.odecl:
             self.odecl = self.odecl.replace('logical', 'integer')
 
-default_logical = LogicalType(fw_ktp='default_logical', odecl="integer(kind=kind(0))")
+default_logical = LogicalType(
+        fw_ktp='default_logical', odecl="integer(kind=kind(0))")
 
 class RealType(Dtype):
 
@@ -103,10 +109,16 @@ class ComplexType(Dtype):
         super(ComplexType, self).__init__(fw_ktp, odecl)
         self.type = 'complex'
 
-default_complex = ComplexType(fw_ktp='default_complex', odecl="complex(kind((0.0,0.0)))")
-default_double_complex = ComplexType(fw_ktp='default_double_complex', odecl="complex(kind((0.0D0,0.0D0)))")
+default_complex = ComplexType(
+        fw_ktp='default_complex', odecl="complex(kind((0.0,0.0)))")
+default_double_complex = ComplexType(
+        fw_ktp='default_double_complex', odecl="complex(kind((0.0D0,0.0D0)))")
 
-intrinsic_types = [RealType, IntegerType, ComplexType, CharacterType, LogicalType]
+intrinsic_types = [RealType, 
+                   IntegerType, 
+                   ComplexType, 
+                   CharacterType, 
+                   LogicalType]
 
 class Parameter(object):
     
@@ -119,7 +131,8 @@ class Parameter(object):
 class Var(object):
     def __init__(self, name, dtype, dimension=None):
         if not valid_fort_name(name):
-            raise InvalidNameException("%s is not a valid fortran variable name.")
+            raise InvalidNameException(
+                    "%s is not a valid fortran variable name.")
         self.name = name
         self.dtype = dtype
         self.dimension = dimension
@@ -258,7 +271,8 @@ class Procedure(object):
     def __init__(self, name, args):
         super(Procedure, self).__init__()
         if not valid_fort_name(name):
-            raise InvalidNameException("%s is not a valid Fortran procedure name.")
+            raise InvalidNameException(
+                    "%s is not a valid Fortran procedure name.")
         self.name = name
         self.args = args
         self.arg_man = None
@@ -270,7 +284,8 @@ class Procedure(object):
         return self.arg_man.arg_declarations()
 
     def proc_declaration(self):
-        return "%s %s(%s)" % (self.kind, self.name, ', '.join(self.extern_arg_list()))
+        return ("%s %s(%s)" % 
+                (self.kind, self.name, ', '.join(self.extern_arg_list())))
 
     def proc_preamble(self, ktp_mod, buf):
         buf.putln('use %s' % ktp_mod)
