@@ -318,28 +318,32 @@ def test_explicit_shape_int_array():
     buf = CodeBuffer()
     arr_arg_wrapped.generate_wrapper(buf)
     fort_file = '''\
-    subroutine arr_arg_c(arr_d1, arr_d2, arr, d1, d2, fw_iserr__) bind(c, name="arr_arg_c")
-        use fwrap_ktp_mod
-        implicit none
-        integer(kind=fwrap_npy_intp), intent(in) :: arr_d1
-        integer(kind=fwrap_npy_intp), intent(in) :: arr_d2
-        integer(kind=fwrap_default_integer), dimension(arr_d1, arr_d2), intent(inout) :: arr
-        integer(kind=fwrap_default_integer), intent(in) :: d1
-        integer(kind=fwrap_default_integer), intent(in) :: d2
-        integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-        interface
-            subroutine arr_arg(arr, d1, d2)
-                use fwrap_ktp_mod
-                implicit none
-                integer(kind=fwrap_default_integer), intent(in) :: d1
-                integer(kind=fwrap_default_integer), intent(in) :: d2
-                integer(kind=fwrap_default_integer), dimension(d1, d2), intent(inout) :: arr
-            end subroutine arr_arg
-        end interface
-        fw_iserr__ = FW_INIT_ERR__
-        call arr_arg(arr, d1, d2)
-        fw_iserr__ = FW_NO_ERR__
-    end subroutine arr_arg_c
+subroutine arr_arg_c(arr_d1, arr_d2, arr, d1, d2, fw_iserr__) bind(c, name="arr_arg_c")
+    use fwrap_ktp_mod
+    implicit none
+    integer(kind=fwrap_npy_intp), intent(in) :: arr_d1
+    integer(kind=fwrap_npy_intp), intent(in) :: arr_d2
+    integer(kind=fwrap_default_integer), dimension(arr_d1, arr_d2), intent(inout) :: arr
+    integer(kind=fwrap_default_integer), intent(in) :: d1
+    integer(kind=fwrap_default_integer), intent(in) :: d2
+    integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
+    interface
+        subroutine arr_arg(arr, d1, d2)
+            use fwrap_ktp_mod
+            implicit none
+            integer(kind=fwrap_default_integer), intent(in) :: d1
+            integer(kind=fwrap_default_integer), intent(in) :: d2
+            integer(kind=fwrap_default_integer), dimension(d1, d2), intent(inout) :: arr
+        end subroutine arr_arg
+    end interface
+    fw_iserr__ = FW_INIT_ERR__
+    if (d1 .ne. arr_d1 .or. d2 .ne. arr_d2) then
+        fw_iserr__ = FW_ARR_DIM__
+        return
+    endif
+    call arr_arg(arr, d1, d2)
+    fw_iserr__ = FW_NO_ERR__
+end subroutine arr_arg_c
 '''
     compare(fort_file, buf.getvalue())
 
@@ -502,6 +506,7 @@ class test_array_arg_wrapper(object):
         self.real_explicit_arg = pyf.Argument('real_exp_arg', 
                                 pyf.default_real, 
                                 dimension=('d1', 'd2', 'd3'), intent='inout')
+        self.real_explicit_wrapper = fc_wrap.ArrayArgWrapper(self.real_explicit_arg)
 
     def test_extern_decls(self):
         int_decls = '''\
@@ -526,6 +531,18 @@ real(kind=fwrap_default_real), dimension(real_arr_arg_d1, real_arr_arg_d2, real_
         eq_(self.real_arr_wrapper.extern_arg_list(), 
                 ['real_arr_arg_d1', 'real_arr_arg_d2', 
                  'real_arr_arg_d3', 'real_arr_arg'])
+
+    def test_pre_call_code(self):
+        eq_(self.int_arr_wrapper.pre_call_code(), [])
+        eq_(self.real_explicit_wrapper.pre_call_code(),
+                ('if (d1 .ne. real_exp_arg_d1 .or. '
+                 'd2 .ne. real_exp_arg_d2 .or. d3 .ne. real_exp_arg_d3) then\n'
+                 '    fw_iserr__ = FW_ARR_DIM__\n'
+                 '    return\n'
+                 'endif').splitlines())
+
+
+
 
 class test_char_arg(object):
 
@@ -827,6 +844,14 @@ subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assume
         end subroutine arr_args
     end interface
     fw_iserr__ = FW_INIT_ERR__
+    if (d1 .ne. assumed_size_d1) then
+        fw_iserr__ = FW_ARR_DIM__
+        return
+    endif
+    if (c1 .ne. explicit_shape_d1 .or. c2 .ne. explicit_shape_d2) then
+        fw_iserr__ = FW_ARR_DIM__
+        return
+    endif
     call arr_args(assumed_size, d1, assumed_shape, explicit_shape, c1, c2)
     fw_iserr__ = FW_NO_ERR__
 end subroutine arr_args_c

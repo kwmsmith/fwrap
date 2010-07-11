@@ -440,6 +440,20 @@ class ArrayArgWrapper(ArgWrapperBase):
     def _get_intent(self):
         return self._orig_arg.intent
 
+    def pre_call_code(self):
+        ck = []
+        for dim, ext_dim in zip(self._orig_arg.dimension, self._arr_dims):
+            if dim not in (':', '*'):
+                ck += ["%s .ne. %s" % (dim, ext_dim.name)]
+        ckstr = ' .or. '.join(ck)
+        if ck:
+            err_ck = ("if (%s) then\n"
+                      "    fw_iserr__ = FW_ARR_DIM__\n"
+                      "    return\n"
+                      "endif" % ckstr).splitlines()
+            return err_ck
+        return []
+
     intent = property(_get_intent)
 
 class CharArrayArgWrapper(ArrayArgWrapper):
@@ -472,9 +486,6 @@ class CharArrayArgWrapper(ArrayArgWrapper):
 
     def is_assumed_size(self):
         return self._orig_arg.dtype.len == '*'
-
-    # def _extern_declarations(self):
-        # pass
 
     def intern_declarations(self):
         if self.is_assumed_size():
