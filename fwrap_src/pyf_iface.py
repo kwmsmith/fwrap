@@ -25,19 +25,22 @@ class Dtype(object):
                 self.odecl == other.odecl and \
                 self.type == other.type
 
-    def __init__(self, fw_ktp, odecl=None, lang='fortran'):
+    def __init__(self, fw_ktp, odecl=None, lang='fortran', mangler="fwrap_%s"):
         if not valid_fort_name(fw_ktp):
             raise InvalidNameException(
                     "%s is not a valid fortran parameter name." % fw_ktp)
-        self.fw_ktp = ktp_namer(fw_ktp)
+        if mangler:
+            self.fw_ktp = mangler % fw_ktp
+        else:
+            self.fw_ktp = fw_ktp
         self.odecl = odecl
         self.type = None
         self.lang = lang
 
-    def type_spec(self, len=None):
-        if len:
-            return '%s(kind=%s, len=%s)' % (self.type, self.fw_ktp, len)
-        else:
+    def type_spec(self):
+        # if len:
+            # return '%s(kind=%s, len=%s)' % (self.type, self.fw_ktp, len)
+        # else:
             return '%s(kind=%s)' % (self.type, self.fw_ktp)
 
 
@@ -59,14 +62,20 @@ cdef extern from "string.h":
     void *memcpy(void *dest, void *src, size_t n)
 '''
 
-    def __init__(self, fw_ktp, len, odecl=None):
-        super(CharacterType, self).__init__(fw_ktp, odecl)
+    def __init__(self, fw_ktp, len, odecl=None, **kwargs):
+        super(CharacterType, self).__init__(fw_ktp, odecl, **kwargs)
         self.len = str(len)
         self.type = 'character'
 
     def all_dtypes(self):
         adts = super(CharacterType, self).all_dtypes()
-        return adts + [dim_dtype]
+        return adts + [dim_dtype, default_character]
+
+    def type_spec(self):
+        if self.len:
+            return '%s(kind=%s, len=%s)' % (self.type, self.fw_ktp, self.len)
+        else:
+            return '%s(kind=%s)' % (self.type, self.fw_ktp)
 
 default_character = CharacterType(
         fw_ktp="default_character", 
@@ -74,8 +83,8 @@ default_character = CharacterType(
 
 class IntegerType(Dtype):
 
-    def __init__(self, fw_ktp, odecl=None, lang='fortran'):
-        super(IntegerType, self).__init__(fw_ktp, odecl, lang)
+    def __init__(self, fw_ktp, odecl=None, lang='fortran', **kwargs):
+        super(IntegerType, self).__init__(fw_ktp, odecl, lang, **kwargs)
         self.type = 'integer'
 
 default_integer = IntegerType(
@@ -85,8 +94,8 @@ dim_dtype = IntegerType(fw_ktp="npy_intp", odecl='npy_intp', lang='c')
 
 class LogicalType(Dtype):
 
-    def __init__(self, fw_ktp, odecl=None):
-        super(LogicalType, self).__init__(fw_ktp, odecl)
+    def __init__(self, fw_ktp, odecl=None, **kwargs):
+        super(LogicalType, self).__init__(fw_ktp, odecl, **kwargs)
         self.type = 'integer'
         if self.odecl:
             self.odecl = self.odecl.replace('logical', 'integer')
@@ -96,8 +105,8 @@ default_logical = LogicalType(
 
 class RealType(Dtype):
 
-    def __init__(self, fw_ktp, odecl=None):
-        super(RealType, self).__init__(fw_ktp, odecl)
+    def __init__(self, fw_ktp, odecl=None, **kwargs):
+        super(RealType, self).__init__(fw_ktp, odecl, **kwargs)
         self.type = 'real'
 
 default_real = RealType(fw_ktp='default_real', odecl="real(kind(0.0))")
@@ -141,17 +150,17 @@ class Var(object):
         else:
             self.is_array = False
 
-    def var_specs(self, orig=False, len=None):
+    def var_specs(self, orig=False):
         if orig:
             specs = [self.dtype.orig_type_spec()]
         else:
-            specs = [self.dtype.type_spec(len)]
+            specs = [self.dtype.type_spec()]
         if self.dimension:
             specs.append('dimension(%s)' % ', '.join(self.dimension))
         return specs
 
-    def declaration(self, len=None):
-        return '%s :: %s' % (', '.join(self.var_specs(len=len)), self.name)
+    def declaration(self):
+        return '%s :: %s' % (', '.join(self.var_specs()), self.name)
 
     def orig_declaration(self):
         return "%s :: %s" % (', '.join(self.var_specs(orig=True)), self.name)
@@ -191,9 +200,9 @@ class Argument(object):
         return self._var.is_array
     is_array = property(_is_array)
 
-    def declaration(self):
+    def declaration(self, orig=False):
         var = self._var
-        specs = var.var_specs()
+        specs = var.var_specs(orig=orig)
         if self.intent and not self.is_return_arg:
             if self.intent != 'hide':
                 specs.append('intent(%s)' % self.intent)
