@@ -348,7 +348,18 @@ class CharArgWrapper(ArgWrapperBase):
         return [self.intern_arg._var.orig_declaration()]
 
     def pre_call_code(self):
-        return [self._transfer_templ % (self.intern_arg.name,
+        if self.is_assumed_size():
+            ck_code = []
+        else:
+            ck_code = ("""\
+if (%s .ne. %s) then
+    fw_iserr__ = FW_CHAR_SIZE__
+    return
+endif
+""" % (self.intern_arg.dtype.len, self.len_arg.name)).splitlines()
+
+        return ck_code + \
+                [self._transfer_templ % (self.intern_arg.name,
                                         self.extern_arg.name,
                                         self.intern_arg.name)]
 

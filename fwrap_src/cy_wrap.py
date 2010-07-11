@@ -106,7 +106,6 @@ class _CyCharArg(_CyArgWrapper):
         return '%s = PyBytes_FromStringAndSize(NULL, %s)' % \
                     (self.intern_name, self.intern_len_name)
 
-
     def call_arg_list(self):
         if self.arg.intent == 'in':
             return ['&%s' % self.intern_len_name, 

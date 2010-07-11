@@ -592,9 +592,25 @@ class test_char_arg(object):
         #    return
         # endif
 
-        results =  ( ['fw_ch1 = transfer(ch1, fw_ch1)'],
-                     ['fw_ch2 = transfer(ch2, fw_ch2)'],
-                     ['fw_ch3 = transfer(ch3, fw_ch3)'])
+        r1 = '''\
+if (20 .ne. fw_ch1_len) then
+    fw_iserr__ = FW_CHAR_SIZE__
+    return
+endif
+fw_ch1 = transfer(ch1, fw_ch1)
+'''.splitlines()
+        r2 = '''\
+if (10 .ne. fw_ch2_len) then
+    fw_iserr__ = FW_CHAR_SIZE__
+    return
+endif
+fw_ch2 = transfer(ch2, fw_ch2)
+'''.splitlines()
+        r3 = ['fw_ch3 = transfer(ch3, fw_ch3)']
+
+
+
+        results =  (r1, r2, r3)
 
         for wrap, result in zip(self.inout_wraps, results):
             eq_(wrap.pre_call_code(), result)

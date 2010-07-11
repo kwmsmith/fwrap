@@ -22,5 +22,6 @@ ERR_NAME = "fw_iserr__"
 ERR_CODES = {
         'FW_NO_ERR__' : 0,
         'FW_INIT_ERR__' : -1,
+        'FW_CHAR_SIZE__' : 1,
         }
 
