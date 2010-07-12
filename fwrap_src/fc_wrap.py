@@ -44,26 +44,14 @@ def generate_interface(proc, buf, gmn=constants.KTP_MOD_NAME):
 
 class ProcWrapper(object):
 
-    ERR_NAME = constants.ERR_NAME
-
     def __init__(self, wrapped):
         self.name = constants.PROC_SUFFIX_TMPL % wrapped.name
         self.wrapped = wrapped
-        self.err_arg = pyf.Argument(name=self.ERR_NAME,
-                                    dtype=pyf.default_integer,
-                                    intent="out")
         self.arg_man = None
         self._get_arg_man()
 
     def _get_arg_man(self):
-        args = list(self.wrapped.args)+[self.err_arg]
-        self.arg_man = ArgWrapperManager(args, isfunction=False)
-
-    def init_err(self):
-        return "%s = FW_INIT_ERR__" % self.ERR_NAME
-
-    def no_err(self):
-        return "%s = FW_NO_ERR__" % self.ERR_NAME
+        self.arg_man = ArgWrapperManager(self.wrapped)
 
     def wrapped_name(self):
         return self.wrapped.name
@@ -83,11 +71,9 @@ class ProcWrapper(object):
         self.proc_preamble(gmn, buf)
         generate_interface(self.wrapped, buf, gmn)
         self.temp_declarations(buf)
-        buf.putln(self.init_err())
         self.pre_call_code(buf)
         self.proc_call(buf)
         self.post_call_code(buf)
-        buf.putln(self.no_err())
         buf.dedent()
         buf.putln(self.proc_end())
 
@@ -134,7 +120,7 @@ class ProcWrapper(object):
                                 self.name, args))
 
     def all_dtypes(self):
-        return self.wrapped.all_dtypes() + [self.err_arg.dtype]
+        return self.arg_man.all_dtypes()
 
 class SubroutineWrapper(ProcWrapper):
     pass
@@ -147,11 +133,7 @@ class FunctionWrapper(ProcWrapper):
         super(FunctionWrapper, self).__init__(wrapped)
 
     def _get_arg_man(self):
-        ra = pyf.Argument(name=self.RETURN_ARG_NAME,
-                dtype=self.wrapped.return_arg.dtype,
-                intent='out')
-        args = [ra] + list(self.wrapped.args) + [self.err_arg]
-        self.arg_man = ArgWrapperManager(args, isfunction=True)
+        self.arg_man = ArgWrapperManager(self.wrapped)
 
     def return_spec_declaration(self):
         return self.arg_man.return_spec_declaration()
@@ -161,22 +143,34 @@ class FunctionWrapper(ProcWrapper):
 
 class ArgWrapperManager(object):
     
-    def __init__(self, args, isfunction):
-        self._orig_args = args
-        self.isfunction = isfunction
+    def __init__(self, proc):
+        self.proc = proc
+        self.isfunction = (proc.kind == 'function')
+        if self.isfunction:
+            ra = pyf.Argument(name=FunctionWrapper.RETURN_ARG_NAME,
+                    dtype=proc.return_arg.dtype,
+                    intent='out')
+            self._orig_args = [ra] + list(proc.args)
+        else:
+            self._orig_args = list(proc.args)
         self.arg_wrappers = None
+        self.errflag = pyf.Argument(name=constants.ERR_NAME,
+                                dtype=pyf.default_integer,
+                                intent='out')
+        self.errstr = ErrStrArgWrapper()
         self._gen_wrappers()
 
     def _gen_wrappers(self):
         wargs = []
-        for arg in self._orig_args:
+        for arg in self._orig_args + [self.errflag]:
             wargs.append(ArgWrapperFactory(arg))
-        self.arg_wrappers = wargs
+        self.arg_wrappers = wargs + [self.errstr]
 
     def call_arg_list(self):
         cl = [argw.intern_name for argw in self.arg_wrappers 
                 if (argw.intern_name != FunctionWrapper.RETURN_ARG_NAME and
-                    argw.intern_name != ProcWrapper.ERR_NAME)]
+                    argw.intern_name != constants.ERR_NAME and 
+                    argw.intern_name != constants.ERRSTR_NAME)]
         return cl
 
     def extern_arg_list(self):
@@ -211,8 +205,14 @@ class ArgWrapperManager(object):
             decls.extend(argw.intern_declarations())
         return decls
 
+    def init_err(self):
+        return "%s = FW_INIT_ERR__" % constants.ERR_NAME
+
+    def no_err(self):
+        return "%s = FW_NO_ERR__" % constants.ERR_NAME
+
     def pre_call_code(self):
-        all_pcc = []
+        all_pcc = [self.init_err()]
         for argw in self.arg_wrappers:
             pcc = argw.pre_call_code()
             if pcc:
@@ -226,10 +226,14 @@ class ArgWrapperManager(object):
             pcc = argw.post_call_code()
             if pcc:
                 all_pcc.extend(pcc)
+        all_pcc += [self.no_err()]
         return all_pcc
 
     def _return_var_name(self):
         return self.return_arg_wrapper.intern_name
+
+    def all_dtypes(self):
+        return self.proc.all_dtypes() + self.errstr.all_dtypes() + [self.errflag.dtype]
 
 def ArgWrapperFactory(arg):
     if getattr(arg, 'dimension', None):
@@ -354,9 +358,11 @@ class CharArgWrapper(ArgWrapperBase):
             ck_code = ("""\
 if (%s .ne. %s) then
     fw_iserr__ = FW_CHAR_SIZE__
+    fw_errstr__ = transfer("%s", fw_errstr__)
+    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
     return
 endif
-""" % (self.intern_arg.dtype.len, self.len_arg.name)).splitlines()
+""" % (self.intern_arg.dtype.len, self.len_arg.name, self.extern_arg.name)).splitlines()
 
         return ck_code + \
                 [self._transfer_templ % (self.intern_arg.name,
@@ -367,6 +373,33 @@ endif
         return [self._transfer_templ % (self.extern_arg.name,
                                            self.intern_arg.name,
                                            self.extern_arg.name)]
+
+class ErrStrArgWrapper(ArgWrapperBase):
+
+    def __init__(self):
+        self.arg = pyf.Argument(name=constants.ERRSTR_NAME,
+                                dtype=pyf.default_character,
+                                dimension=[constants.ERRSTR_LEN])
+        self.dtype = self.arg.dtype
+        self.name = self.arg.name
+        self.intern_name = self.arg.name
+        self.ktp = self.arg.ktp
+        self.intent = None
+
+    def c_declarations(self):
+        return [self.arg.c_declaration()]
+
+    def extern_arg_list(self):
+        return [self.name]
+
+    def extern_declarations(self):
+        return [self.arg.declaration()]
+
+    def intern_declarations(self):
+        return []
+
+    def all_dtypes(self):
+        return [self.arg.dtype]
 
 
 class HideArgWrapper(ArgWrapperBase):
@@ -449,8 +482,10 @@ class ArrayArgWrapper(ArgWrapperBase):
         if ck:
             err_ck = ("if (%s) then\n"
                       "    fw_iserr__ = FW_ARR_DIM__\n"
+                      '    fw_errstr__ = transfer("%s", fw_errstr__)\n'
+                      '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR\n'
                       "    return\n"
-                      "endif" % ckstr).splitlines()
+                      "endif" % (ckstr, self._extern_arr.name)).splitlines()
             return err_ck
         return []
 

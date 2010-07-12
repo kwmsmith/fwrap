@@ -2,7 +2,10 @@ import pyf_iface
 import constants
 
 def CyArgWrapper(arg):
-    if isinstance(arg.dtype, pyf_iface.ComplexType):
+    import fc_wrap
+    if isinstance(arg, fc_wrap.ErrStrArgWrapper):
+        return _CyErrStrArg(arg)
+    elif isinstance(arg.dtype, pyf_iface.ComplexType):
         return _CyCmplxArg(arg)
     elif isinstance(arg.dtype, pyf_iface.CharacterType):
         return _CyCharArg(arg)
@@ -118,6 +121,35 @@ class _CyCharArg(_CyArgWrapper):
             return [self.intern_name]
         return []
 
+class _CyErrStrArg(object):
+
+    def __init__(self, arg):
+        self.arg = arg
+        self.intern_name = self.arg.name
+        self.name = self.arg.name
+
+    def get_len(self):
+        return self.arg.dtype.len
+
+    def extern_declarations(self):
+        return []
+
+    def intern_declarations(self):
+        return ['cdef fwrap_default_character %s[%s]' % (self.name, constants.ERRSTR_LEN)]
+
+    def call_arg_list(self):
+        return [self.name]
+
+    def return_tuple_list(self):
+        return []
+
+    def pre_call_code(self):
+        return []
+
+    def post_call_code(self):
+        return []
+
+
 class _CyCmplxArg(_CyArgWrapper):
 
     def __init__(self, arg):
@@ -130,6 +162,7 @@ class _CyCmplxArg(_CyArgWrapper):
 
     def call_arg_list(self):
         return ['&%s' % self.name]
+
 
 def CyArrayArgWrapper(arg):
     if arg.dtype.type == 'character':
