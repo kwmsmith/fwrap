@@ -34,10 +34,36 @@ __doc__ = u'''
 >>> init(ain, aout, ainout, ano, aout_, ainout_, ano_)
 >>> test_results(assumed_shape, (ain, aout, ainout, ano), (aout_, ainout_, ano_))
 True
+
 >>> init(ain, aout, ainout, ano, aout_, ainout_, ano_)
 >>> test_results(explicit_shape, (ll, n1, n2, ain, aout, ainout, ano), (aout_, ainout_, ano_))
 True
+
 >>> init(ain, aout, ainout, ano, aout_, ainout_, ano_)
 >>> test_results(assumed_size, (n1, n2, ain, aout, ainout, ano), (aout_, ainout_, ano_))
 True
+
+>>> init(ain, aout, ainout, ano, aout_, ainout_, ano_)
+>>> test_results(assumed_size, (n1+1, n2, ain, aout, ainout, ano), (aout_, ainout_, ano_))
+Traceback (most recent call last):
+    ...
+RuntimeError: an error was encountered when calling the 'assumed_size' wrapper.
+
+>>> init(ain, aout, ainout, ano, aout_, ainout_, ano_)
+>>> test_results(explicit_shape, (ll+1, n1, n2, ain, aout, ainout, ano), (aout_, ainout_, ano_))
+Traceback (most recent call last):
+    ...
+RuntimeError: an error was encountered when calling the 'explicit_shape' wrapper.
+
+>>> init(ain, aout, ainout, ano, aout_, ainout_, ano_)
+>>> test_results(explicit_shape, (ll, n1+1, n2, ain, aout, ainout, ano), (aout_, ainout_, ano_))
+Traceback (most recent call last):
+    ...
+RuntimeError: an error was encountered when calling the 'explicit_shape' wrapper.
+
+>>> init(ain, aout, ainout, ano, aout_, ainout_, ano_)
+>>> test_results(explicit_shape, (ll, n1, n2+1, ain, aout, ainout, ano), (aout_, ainout_, ano_))
+Traceback (most recent call last):
+    ...
+RuntimeError: an error was encountered when calling the 'explicit_shape' wrapper.
 '''

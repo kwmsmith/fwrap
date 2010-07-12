@@ -1,5 +1,6 @@
-import pyf_iface
-import constants
+from fwrap_src import pyf_iface
+from fwrap_src import constants
+from fwrap_src.code import CodeBuffer
 
 def CyArgWrapper(arg):
     import fc_wrap
@@ -376,14 +377,36 @@ if fw_iserr__ != FW_NO_ERR__:
     raise RuntimeError("an error was encountered when calling the '%s' wrapper.")''' % self.name
         buf.putlines(ck_err)
 
+    def post_try_finally(self, buf):
+        post_cc = CodeBuffer()
+        self.post_call_code(post_cc)
+
+        use_try = post_cc.getvalue()
+
+        if use_try:
+            buf.putln("try:")
+            buf.indent()
+
+        self.check_error(buf)
+
+        if use_try:
+            buf.dedent()
+            buf.putln("finally:")
+            buf.indent()
+
+        buf.putlines(post_cc.getvalue())
+
+        if use_try:
+            buf.dedent()
+
+
     def generate_wrapper(self, buf):
         buf.putln(self.proc_declaration())
         buf.indent()
         self.temp_declarations(buf)
         self.pre_call_code(buf)
         buf.putln(self.proc_call())
-        self.check_error(buf)
-        self.post_call_code(buf)
+        self.post_try_finally(buf)
         rt = self.return_tuple()
         if rt: buf.putln(rt)
         buf.dedent()
