@@ -62,6 +62,7 @@ def _dim_test(dims1, dims2):
             ck += ['%s .ne. %s' % (dim1, dim2)]
     return ' .or. '.join(ck)
 
+
 class ProcWrapper(object):
 
     def __init__(self, wrapped):
@@ -142,8 +143,10 @@ class ProcWrapper(object):
     def all_dtypes(self):
         return self.arg_man.all_dtypes()
 
+
 class SubroutineWrapper(ProcWrapper):
     pass
+
 
 class FunctionWrapper(ProcWrapper):
 
@@ -160,6 +163,7 @@ class FunctionWrapper(ProcWrapper):
 
     def proc_result_name(self):
         return self.RETURN_ARG_NAME
+
 
 class ArgWrapperManager(object):
     
@@ -253,7 +257,10 @@ class ArgWrapperManager(object):
         return self.return_arg_wrapper.intern_name
 
     def all_dtypes(self):
-        return self.proc.all_dtypes() + self.errstr.all_dtypes() + [self.errflag.dtype]
+        return (self.proc.all_dtypes() + 
+                self.errstr.all_dtypes() + 
+                [self.errflag.dtype])
+
 
 def ArgWrapperFactory(arg):
     if getattr(arg, 'dimension', None):
@@ -266,6 +273,7 @@ def ArgWrapperFactory(arg):
         return CharArgWrapper(arg)
     else:
         return ArgWrapper(arg)
+
 
 class ArgWrapperBase(object):
 
@@ -282,6 +290,7 @@ class ArgWrapperBase(object):
 
     def c_declarations(self):
         return []
+
 
 class ArgWrapper(ArgWrapperBase):
 
@@ -375,7 +384,8 @@ class CharArgWrapper(ArgWrapperBase):
         if self.is_assumed_size():
             ck_code = []
         else:
-            test = "%s .ne. %s" % (self.intern_arg.dtype.len, self.len_arg.name)
+            test = ("%s .ne. %s" % 
+                    (self.intern_arg.dtype.len, self.len_arg.name))
             errcode = "FW_CHAR_SIZE__"
             argname = self.extern_arg.name
             ck_code = _err_test_block(test, errcode, argname)
@@ -389,6 +399,7 @@ class CharArgWrapper(ArgWrapperBase):
         return [self._transfer_templ % (self.extern_arg.name,
                                            self.intern_arg.name,
                                            self.extern_arg.name)]
+
 
 class ErrStrArgWrapper(ArgWrapperBase):
 
@@ -493,10 +504,13 @@ class ArrayArgWrapper(ArgWrapperBase):
         dim_names = [dim.name for dim in self._arr_dims]
         ckstr = _dim_test(self._orig_arg.dimension, dim_names)
         if ckstr:
-            return _err_test_block(ckstr, 'FW_ARR_DIM__', self._extern_arr.name)
+            return _err_test_block(ckstr, 
+                            'FW_ARR_DIM__', 
+                            self._extern_arr.name)
         return []
 
     intent = property(_get_intent)
+
 
 class CharArrayArgWrapper(ArrayArgWrapper):
 
@@ -541,13 +555,17 @@ class CharArrayArgWrapper(ArrayArgWrapper):
         else:
             len_name = self._arr_dims[0].name
             test = "%s .ne. %s" % (self._orig_arg.dtype.len, len_name)
-            char_ck = _err_test_block(test, 'FW_CHAR_SIZE__', self._extern_arr.name)
+            char_ck = _err_test_block(test, 
+                                'FW_CHAR_SIZE__', 
+                                self._extern_arr.name)
 
         # 0th dim already tested in char_ck
         dim_names = [dim.name for dim in self._arr_dims[1:]]
         dim_ck_test = _dim_test(self._orig_arg.dimension, dim_names)
 
-        dim_ck = _err_test_block(dim_ck_test, 'FW_ARR_DIM__', self._extern_arr.name)
+        dim_ck = _err_test_block(dim_ck_test, 
+                            'FW_ARR_DIM__', 
+                            self._extern_arr.name)
 
         tmpl = ("%(intern)s = reshape(transfer(%(name)s, "
                 "%(intern)s), shape(%(intern)s))")
@@ -561,6 +579,7 @@ class CharArrayArgWrapper(ArrayArgWrapper):
                 "%(name)s), shape(%(name)s))")
         D = {"intern" : self.intern_name, "name" : self._orig_arg.name}
         return [tmpl % D]
+
 
 class LogicalWrapper(ArgWrapper):
 

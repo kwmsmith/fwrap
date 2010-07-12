@@ -2,6 +2,33 @@ from fwrap_src import pyf_iface
 from fwrap_src import constants
 from fwrap_src.code import CodeBuffer
 
+def wrap_fc(ast):
+    ret = []
+    for proc in ast:
+        ret.append(ProcWrapper(wrapped=proc))
+    return ret
+
+def generate_cy_pxd(ast, fc_pxd_name, buf):
+    buf.putln('cimport numpy as np')
+    buf.putln("from %s cimport *" % fc_pxd_name)
+    buf.putln('')
+    for proc in ast:
+        buf.putln(proc.cy_prototype())
+
+def gen_cimport_decls(buf):
+    for dtype in pyf_iface.intrinsic_types:
+        buf.putlines(dtype.cimport_decls)
+
+def gen_cdef_extern_decls(buf):
+    for dtype in pyf_iface.intrinsic_types:
+        buf.putlines(dtype.cdef_extern_decls)
+
+def generate_cy_pyx(ast, buf):
+    gen_cimport_decls(buf)
+    gen_cdef_extern_decls(buf)
+    for proc in ast:
+        proc.generate_wrapper(buf)
+
 def CyArgWrapper(arg):
     import fc_wrap
     if isinstance(arg, fc_wrap.ErrStrArgWrapper):
@@ -11,6 +38,7 @@ def CyArgWrapper(arg):
     elif isinstance(arg.dtype, pyf_iface.CharacterType):
         return _CyCharArg(arg)
     return _CyArgWrapper(arg)
+
 
 class _CyArgWrapper(object):
 
@@ -45,6 +73,7 @@ class _CyArgWrapper(object):
         elif self.arg.intent in ('out', 'inout', None):
             return [self.arg.name]
         return []
+
 
 class _CyCharArg(_CyArgWrapper):
 
@@ -122,6 +151,7 @@ class _CyCharArg(_CyArgWrapper):
             return [self.intern_name]
         return []
 
+
 class _CyErrStrArg(object):
 
     def __init__(self, arg):
@@ -136,7 +166,8 @@ class _CyErrStrArg(object):
         return []
 
     def intern_declarations(self):
-        return ['cdef fwrap_default_character %s[%s]' % (self.name, constants.ERRSTR_LEN)]
+        return ['cdef fwrap_default_character %s[%s]' %
+                    (self.name, constants.ERRSTR_LEN)]
 
     def call_arg_list(self):
         return [self.name]
@@ -169,6 +200,7 @@ def CyArrayArgWrapper(arg):
     if arg.dtype.type == 'character':
         return CyCharArrayArgWrapper(arg)
     return _CyArrayArgWrapper(arg)
+
 
 class _CyArrayArgWrapper(object):
 
@@ -203,6 +235,7 @@ class _CyArrayArgWrapper(object):
             return [self.intern_name]
         return []
 
+
 class CyCharArrayArgWrapper(_CyArrayArgWrapper):
 
     def __init__(self, arg):
@@ -219,11 +252,11 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
     def pre_call_code(self):
         tmpl = ("%(odtype)s = %(name)s.dtype\n"
                 "for i in range(%(ndim)d): "
-                "%(shape)s[i+1] = %(name)s.shape[i]\n"
+                    "%(shape)s[i+1] = %(name)s.shape[i]\n"
                 "%(name)s.dtype = 'b'\n"
                 "%(intern)s = %(name)s\n"
                 "%(shape)s[0] = <fwrap_npy_intp>"
-                "(%(name)s.shape[0]/%(shape)s[1])")
+                    "(%(name)s.shape[0]/%(shape)s[1])")
         D = {"odtype" : self.odtype_name,
              "ndim" : self.arg.get_ndims(),
              "name" : self.name,
@@ -240,6 +273,7 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
                     for i in range(self.arg.get_ndims()+1)]
         data = ["<%s*>%s.data" % (self.arg.ktp, self.intern_name)]
         return shapes + data
+
 
 FW_RETURN_VAR_NAME = 'fwrap_return_var'
 class CyArgWrapperManager(object):
@@ -276,9 +310,6 @@ class CyArgWrapperManager(object):
             decls.extend(arg.intern_declarations())
         return decls
 
-    # def _return_arg_declaration(self):
-        # return ["cdef %s %s" % (self.return_type_name, FW_RETURN_VAR_NAME)]
-
     def return_tuple_list(self):
         rtl = []
         for arg in self.args:
@@ -297,32 +328,6 @@ class CyArgWrapperManager(object):
             pcc.extend(arg.post_call_code())
         return pcc
 
-def wrap_fc(ast):
-    ret = []
-    for proc in ast:
-        ret.append(ProcWrapper(wrapped=proc))
-    return ret
-
-def generate_cy_pxd(ast, fc_pxd_name, buf):
-    buf.putln('cimport numpy as np')
-    buf.putln("from %s cimport *" % fc_pxd_name)
-    buf.putln('')
-    for proc in ast:
-        buf.putln(proc.cy_prototype())
-
-def gen_cimport_decls(buf):
-    for dtype in pyf_iface.intrinsic_types:
-        buf.putlines(dtype.cimport_decls)
-
-def gen_cdef_extern_decls(buf):
-    for dtype in pyf_iface.intrinsic_types:
-        buf.putlines(dtype.cdef_extern_decls)
-
-def generate_cy_pyx(ast, buf):
-    gen_cimport_decls(buf)
-    gen_cdef_extern_decls(buf)
-    for proc in ast:
-        proc.generate_wrapper(buf)
 
 class ProcWrapper(object):
     
@@ -372,9 +377,9 @@ class ProcWrapper(object):
             buf.putln(line)
 
     def check_error(self, buf):
-        ck_err = '''\
-if fw_iserr__ != FW_NO_ERR__:
-    raise RuntimeError("an error was encountered when calling the '%s' wrapper.")''' % self.name
+        ck_err = ('if fw_iserr__ != FW_NO_ERR__:\n'
+                  '    raise RuntimeError(\"an error was encountered '
+                           "when calling the '%s' wrapper.\")") % self.name
         buf.putlines(ck_err)
 
     def post_try_finally(self, buf):
@@ -398,7 +403,6 @@ if fw_iserr__ != FW_NO_ERR__:
 
         if use_try:
             buf.dedent()
-
 
     def generate_wrapper(self, buf):
         buf.putln(self.proc_declaration())

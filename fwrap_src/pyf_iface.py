@@ -11,6 +11,7 @@ class InvalidNameException(Exception):
 def ktp_namer(fw_ktp):
     return "fwrap_%s" % fw_ktp
 
+
 class Dtype(object):
 
     cdef_extern_decls = ''
@@ -42,7 +43,6 @@ class Dtype(object):
             # return '%s(kind=%s, len=%s)' % (self.type, self.fw_ktp, len)
         # else:
             return '%s(kind=%s)' % (self.type, self.fw_ktp)
-
 
     def orig_type_spec(self):
         return self.odecl
@@ -77,9 +77,11 @@ cdef extern from "string.h":
         else:
             return '%s(kind=%s)' % (self.type, self.fw_ktp)
 
+
 default_character = CharacterType(
         fw_ktp="default_character", 
         len='1', odecl="character(kind=kind('a'))")
+
 
 class IntegerType(Dtype):
 
@@ -87,10 +89,12 @@ class IntegerType(Dtype):
         super(IntegerType, self).__init__(fw_ktp, odecl, lang, **kwargs)
         self.type = 'integer'
 
+
 default_integer = IntegerType(
         fw_ktp='default_integer', odecl="integer(kind(0))")
 
 dim_dtype = IntegerType(fw_ktp="npy_intp", odecl='npy_intp', lang='c')
+
 
 class LogicalType(Dtype):
 
@@ -100,8 +104,10 @@ class LogicalType(Dtype):
         if self.odecl:
             self.odecl = self.odecl.replace('logical', 'integer')
 
+
 default_logical = LogicalType(
         fw_ktp='default_logical', odecl="integer(kind=kind(0))")
+
 
 class RealType(Dtype):
 
@@ -109,14 +115,17 @@ class RealType(Dtype):
         super(RealType, self).__init__(fw_ktp, odecl, **kwargs)
         self.type = 'real'
 
+
 default_real = RealType(fw_ktp='default_real', odecl="real(kind(0.0))")
 default_dbl  = RealType(fw_ktp='default_double', odecl="real(kind(0.0D0))")
+
 
 class ComplexType(Dtype):
 
     def __init__(self, fw_ktp, odecl=None):
         super(ComplexType, self).__init__(fw_ktp, odecl)
         self.type = 'complex'
+
 
 default_complex = ComplexType(
         fw_ktp='default_complex', odecl="complex(kind((0.0,0.0)))")
@@ -129,6 +138,7 @@ intrinsic_types = [RealType,
                    CharacterType, 
                    LogicalType]
 
+
 class Parameter(object):
     
     def __init__(self, name, dtype, value):
@@ -138,6 +148,7 @@ class Parameter(object):
 
 
 class Var(object):
+
     def __init__(self, name, dtype, dimension=None):
         if not valid_fort_name(name):
             raise InvalidNameException(
@@ -217,10 +228,12 @@ class Argument(object):
             adts += [dim_dtype]
         return adts
 
+
 class ProcArgument(object):
     def __init__(self, proc):
         self.proc = proc
         self.name = proc.name
+
 
 class ArgManager(object):
     
@@ -275,6 +288,7 @@ class ArgManager(object):
             dts.extend(self._return_arg.all_dtypes())
         return dts
 
+
 class Procedure(object):
 
     def __init__(self, name, args):
@@ -308,6 +322,7 @@ class Procedure(object):
     def all_dtypes(self):
         return self.arg_man.all_dtypes()
 
+
 class Function(Procedure):
     
     def __init__(self, name, args, return_arg):
@@ -317,6 +332,7 @@ class Function(Procedure):
         self.kind = 'function'
         self.arg_man = ArgManager(self.args, self.return_arg)
 
+
 class Subroutine(Procedure):
 
     def __init__(self, name, args):
@@ -324,10 +340,12 @@ class Subroutine(Procedure):
         self.kind = 'subroutine'
         self.arg_man = ArgManager(self.args)
 
+
 class Module(object):
 
     def __init__(self, name, mod_objects=None, uses=None):
         pass
+
 
 class Use(object):
 
