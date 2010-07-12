@@ -479,14 +479,34 @@ character(kind=fwrap_default_character, len=1), dimension(cs_d1, cs_d2), intent(
         #    ... set error flag and return ...
         #    return
         # endif
-        eq_(self.fc_charr1.pre_call_code(),
-                ["fw_charr1 = reshape(transfer"
-                 "(charr1, fw_charr1), shape(fw_charr1))"])
-        eq_(self.fc_charr3.pre_call_code(),
-                ["fw_charr3 = reshape(transfer"
-                 "(charr3, fw_charr3), shape(fw_charr3))"])
-        eq_(self.fc_charr_star.pre_call_code(),
-                ["fw_cs = reshape(transfer(cs, fw_cs), shape(fw_cs))"])
+
+        charr1_res = ['if (20 .ne. charr1_d1) then', 
+                      '    fw_iserr__ = FW_CHAR_SIZE__', 
+                      '    fw_errstr__ = transfer("charr1", fw_errstr__)', 
+                      '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR', 
+                      '    return', 
+                      'endif', 
+                      'fw_charr1 = reshape(transfer(charr1, fw_charr1), shape(fw_charr1))']
+
+        charr3_res = ['if (30 .ne. charr3_d1) then', 
+                      '    fw_iserr__ = FW_CHAR_SIZE__', 
+                      '    fw_errstr__ = transfer("charr3", fw_errstr__)', 
+                      '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR', 
+                      '    return', 
+                      'endif', 
+                      'fw_charr3 = reshape(transfer(charr3, fw_charr3), shape(fw_charr3))']
+
+        cs_res = ['if (n1 .ne. cs_d2) then', '    fw_iserr__ = FW_ARR_DIM__', 
+                  '    fw_errstr__ = transfer("cs", fw_errstr__)', 
+                  '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR', 
+                  '    return', 
+                  'endif', 
+                  'fw_cs = reshape(transfer(cs, fw_cs), shape(fw_cs))']
+
+
+        eq_(self.fc_charr1.pre_call_code(), charr1_res)
+        eq_(self.fc_charr3.pre_call_code(), charr3_res)
+        eq_(self.fc_charr_star.pre_call_code(), cs_res)
 
     def test_post_call_code(self):
         eq_(self.fc_charr1.post_call_code(),

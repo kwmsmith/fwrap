@@ -42,6 +42,26 @@ def generate_interface(proc, buf, gmn=constants.KTP_MOD_NAME):
         buf.dedent()
         buf.putln('end interface')
 
+def _err_test_block(test, errcode, argname):
+    tmpl = '''\
+if (%(test)s) then
+    fw_iserr__ = %(errcode)s
+    fw_errstr__ = transfer("%(argname)s", fw_errstr__)
+    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
+    return
+endif
+'''
+    if test:
+        return (tmpl % locals()).splitlines()
+    return []
+
+def _dim_test(dims1, dims2):
+    ck = []
+    for dim1, dim2 in zip(dims1, dims2):
+        if dim1 not in (':', '*') and dim2 not in (':', '*'):
+            ck += ['%s .ne. %s' % (dim1, dim2)]
+    return ' .or. '.join(ck)
+
 class ProcWrapper(object):
 
     def __init__(self, wrapped):
@@ -355,14 +375,10 @@ class CharArgWrapper(ArgWrapperBase):
         if self.is_assumed_size():
             ck_code = []
         else:
-            ck_code = ("""\
-if (%s .ne. %s) then
-    fw_iserr__ = FW_CHAR_SIZE__
-    fw_errstr__ = transfer("%s", fw_errstr__)
-    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
-    return
-endif
-""" % (self.intern_arg.dtype.len, self.len_arg.name, self.extern_arg.name)).splitlines()
+            test = "%s .ne. %s" % (self.intern_arg.dtype.len, self.len_arg.name)
+            errcode = "FW_CHAR_SIZE__"
+            argname = self.extern_arg.name
+            ck_code = _err_test_block(test, errcode, argname)
 
         return ck_code + \
                 [self._transfer_templ % (self.intern_arg.name,
@@ -474,19 +490,10 @@ class ArrayArgWrapper(ArgWrapperBase):
         return self._orig_arg.intent
 
     def pre_call_code(self):
-        ck = []
-        for dim, ext_dim in zip(self._orig_arg.dimension, self._arr_dims):
-            if dim not in (':', '*'):
-                ck += ["%s .ne. %s" % (dim, ext_dim.name)]
-        ckstr = ' .or. '.join(ck)
-        if ck:
-            err_ck = ("if (%s) then\n"
-                      "    fw_iserr__ = FW_ARR_DIM__\n"
-                      '    fw_errstr__ = transfer("%s", fw_errstr__)\n'
-                      '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR\n'
-                      "    return\n"
-                      "endif" % (ckstr, self._extern_arr.name)).splitlines()
-            return err_ck
+        dim_names = [dim.name for dim in self._arr_dims]
+        ckstr = _dim_test(self._orig_arg.dimension, dim_names)
+        if ckstr:
+            return _err_test_block(ckstr, 'FW_ARR_DIM__', self._extern_arr.name)
         return []
 
     intent = property(_get_intent)
@@ -529,10 +536,23 @@ class CharArrayArgWrapper(ArrayArgWrapper):
         return [self._intern_arr._var.orig_declaration()]
 
     def pre_call_code(self):
+        if self.is_assumed_size():
+            char_ck = []
+        else:
+            len_name = self._arr_dims[0].name
+            test = "%s .ne. %s" % (self._orig_arg.dtype.len, len_name)
+            char_ck = _err_test_block(test, 'FW_CHAR_SIZE__', self._extern_arr.name)
+
+        # 0th dim already tested in char_ck
+        dim_names = [dim.name for dim in self._arr_dims[1:]]
+        dim_ck_test = _dim_test(self._orig_arg.dimension, dim_names)
+
+        dim_ck = _err_test_block(dim_ck_test, 'FW_ARR_DIM__', self._extern_arr.name)
+
         tmpl = ("%(intern)s = reshape(transfer(%(name)s, "
                 "%(intern)s), shape(%(intern)s))")
         D = {"intern" : self.intern_name, "name" : self._orig_arg.name}
-        return [tmpl % D]
+        return char_ck + dim_ck + [tmpl % D]
 
     def post_call_code(self):
         if self._orig_arg.intent == "in":
