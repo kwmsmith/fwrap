@@ -9,7 +9,7 @@ from distutils.core import Extension
 from distutils.command.build_ext import build_ext as _build_ext
 distutils_distro = Distribution()
 
-FWRAP_SETUP = os.path.abspath(os.path.join('fwrap_src', 'fwrap_setup.py'))
+FWRAP_SETUP = os.path.abspath(os.path.join('fwrap', 'fwrap_setup.py'))
 
 TEST_DIRS = ['compile', 'errors', 'run', 'pyregr']
 TEST_RUN_DIRS = ['run', 'pyregr']
@@ -794,7 +794,7 @@ if __name__ == '__main__':
             sys.stderr.write("Running tests without Cython.\n")
     #if 0
 
-    from fwrap_src.main import wrap
+    from fwrap.main import wrap
 
     sys.stderr.write("Python %s\n" % sys.version)
     sys.stderr.write("\n")

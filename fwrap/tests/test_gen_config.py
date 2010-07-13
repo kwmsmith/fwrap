@@ -1,6 +1,6 @@
-from fwrap_src import pyf_iface
-from fwrap_src import gen_config as gc
-from fwrap_src.code import CodeBuffer
+from fwrap import pyf_iface
+from fwrap import gen_config as gc
+from fwrap.code import CodeBuffer
 
 from nose.tools import assert_raises, ok_, eq_, set_trace
 

@@ -1,5 +1,5 @@
-from fwrap_src import pyf_iface as pyf
-from fwrap_src import constants
+from fwrap import pyf_iface as pyf
+from fwrap import constants
 
 def wrap_pyf_iface(ast):
     fc_wrapper = []

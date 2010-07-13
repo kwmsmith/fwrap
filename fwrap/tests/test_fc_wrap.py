@@ -1,6 +1,6 @@
-from fwrap_src import pyf_iface as pyf
-from fwrap_src import fc_wrap
-from fwrap_src.code import CodeBuffer
+from fwrap import pyf_iface as pyf
+from fwrap import fc_wrap
+from fwrap.code import CodeBuffer
 
 from tutils import compare
 

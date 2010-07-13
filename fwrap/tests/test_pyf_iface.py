@@ -1,4 +1,4 @@
-from fwrap_src import pyf_iface as pyf
+from fwrap import pyf_iface as pyf
 from nose.tools import ok_, eq_, set_trace, assert_raises
 
 class test_program_units(object):

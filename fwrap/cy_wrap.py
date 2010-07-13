@@ -1,6 +1,6 @@
-from fwrap_src import pyf_iface
-from fwrap_src import constants
-from fwrap_src.code import CodeBuffer
+from fwrap import pyf_iface
+from fwrap import constants
+from fwrap.code import CodeBuffer
 
 def wrap_fc(ast):
     ret = []

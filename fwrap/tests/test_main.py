@@ -1,8 +1,8 @@
-from fwrap_src import constants
-from fwrap_src import main
+from fwrap import constants
+from fwrap import main
 from cStringIO import StringIO
-from fwrap_src import pyf_iface as pyf
-from fwrap_src.code import CodeBuffer
+from fwrap import pyf_iface as pyf
+from fwrap.code import CodeBuffer
 
 from nose.tools import ok_, eq_, set_trace
 
