@@ -5,7 +5,7 @@ import os, sys
 import tempfile
 import logging
 
-from fwrap_src import gen_config as gc
+from fwrap import gen_config as gc
 
 from numpy.distutils import exec_command as np_exec_command
 orig_exec_command = np_exec_command.exec_command

@@ -4,3 +4,4 @@ fparser
 .coverage
 *.vim
 BUILD/*
+*.log

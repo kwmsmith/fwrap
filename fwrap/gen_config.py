@@ -1,5 +1,5 @@
 from cPickle import dumps
-from fwrap_src import pyf_iface
+from fwrap import pyf_iface
 import constants
 
 def read_type_spec(fname):

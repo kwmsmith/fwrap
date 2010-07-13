@@ -1,5 +1,5 @@
-from fwrap_src import fwrap_parse as fp
-from fwrap_src import pyf_iface as pyf
+from fwrap import fwrap_parse as fp
+from fwrap import pyf_iface as pyf
 
 from cStringIO import StringIO
 

@@ -1,8 +1,8 @@
-from fwrap_src import cy_wrap
-from fwrap_src import pyf_iface as pyf
-from fwrap_src import fc_wrap
+from fwrap import cy_wrap
+from fwrap import pyf_iface as pyf
+from fwrap import fc_wrap
 from cStringIO import StringIO
-from fwrap_src.code import CodeBuffer
+from fwrap.code import CodeBuffer
 
 from tutils import compare
 

@@ -1,4 +1,4 @@
-from fwrap_src import pyf_iface as pyf
+from fwrap import pyf_iface as pyf
 from fparser import api
 
 from nose.tools import set_trace

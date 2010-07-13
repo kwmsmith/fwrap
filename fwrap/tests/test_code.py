@@ -1,4 +1,4 @@
-from fwrap_src import code
+from fwrap import code
 
 from nose.tools import ok_, eq_, set_trace
 
