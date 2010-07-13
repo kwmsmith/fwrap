@@ -1,9 +1,6 @@
 from fwrap_src import pyf_iface as pyf
 from fwrap_src import constants
 
-# TODO:
-#       separate out fortran/pxd/c header methods into classes
-
 def wrap_pyf_iface(ast):
     fc_wrapper = []
     for proc in ast:
