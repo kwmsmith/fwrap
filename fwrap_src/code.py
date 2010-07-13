@@ -75,6 +75,9 @@ class CodeBuffer(object):
         for line in lines:
             self.putln(line)
 
+    def putline(self, line):
+        self.putln(line)
+
     def putln(self, line):
         self.sio.write(self.indent_tok * self._level + line + '\n')
 

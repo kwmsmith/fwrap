@@ -13,6 +13,7 @@ def remove_common_indent(s):
 
     ret = []
     for line in s.splitlines():
+        line = line.rstrip()
         if line:
             assert line[:ws_count] == ' '*ws_count
             ret.append(line[ws_count:])

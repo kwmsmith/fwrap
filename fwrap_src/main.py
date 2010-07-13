@@ -158,7 +158,7 @@ def wrap(source=None,**kargs):
     # has not been done yet
     if build:
         logger.info("Compiling fortran source...")
-        raise NotImplementedError("Building of object code not supported.")
+        # raise NotImplementedError("Building of object code not supported.")
         logger.info("Compiling was successful.")
 
     # Parse fortran using fparser
@@ -174,7 +174,7 @@ def wrap(source=None,**kargs):
     # Generate library module if requested
     if build:
         logger.info("Compiling library module...")
-        raise NotImplementError("Building of library module not supported.")
+        # raise NotImplementError("Building of library module not supported.")
         logger.info("Compiling was successful.")
         
     # If raw source was passed in, we need to delete the temp file we created
@@ -182,21 +182,14 @@ def wrap(source=None,**kargs):
         os.remove(source_files[0])
         
 
-def parse(source_files,parser='fparser'):
-    r"""Parse fortran code using parser specified
+def parse(source_files):
+    r"""Parse fortran code returning parse tree
     
     :Input:
      - *source_files* - (list) List of valid source files
-     - *parser* - (string) String representing one of the following supported
-       fortran parsers (default = 'fparser'):
-        - 'fparser' - Use fparser
     """
-    if parser == 'fparser':
-        import fwrap_parse
-        ast = fwrap_parse.generate_ast(source_files)
-    else:
-        raise NotImplementedError("Parser %s not supported." % parser)
-    return ast
+    import fwrap_parse
+    return fwrap_parse.generate_ast(source_files)
 
 def generate(fort_ast,name,project_path):
     r"""Given a fortran abstract syntax tree ast, generate wrapper files
