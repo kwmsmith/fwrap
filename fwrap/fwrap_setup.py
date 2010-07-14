@@ -49,7 +49,7 @@ def setup(log='fwrap_setup.log', *args, **kwargs):
             log.close()
             sys.stdout, sys.stderr = _old_stdout, _old_stderr
 
-def configuration(projname, extra_sources=None):
+def configuration(projname, extra_sources=None, **kw):
     def _configuration(parent_package='', top_path=None):
         from numpy.distutils.misc_util import Configuration
         config = Configuration(None, parent_package, top_path)
@@ -63,7 +63,7 @@ def configuration(projname, extra_sources=None):
                    ['%s_fc.f90' % projname,
                     '%s.pyx' % projname]
 
-        config.add_extension(projname, sources=sources)
+        config.add_extension(projname, sources=sources, **kw)
 
         return config
 

@@ -74,8 +74,8 @@ def wrap(source=None,**kargs):
        name is the one that distutils recognizes.  Default is 'gnu95'.
      - *fflags* - (string) Compilation flags used, appended to the end of 
        distutils compilation run
-     - *ldflags* - (string) Linker flags used, used in linking final
-       library.
+     - *libraries* - (list)
+     - *library_dirs* - (list)
      - *recompile* - (bool) Recompile all object files before creating shared
        library, default is True
      - *override* - (bool) If a project directory already exists in the
@@ -87,7 +87,7 @@ def wrap(source=None,**kargs):
         if kargs['config'] not in file_list:
             logger.warning("Could not open configuration file %s" % kargs['config'])
     for opt in _available_options.iterkeys():
-        if not opt == 'config': 
+        if not opt == 'config':
             if kargs.has_key(opt):
                 exec("%s = kargs[opt]" % opt)
             else:
@@ -168,7 +168,8 @@ def wrap(source=None,**kargs):
     # Generate library module if requested
     if build:
         logger.info("Compiling sources and generating extension module...")
-        file_name, buf = generate_setup(name, 'fwrap_setup.log', source_files)
+        file_name, buf = generate_setup(name, 'fwrap_setup.log',
+                                source_files, libraries, library_dirs)
         write_to_project_dir(project_path, file_name, buf)
         odir = os.path.abspath(os.curdir)
         try:
@@ -237,17 +238,26 @@ def write_to_project_dir(project_path, file_name, buf):
     finally:
         fh.close()
 
-def generate_setup(name, log_file, sources):
+def generate_setup(name, log_file,
+                    sources,
+                    libraries=None,
+                    library_dirs=None):
     tmpl = '''\
 from fwrap.fwrap_setup import setup, fwrap_cmdclass, configuration
 
-cfg = configuration(projname='%(PROJNAME)s', extra_sources=%(SRC_LST)s)
+cfg_args = %(CFG_ARGS)s
+
+cfg = configuration(projname='%(PROJNAME)s', **cfg_args)
 setup(log='%(LOG_FILE)s', cmdclass=fwrap_cmdclass, configuration=cfg)
 ''' 
     sources = [os.path.abspath(source) for source in sources]
+    cfg_args = {'extra_sources' : sources,
+                'libraries' : libraries or [],
+                'library_dirs' : library_dirs or [],
+               }
     dd = {'PROJNAME': name,
             'LOG_FILE': log_file,
-            'SRC_LST': repr(sources)}
+            'CFG_ARGS': repr(cfg_args)}
 
     return 'setup.py', (tmpl % dd)
         
@@ -300,10 +310,10 @@ def main():
     parser.add_option('-C','--config',dest='config',help='')
     parser.add_option('-c','-b','--build',dest='build',action='store_true',help='')
     parser.add_option('-o','--out_dir',dest='out_dir',help='')
-    parser.add_option('--f90',dest='f90',help='')
     parser.add_option('-F','--fcompiler',dest='fcompiler',help='')
     parser.add_option('-f','--fflags',dest='fflags',help='')
-    parser.add_option('-l','--ldflags',dest='ldflags',help='')
+    parser.add_option('-l', '--library', dest='libraries', action='append')
+    parser.add_option('-L', '--libdir', dest='library_dirs', action='append')
     parser.add_option('-r','--recompile',action="store_true",dest='recompile',help='')
     parser.add_option('--no-recompile',action="store_false",dest='recompile',help='')
     parser.add_option('--override',action="store_true",dest='override',help='')
