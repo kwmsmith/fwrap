@@ -247,7 +247,7 @@ setup(log='%(LOG_FILE)s', cmdclass=fwrap_cmdclass, configuration=cfg)
     sources = [os.path.abspath(source) for source in sources]
     dd = {'PROJNAME': name,
             'LOG_FILE': log_file,
-            'SRC_LST': str([', '.join(sources)])}
+            'SRC_LST': repr(sources)}
 
     return 'setup.py', (tmpl % dd)
         
