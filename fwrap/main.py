@@ -154,13 +154,6 @@ def wrap(source=None,**kargs):
     for src in source_files:
         logger.debug("  %s" % src)
     
-    # Build source if need be, this is set to False by default as this section
-    # has not been done yet
-    if build:
-        logger.info("Compiling fortran source...")
-        # raise NotImplementedError("Building of object code not supported.")
-        logger.info("Compiling was successful.")
-
     # Parse fortran using fparser
     logger.info("Parsing source files.")
     f_ast = parse(source_files)
@@ -173,8 +166,23 @@ def wrap(source=None,**kargs):
     
     # Generate library module if requested
     if build:
-        logger.info("Compiling library module...")
-        # raise NotImplementError("Building of library module not supported.")
+        logger.info("Compiling sources and generating extension module...")
+        file_name, buf = generate_setup(name, 'fwrap_setup.log', source_files)
+        write_to_project_dir(project_path, file_name, buf)
+        odir = os.path.abspath(os.curdir)
+        try:
+            os.chdir(project_path)
+            logger.info("Changing to project directory %s" % project_path)
+            fcomp_option = '--fcompiler=%s' % fcompiler 
+            from distutils.core import run_setup
+            run_setup(file_name,
+                    script_args=['config', fcomp_option,
+                                 'build_ext', fcomp_option,
+                                 '--inplace'])
+        finally:
+            if os.path.abspath(os.curdir) != odir:
+                logger.info("Returning to %s" % odir)
+                os.chdir(odir)
         logger.info("Compiling was successful.")
         
     # If raw source was passed in, we need to delete the temp file we created
@@ -216,12 +224,30 @@ def generate(fort_ast,name,project_path):
                    (generate_cy_pyx,(cython_ast,name)) )
     for (generator,args) in generators:
         file_name, buf = generator(*args)
-        try:
-            fh = open(os.path.join(project_path,file_name),'w')
-            fh.write(buf.getvalue())
-            fh.close()
-        except IOError:
-            raise
+        write_to_project_dir(project_path, file_name, buf)
+
+def write_to_project_dir(project_path, file_name, buf):
+    fh = open(os.path.join(project_path,file_name),'w')
+    if isinstance(buf, basestring):
+        fh.write(buf)
+    else:
+        fh.write(buf.getvalue())
+    fh.close()
+
+def generate_setup(name, log_file, sources):
+    import pdb; pdb.set_trace()
+    tmpl = '''\
+from fwrap.fwrap_setup import setup, fwrap_cmdclass, configuration
+
+cfg = configuration(projname='%(PROJNAME)s', extra_sources=%(SRC_LST)s)
+setup(log='%(LOG_FILE)s', cmdclass=fwrap_cmdclass, configuration=cfg)
+''' 
+    sources = [os.path.abspath(source) for source in sources]
+    dd = {'PROJNAME': name,
+            'LOG_FILE': log_file,
+            'SRC_LST': str([', '.join(sources)])}
+
+    return 'setup.py', (tmpl % dd)
         
 def generate_genconfig(f_ast, name):
     buf = CodeBuffer()
@@ -263,8 +289,7 @@ def generate_fc_h(fc_ast, name):
     fc_wrap.generate_fc_h(fc_ast, constants.KTP_HEADER_SRC, buf)
     return constants.FC_HDR_TMPL % name, buf
 
-
-if __name__ == "__main__":
+def main():
     # Parse command line options
     parser = OptionParser("usage: fwrap [options] SOURCE_FILES",
                             version=__version__)
