@@ -48,10 +48,7 @@ class test_genconfig(object):
 
     def test_gen_header(self):
         eq_(self.int.gen_c_typedef(), ['typedef int fwrap_default_integer;'])
-        eq_(self.int.gen_c_extra(), [])
-        eq_(self.cmplx.gen_c_typedef(),
-                ['typedef float _Complex fwrap_default_complex;'])
-        eq_(self.cmplx.gen_c_extra(), [])
+        eq_(self.cmplx.gen_c_typedef(), ['typedef float _Complex fwrap_default_complex;'])
 
     def test_gen_pxd(self):
         eq_(self.int.gen_pxd_extern_typedef(), 

@@ -227,7 +227,7 @@ class test_char_assumed_size(object):
 
     def test_extern_declarations(self):
         eq_(self.intent_out.extern_declarations(),
-                ['bytes name'])
+                ['fw_bytes name'])
 
     def test_pre_call_code(self):
         eq_(self.intent_out.pre_call_code(),
@@ -256,26 +256,26 @@ class test_char_args(object):
 
     def test_extern_declarations(self):
         eq_(self.intent_in.extern_declarations(),
-               ['bytes name'])
+               ['fw_bytes name'])
         eq_(self.intent_inout.extern_declarations(),
-               ['bytes name'])
+               ['fw_bytes name'])
         eq_(self.intent_out.extern_declarations(),
                [])
 
     def test_intern_declarations(self):
         eq_(self.intent_out.intern_declarations(),
-                ['cdef bytes fw_name',
+                ['cdef fw_bytes fw_name',
                  'cdef fwrap_npy_intp fw_name_len',
                  'cdef char *fw_name_buf'])
         eq_(self.intent_in.intern_declarations(),
-                ['cdef bytes fw_name',
+                ['cdef fw_bytes fw_name',
                  'cdef fwrap_npy_intp fw_name_len'])
         eq_(self.intent_inout.intern_declarations(),
-                ['cdef bytes fw_name',
+                ['cdef fw_bytes fw_name',
                  'cdef fwrap_npy_intp fw_name_len',
                  'cdef char *fw_name_buf'])
         eq_(self.no_intent.intern_declarations(),
-                ['cdef bytes fw_name',
+                ['cdef fw_bytes fw_name',
                  'cdef fwrap_npy_intp fw_name_len',
                  'cdef char *fw_name_buf'])
 

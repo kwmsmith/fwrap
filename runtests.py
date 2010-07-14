@@ -198,7 +198,7 @@ class FwrapCompileTestCase(unittest.TestCase):
         self.projname = os.path.splitext(self.filename)[0] + '_fwrap'
         self.projdir = os.path.join(self.workdir, self.projname)
         fq_fname = os.path.join(os.path.abspath(self.directory), self.filename)
-        wrap([fq_fname],name=self.projname,out_dir=self.workdir)
+        wrap([fq_fname],name=self.projname,out_dir=self.workdir, fcompiler=(self.fcompiler or 'gnu95'))
         self.runCompileTest_distutils()
 
     def runCompileTest_distutils(self):

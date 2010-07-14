@@ -82,7 +82,7 @@ class _CyCharArg(_CyArgWrapper):
         self.intern_name = 'fw_%s' % self.name
         self.intern_len_name = '%s_len' % self.intern_name
         self.intern_buf_name = '%s_buf' % self.intern_name
-        self.cy_dtype_name = 'bytes'
+        self.cy_dtype_name = 'fw_bytes'
 
     def extern_declarations(self):
         if self.arg.intent in ('in', 'inout', None):
@@ -92,7 +92,7 @@ class _CyCharArg(_CyArgWrapper):
         return []
         
     def intern_declarations(self):
-        ret = ['cdef bytes %s' % self.intern_name,
+        ret = ['cdef %s %s' % (self.cy_dtype_name, self.intern_name),
                 'cdef fwrap_npy_intp %s' % self.intern_len_name]
         if self.arg.intent in ('out', 'inout', None):
             ret.append('cdef char *%s' % self.intern_buf_name)

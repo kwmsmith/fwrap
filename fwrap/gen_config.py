@@ -70,14 +70,21 @@ module fwrap_ktp_mod
     finally:
         f_out.close()
 
-def get_c_includes(ctps):
-    used_ctp_types = set()
-    for ctp in ctps:
-        used_ctp_types.add(type(ctp))
+def get_ctp_classes(ctps):
+    clses = set([type(ctp) for ctp in ctps])
+    return clses
+
+def get_c_includes(ctp_classes):
     includes = []
-    for tp in used_ctp_types:
-        includes.append(tp.c_includes)
+    for tp in ctp_classes:
+        includes.extend(tp.c_includes)
     return includes
+
+def get_pxd_cimports(ctp_classes):
+    cimports = []
+    for tp in ctp_classes:
+        cimports.extend(tp.pxd_cimports)
+    return cimports
 
 def write_header(fname, ctps):
 
@@ -91,13 +98,10 @@ def write_header(fname, ctps):
         h_out.write("#ifndef %s\n" % fname.upper().replace('.','_'))
         h_out.write("#define %s\n" % fname.upper().replace('.', '_'))
         write_err_codes(h_out)
-        for incl in get_c_includes(ctps):
+        for incl in get_c_includes(get_ctp_classes(ctps)):
             if incl: h_out.write(incl+'\n')
         for ctp in ctps:
             for line in ctp.gen_c_typedef():
-                h_out.write(line+'\n')
-        for ctp in ctps:
-            for line in ctp.gen_c_extra():
                 h_out.write(line+'\n')
 
         h_out.write("#endif")
@@ -116,9 +120,9 @@ def write_pxd(fname, h_name, ctps):
     pxd_out = open(fname, 'w')
     extern_block = StringIO()
     try:
+        for cimp in get_pxd_cimports(get_ctp_classes(ctps)):
+            if cimp: pxd_out.write(cimp+'\n')
         for ctp in ctps:
-            for line in ctp.gen_pxd_cimports():
-                pxd_out.write(line+'\n')
             for line in ctp.gen_pxd_intern_typedef():
                 pxd_out.write(line+'\n')
         for ctp in ctps:
@@ -158,6 +162,8 @@ class _ConfigTypeParam(object):
 
     c_includes = ''
 
+    pxd_cimports = ''
+
     def __init__(self, basetype, odecl, fwrap_name):
         self.basetype = basetype
         self.odecl = odecl
@@ -182,12 +188,6 @@ class _ConfigTypeParam(object):
         return ['integer, parameter :: %s = %s' % 
                 (self.fwrap_name, self.fc_type)]
 
-    def gen_c_extra(self):
-        return []
-
-    def _gen_c_includes(self):
-        return []
-
     def gen_c_typedef(self):
         self.check_init()
         return ['typedef %s %s;' % (f2c[self.fc_type], self.fwrap_name)]
@@ -202,13 +202,25 @@ class _ConfigTypeParam(object):
     def gen_pxd_intern_typedef(self):
         return []
 
-    def gen_pxd_cimports(self):
-        return []
+def _get_cy_version():
+    from Cython.Compiler.Version import version
+    major, minor, bug = version.split('.')
+    return (int(major), int(minor))
+
+def _get_pybytes():
+    major, minor = _get_cy_version()
+    if major or (not major and minor >= 12):
+        return ['from python_bytes cimport PyBytes_FromStringAndSize',
+                'ctypedef bytes fw_bytes'
+                ]
+    else:
+        return ['from python_string cimport PyString_FromStringAndSize '
+                            'as PyBytes_FromStringAndSize',
+                'ctypedef str fw_bytes']
 
 class _CharTypeParam(_ConfigTypeParam):
 
-    def gen_pxd_cimports(self):
-        return ['from python_bytes cimport PyBytes_FromStringAndSize']
+    pxd_cimports = _get_pybytes()
 
     def _get_odecl(self):
         return "character(1)"
@@ -220,7 +232,7 @@ class _CharTypeParam(_ConfigTypeParam):
 
 class _CmplxTypeParam(_ConfigTypeParam):
 
-    c_includes = '#include <complex.h>'
+    c_includes = ['#include <complex.h>']
 
     _c2r_map = {'c_float_complex' : 'c_float',
                'c_double_complex' : 'c_double',
@@ -232,28 +244,6 @@ class _CmplxTypeParam(_ConfigTypeParam):
                  'c_long_double_complex' : 'long double complex'
                 }
     
-    def _gen_c_includes(self):
-        return ['#include <complex.h>']
-
-    def gen_c_extra(self):
-        self.check_init()
-        return []
-
-    def _gen_pxd_extern_extra(self):
-        ctype = f2c[self._c2r_map[self.fc_type]]
-        fktp = self.fwrap_name
-        d = {'fktp' : fktp,
-             'ctype' : ctype}
-        code = ('%(ctype)s %(fktp)s_creal(%(fktp)s fdc)\n'
-                '%(ctype)s %(fktp)s_cimag(%(fktp)s fdc)\n'
-                'void %(fktp)s_from_parts(%(ctype)s r, '
-                    '%(ctype)s i, %(fktp)s fc)\n' % d)
-        return code.splitlines()
-
-    def gen_pxd_extern_typedef(self):
-        self.check_init()
-        return []
-
     def gen_pxd_intern_typedef(self):
         self.check_init()
         return ['ctypedef %s %s' % 
@@ -261,6 +251,10 @@ class _CmplxTypeParam(_ConfigTypeParam):
 
     def _cy_name(self):
         return "cy_%s" % self.fwrap_name
+
+    def gen_pxd_extern_typedef(self):
+        self.check_init()
+        return []
 
 
 class _CConfigTypeParam(_ConfigTypeParam):

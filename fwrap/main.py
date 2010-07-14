@@ -174,7 +174,7 @@ def wrap(source=None,**kargs):
         try:
             os.chdir(project_path)
             logger.info("Changing to project directory %s" % project_path)
-            fcomp_option = '--fcompiler=%s' % fcompiler 
+            fcomp_option = '--fcompiler=%s' % fcompiler
             from distutils.core import run_setup
             run_setup(file_name,
                     script_args=['config', fcomp_option,
