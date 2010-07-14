@@ -113,6 +113,10 @@ def find_fc_type(base_type, decl, config_cmd):
     res = fc_type_memo.get((base_type, decl), None)
     if res is not None:
         return res
+    #XXX: test to see if it works for gfortran
+    if base_type == 'logical':
+        base_type = 'integer'
+        decl = decl.replace('logical', 'integer')
     for ctype in gc.type_dict[base_type]:
         test_decl = '%s(kind=%s)' % (base_type, ctype)
         fsrc = fsrc_tmpl % {'TYPE_DECL' : decl,

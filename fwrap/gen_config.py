@@ -204,7 +204,7 @@ class _ConfigTypeParam(object):
 
 def _get_cy_version():
     from Cython.Compiler.Version import version
-    major, minor, bug = version.split('.')
+    major, minor = version.split('.')[:2]
     return (int(major), int(minor))
 
 def _get_pybytes():
