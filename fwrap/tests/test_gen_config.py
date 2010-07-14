@@ -40,41 +40,37 @@ class test_genconfig(object):
         mock_f2c_types(self.ctps)
 
     def test_gen_f_mod(self):
-        eq_(self.int.gen_f_mod(), ['integer, parameter :: fwrap_default_integer = c_int'])
-        eq_(self.cmplx.gen_f_mod(), ['integer, parameter :: fwrap_default_complex = c_float_complex'])
+        eq_(self.int.gen_f_mod(), 
+                ['integer, parameter :: fwrap_default_integer = c_int'])
+        eq_(self.cmplx.gen_f_mod(), 
+                ['integer, parameter :: '
+                    'fwrap_default_complex = c_float_complex'])
 
     def test_gen_header(self):
-        eq_(self.int.gen_c_includes(), [])
         eq_(self.int.gen_c_typedef(), ['typedef int fwrap_default_integer;'])
         eq_(self.int.gen_c_extra(), [])
         eq_(self.cmplx.gen_c_typedef(),
                 ['typedef float _Complex fwrap_default_complex;'])
-        eq_(self.cmplx.gen_c_includes(), ['#include <complex.h>'])
-        eq_(self.cmplx.gen_c_extra(),
-                 ("#define %(ktp)s_creal(x) (creal(x))\n"
-                  "#define %(ktp)s_cimag(x) (cimag(x))\n"
-                  "#define %(ktp)s_from_parts(r, i, x)"
-                  " (x = ((r) + _Complex_I * (i)))" % {'ktp' : self.cmplx.fwrap_name}).splitlines())
+        eq_(self.cmplx.gen_c_extra(), [])
 
     def test_gen_pxd(self):
-        eq_(self.int.gen_pxd_extern_typedef(), ['ctypedef int fwrap_default_integer'])
-        eq_(self.cmplx.gen_pxd_extern_typedef(), ['ctypedef float fwrap_default_complex'])
+        eq_(self.int.gen_pxd_extern_typedef(), 
+                ['ctypedef int fwrap_default_integer'])
+        eq_(self.cmplx.gen_pxd_extern_typedef(), [])
 
         eq_(self.int.gen_pxd_intern_typedef(), [])
-        eq_(self.cmplx.gen_pxd_intern_typedef(), ['ctypedef float complex cy_fwrap_default_complex'])
+        eq_(self.cmplx.gen_pxd_intern_typedef(), 
+                ['ctypedef float complex fwrap_default_complex'])
 
         eq_(self.int.gen_pxd_extern_extra(), [])
-        eq_(self.cmplx.gen_pxd_extern_extra(),
-            ['float fwrap_default_complex_creal(fwrap_default_complex fdc)',
-             'float fwrap_default_complex_cimag(fwrap_default_complex fdc)',
-             'void fwrap_default_complex_from_parts(float r, float i, fwrap_default_complex fc)']
-            )
+        eq_(self.cmplx.gen_pxd_extern_extra(), [])
 
     def test_gen_type_spec(self):
 
         def _compare(ctp_dict, ctp):
             cd = ctp_dict
-            x_ = gc.ConfigTypeParam(cd['basetype'], cd['odecl'], cd['fwrap_name'])
+            x_ = gc.ConfigTypeParam(cd['basetype'], 
+                            cd['odecl'], cd['fwrap_name'])
             eq_(x_,y)
 
         from cPickle import loads

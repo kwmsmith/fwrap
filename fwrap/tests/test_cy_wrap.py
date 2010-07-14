@@ -8,34 +8,6 @@ from tutils import compare
 
 from nose.tools import ok_, eq_, set_trace
 
-class test_empty_func(object):
-
-    def setup(self):
-        self.empty_func = pyf.Function(name='empty_func',
-                            args=(),
-                            return_type=pyf.default_integer)
-        self.buf = StringIO()
-
-    def test_empty_func_pyx_wrapper(self):
-        cy_wrap.generate_pyx([self.empty_func], self.buf)
-        pyx_wrapper = '''
-cimport DP_c
-
-cpdef api DP_c.fwrap_default_int empty_func():
-    return DP_c.empty_func_c()
-'''.splitlines()
-        eq_(pyx_wrapper, self.buf.getvalue().splitlines())
-    
-
-    def test_empty_func_pxd_wrapper(self):
-        cy_wrap.generate_pxd([self.empty_func], self.buf)
-        pxd_wrapper = '''
-cimport DP_c
-
-cpdef api DP_c.fwrap_default_int empty_func()
-'''.splitlines()
-        eq_(pxd_wrapper, self.buf.getvalue().splitlines())
-
 def make_caws(dts, names, intents=None):
     if intents is None:
         intents = ('in',)*len(dts)
@@ -77,14 +49,17 @@ class test_cy_arg_intents(object):
         eq_(self.intent_out.call_arg_list(), ['&name'])
 
     def test_extern_declarations(self):
-        eq_(self.intent_in.extern_declarations(), ['fwrap_default_integer name'])
-        eq_(self.intent_inout.extern_declarations(), ['fwrap_default_logical name'])
+        eq_(self.intent_in.extern_declarations(),
+                ['fwrap_default_integer name'])
+        eq_(self.intent_inout.extern_declarations(),
+                ['fwrap_default_logical name'])
         eq_(self.intent_out.extern_declarations(), [])
 
     def test_intern_declarations(self):
         eq_(self.intent_in.intern_declarations(), [])
         eq_(self.intent_inout.intern_declarations(), [])
-        eq_(self.intent_out.intern_declarations(), ['cdef fwrap_default_real name'])
+        eq_(self.intent_out.intern_declarations(),
+                ['cdef fwrap_default_real name'])
 
     def test_return_tuple_list(self):
         eq_(self.intent_in.return_tuple_list(), [])
@@ -98,8 +73,7 @@ class test_cy_mgr_intents(object):
         self.intents = ('in', 'out', 'inout')
         names = ['name'+str(i) for i in range(3)]
         self.caws = make_caws(self.dts, names, self.intents)
-        self.mgr = cy_wrap.CyArgWrapperManager(args=self.caws,
-                                    return_type_name='fwrap_default_integer')
+        self.mgr = cy_wrap.CyArgWrapperManager(args=self.caws)
 
     def test_arg_declarations(self):
         eq_(self.mgr.arg_declarations(), ['fwrap_default_integer name0',
@@ -127,7 +101,68 @@ class test_cy_arg_wrapper(object):
 
     def test_intern_name(self):
         for dt, caw in zip(self.dts, self.caws):
-            eq_(caw.intern_name(), "foo")
+            eq_(caw.intern_name, "foo")
+
+class test_cy_char_array_arg_wrapper(object):
+
+    def setup(self):
+        arg1d = pyf.Argument('charr1', 
+                            dtype=pyf.CharacterType(
+                                fw_ktp='charr_x8',
+                                len='20', odecl='character(20)'),
+                            dimension=[':'], intent='inout')
+        arg2d = pyf.Argument('charr2', 
+                            dtype=pyf.CharacterType(
+                                fw_ktp='charr_x30',
+                                len='30', odecl='character(30)'),
+                            dimension=[':']*2, intent='inout')
+        fc_arg1d = fc_wrap.ArrayArgWrapper(arg1d)
+        fc_arg2d = fc_wrap.ArrayArgWrapper(arg2d)
+        self.cy_arg1d = cy_wrap.CyCharArrayArgWrapper(fc_arg1d)
+        self.cy_arg2d = cy_wrap.CyCharArrayArgWrapper(fc_arg2d)
+    
+    def test_intern_declarations(self):
+        eq_(self.cy_arg1d.intern_declarations(),
+                ["cdef np.ndarray[fwrap_charr_x8, "
+                 "ndim=1, mode='fortran'] charr1_",
+                 "cdef fwrap_npy_intp charr1_shape[2]"])
+        eq_(self.cy_arg2d.intern_declarations(),
+                ["cdef np.ndarray[fwrap_charr_x30, "
+                 "ndim=2, mode='fortran'] charr2_",
+                 "cdef fwrap_npy_intp charr2_shape[3]"])
+
+    def test_pre_call_code(self):
+        cmp1 = ["charr1_odtype = charr1.dtype",
+                 "for i in range(1): charr1_shape[i+1] = charr1.shape[i]",
+                 "charr1.dtype = 'b'",
+                 "charr1_ = charr1",
+                 "charr1_shape[0] = <fwrap_npy_intp>"
+                     "(charr1.shape[0]/charr1_shape[1])",]
+        eq_(self.cy_arg1d.pre_call_code(), cmp1)
+        cmp2 = ["charr2_odtype = charr2.dtype",
+                 "for i in range(2): charr2_shape[i+1] = charr2.shape[i]",
+                 "charr2.dtype = 'b'",
+                 "charr2_ = charr2",
+                 "charr2_shape[0] = <fwrap_npy_intp>"
+                     "(charr2.shape[0]/charr2_shape[1])"]
+        eq_(self.cy_arg2d.pre_call_code(), cmp2)
+
+    def test_post_call_code(self):
+        eq_(self.cy_arg1d.post_call_code(),
+                ["charr1.dtype = charr1_odtype"])
+        eq_(self.cy_arg2d.post_call_code(),
+                ["charr2.dtype = charr2_odtype"])
+
+    def test_call_arg_list(self):
+        eq_(self.cy_arg1d.call_arg_list(),
+            ["&charr1_shape[0]",
+             "&charr1_shape[1]",
+             "<fwrap_charr_x8*>charr1_.data"])
+        eq_(self.cy_arg2d.call_arg_list(),
+            ["&charr2_shape[0]",
+             "&charr2_shape[1]",
+             "&charr2_shape[2]",
+             "<fwrap_charr_x30*>charr2_.data"])
 
 class test_cy_array_arg_wrapper(object):
     
@@ -138,7 +173,8 @@ class test_cy_array_arg_wrapper(object):
                             dimension=[':']*1, intent='inout')
         fc_arg = fc_wrap.ArrayArgWrapper(arg1)
         self.cy_arg = cy_wrap.CyArrayArgWrapper(fc_arg)
-        self.cy_int_arg = cy_wrap.CyArrayArgWrapper(fc_wrap.ArrayArgWrapper(arg2))
+        self.cy_int_arg = cy_wrap.CyArrayArgWrapper(
+                            fc_wrap.ArrayArgWrapper(arg2))
 
     def test_extern_declarations(self):
         eq_(self.cy_arg.extern_declarations(), ['object array'])
@@ -181,9 +217,13 @@ class test_char_assumed_size(object):
         self.intents = ('in', 'out', 'inout', None)
         self.dtypes = [pyf.CharacterType('ch_xX',
                                         len='*',
-                                        odecl='character(len=*)') for _ in range(4)]
-        self.caws = make_caws(self.dtypes, ['name']*len(self.dtypes), self.intents)
-        self.intent_in, self.intent_out, self.intent_inout, self.no_intent = self.caws
+                                        odecl='character(len=*)')
+                                        for _ in range(4)]
+        self.caws = make_caws(self.dtypes, 
+                              ['name']*len(self.dtypes), 
+                              self.intents)
+        (self.intent_in, self.intent_out, 
+                self.intent_inout, self.no_intent) = self.caws
 
     def test_extern_declarations(self):
         eq_(self.intent_out.extern_declarations(),
@@ -191,11 +231,14 @@ class test_char_assumed_size(object):
 
     def test_pre_call_code(self):
         eq_(self.intent_out.pre_call_code(),
-                ['fw_name = name',
-                 'fw_name_len = len(fw_name)'])
+                ['fw_name_len = len(name)',
+                 'fw_name = PyBytes_FromStringAndSize(NULL, fw_name_len)',
+                 'fw_name_buf = <char*>fw_name',])
         eq_(self.intent_inout.pre_call_code(),
-                ['fw_name = PyBytes_FromStringAndSize(<char*>name, len(name))',
-                 'fw_name_len = len(fw_name)'])
+                ['fw_name_len = len(name)',
+                 'fw_name = PyBytes_FromStringAndSize(NULL, fw_name_len)',
+                 'fw_name_buf = <char*>fw_name',
+                 'memcpy(fw_name_buf, <char*>name, fw_name_len+1)',])
 
 class test_char_args(object):
 
@@ -205,8 +248,11 @@ class test_char_args(object):
                                         len=str(d),
                                         odecl='character(len=%d)'%d) \
                             for d in (10,20,30,40)]
-        self.caws = make_caws(self.dtypes, ['name']*len(self.dtypes), self.intents)
-        self.intent_in, self.intent_out, self.intent_inout, self.no_intent = self.caws
+        self.caws = make_caws(self.dtypes, 
+                                ['name']*len(self.dtypes), 
+                                self.intents)
+        (self.intent_in, self.intent_out, 
+                self.intent_inout, self.no_intent) = self.caws
 
     def test_extern_declarations(self):
         eq_(self.intent_in.extern_declarations(),
@@ -219,25 +265,33 @@ class test_char_args(object):
     def test_intern_declarations(self):
         eq_(self.intent_out.intern_declarations(),
                 ['cdef bytes fw_name',
-                 'cdef fwrap_npy_intp fw_name_len'])
+                 'cdef fwrap_npy_intp fw_name_len',
+                 'cdef char *fw_name_buf'])
         eq_(self.intent_in.intern_declarations(),
                 ['cdef bytes fw_name',
                  'cdef fwrap_npy_intp fw_name_len'])
         eq_(self.intent_inout.intern_declarations(),
                 ['cdef bytes fw_name',
-                 'cdef fwrap_npy_intp fw_name_len'])
+                 'cdef fwrap_npy_intp fw_name_len',
+                 'cdef char *fw_name_buf'])
+        eq_(self.no_intent.intern_declarations(),
+                ['cdef bytes fw_name',
+                 'cdef fwrap_npy_intp fw_name_len',
+                 'cdef char *fw_name_buf'])
 
     def test_pre_call_code(self):
         eq_(self.intent_out.pre_call_code(),
-                ['fw_name = "%s"' % (' '*20),
-                 'fw_name_len = len(fw_name)'])
+                ['fw_name_len = 20',
+                 'fw_name = PyBytes_FromStringAndSize(NULL, fw_name_len)',
+                 'fw_name_buf = <char*>fw_name'])
         eq_(self.intent_in.pre_call_code(),
-                ['fw_name = name',
-                 'fw_name_len = len(fw_name)'])
+                ['fw_name_len = len(name)',
+                 'fw_name = name',])
         eq_(self.intent_inout.pre_call_code(),
-                ['name = name[:30] + " "*(30-len(name))',
-                 'fw_name = PyBytes_FromStringAndSize(<char*>name, len(name))',
-                 'fw_name_len = len(fw_name)'])
+                ['fw_name_len = 30',
+                 'fw_name = PyBytes_FromStringAndSize(NULL, fw_name_len)',
+                 'fw_name_buf = <char*>fw_name',
+                 'memcpy(fw_name_buf, <char*>name, fw_name_len+1)',])
 
     def test_post_call_code(self):
         eq_(self.intent_out.post_call_code(), [])
@@ -245,9 +299,11 @@ class test_char_args(object):
         eq_(self.intent_inout.post_call_code(), [])
 
     def test_call_arg_list(self):
-        eq_(self.intent_out.call_arg_list(), ['&fw_name_len', '<char*>fw_name'])
-        eq_(self.intent_in.call_arg_list(), ['&fw_name_len', '<char*>fw_name'])
-        eq_(self.intent_inout.call_arg_list(), ['&fw_name_len', '<char*>fw_name'])
+        eq_(self.intent_out.call_arg_list(), ['&fw_name_len', 'fw_name_buf'])
+        eq_(self.intent_in.call_arg_list(), 
+                ['&fw_name_len', '<char*>fw_name'])
+        eq_(self.intent_inout.call_arg_list(), 
+                ['&fw_name_len', 'fw_name_buf'])
 
     def test_return_tuple_list(self):
         eq_(self.intent_inout.return_tuple_list(), ['fw_name'])
@@ -259,46 +315,39 @@ class test_cmplx_args(object):
     def setup(self):
         self.intents = ('in', 'out', 'inout', None)
         self.dts = ('default_complex',)*len(self.intents)
-        self.caws = make_caws(self.dts, ['name']*len(self.intents), self.intents)
+        self.caws = make_caws(self.dts, 
+                              ['name']*len(self.intents), 
+                              self.intents)
         self.intent_in, self.intent_out, self.intent_inout, \
                 self.intent_none = self.caws
 
     def test_extern_declarations(self):
         eq_(self.intent_in.extern_declarations(),
-                ['cy_fwrap_default_complex name'])
+                ['fwrap_default_complex name'])
         eq_(self.intent_inout.extern_declarations(),
-                ['cy_fwrap_default_complex name'])
+                ['fwrap_default_complex name'])
         eq_(self.intent_none.extern_declarations(),
-                ['cy_fwrap_default_complex name'])
+                ['fwrap_default_complex name'])
 
     def test_intern_declarations(self):
         eq_(self.intent_out.intern_declarations(),
-                ['cdef cy_fwrap_default_complex name',
-                 'cdef fwrap_default_complex fw_name'])
-        eq_(self.intent_in.intern_declarations(),
-                ['cdef fwrap_default_complex fw_name'])
-        eq_(self.intent_inout.intern_declarations(),
-                ['cdef fwrap_default_complex fw_name'])
-        eq_(self.intent_none.intern_declarations(),
-                ['cdef fwrap_default_complex fw_name'])
+                ['cdef fwrap_default_complex name'])
+        eq_(self.intent_in.intern_declarations(), [])
+        eq_(self.intent_inout.intern_declarations(), [])
+        eq_(self.intent_none.intern_declarations(), [])
 
     def test_pre_call_code(self):
-        eq_(self.intent_in.pre_call_code(),
-                ['fwrap_default_complex_from_parts(name.real, name.imag, fw_name)'])
-        eq_(self.intent_out.pre_call_code(),
-                [])
+        eq_(self.intent_in.pre_call_code(), [])
+        eq_(self.intent_out.pre_call_code(), [])
 
     def test_post_call_code(self):
-        eq_(self.intent_out.post_call_code(),
-                ['name.real = fwrap_default_complex_creal(fw_name)',
-                 'name.imag = fwrap_default_complex_cimag(fw_name)'])
-        eq_(self.intent_in.post_call_code(),
-                [])
+        eq_(self.intent_out.post_call_code(), [])
+        eq_(self.intent_in.post_call_code(), [])
 
     def test_call_arg_list(self):
-        eq_(self.intent_in.call_arg_list(), ['&fw_name'])
-        eq_(self.intent_out.call_arg_list(), ['&fw_name'])
-        eq_(self.intent_none.call_arg_list(), ['&fw_name'])
+        eq_(self.intent_in.call_arg_list(), ['&name'])
+        eq_(self.intent_out.call_arg_list(), ['&name'])
+        eq_(self.intent_none.call_arg_list(), ['&name'])
 
     def test_return_tuple_list(self):
         eq_(self.intent_inout.return_tuple_list(), ['name'])
@@ -316,10 +365,7 @@ class test_cy_arg_wrapper_mgr(object):
                     intent='in')
             fwarg = fc_wrap.ArgWrapper(arg)
             self.cy_args.append(cy_wrap.CyArgWrapper(fwarg))
-        self.rtn = "fwrap_default_integer"
-        self.mgr = cy_wrap.CyArgWrapperManager(
-                        args=self.cy_args,
-                        return_type_name=self.rtn)
+        self.mgr = cy_wrap.CyArgWrapperManager(args=self.cy_args)
 
     def test_arg_declarations(self):
         eq_(self.mgr.arg_declarations(),
@@ -327,11 +373,7 @@ class test_cy_arg_wrapper_mgr(object):
 
     def test_call_arg_list(self):
         eq_(self.mgr.call_arg_list(),
-                ["&%s" % cy_arg.intern_name() for cy_arg in self.cy_args])
-
-    def test_return_arg_declaration(self):
-        eq_(self.mgr.return_arg_declaration(),
-                ["cdef %s fwrap_return_var" % self.rtn])
+                ["&%s" % cy_arg.intern_name for cy_arg in self.cy_args])
 
 class test_empty_ret_tuple(object):
 
@@ -348,15 +390,17 @@ class test_cy_proc_wrapper(object):
 
     def setup(self):
         int_arg_in = pyf.Argument("int_arg_in", pyf.default_integer, 'in')
-        int_arg_inout = pyf.Argument("int_arg_inout", pyf.default_integer, 'inout')
+        int_arg_inout = pyf.Argument("int_arg_inout",
+                                     pyf.default_integer, 'inout')
         int_arg_out = pyf.Argument("int_arg_out", pyf.default_integer, 'out')
         real_arg = pyf.Argument("real_arg", pyf.default_real)
         all_args = [int_arg_in, int_arg_inout, int_arg_out, real_arg]
 
+        return_arg = pyf.Argument(name="fort_func", dtype=pyf.default_integer)
         pyf_func = pyf.Function(
                                 name="fort_func",
                                 args=all_args,
-                                return_type=pyf.default_integer)
+                                return_arg=return_arg)
         func_wrapper = fc_wrap.FunctionWrapper(
                                 wrapped=pyf_func)
         self.cy_func_wrapper = cy_wrap.ProcWrapper(
@@ -388,26 +432,33 @@ class test_cy_proc_wrapper(object):
         eq_(self.cy_subr_wrapper.proc_call(),
                 'fort_subr_c(&int_arg_in,'
                 ' &int_arg_inout, &int_arg_out,'
-                ' &real_arg)')
+                ' &real_arg, &fw_iserr__, fw_errstr__)')
 
     def test_func_call(self):
-        eq_(self.cy_func_wrapper.proc_call(),
-                'fwrap_return_var = '
-                'fort_func_c(&int_arg_in,'
-                ' &int_arg_inout, &int_arg_out,'
-                ' &real_arg)')
+        eq_(self.cy_func_wrapper.proc_call(), 'fort_func_c'
+                                              '(&fw_ret_arg, '
+                                              '&int_arg_in, '
+                                              '&int_arg_inout, '
+                                              '&int_arg_out, '
+                                              '&real_arg, '
+                                              '&fw_iserr__, '
+                                              'fw_errstr__)')
 
     def test_subr_declarations(self):
         buf = CodeBuffer()
         self.cy_subr_wrapper.temp_declarations(buf)
-        compare(buf.getvalue(), 'cdef fwrap_default_integer int_arg_out')
+        compare(buf.getvalue(), 'cdef fwrap_default_integer int_arg_out\n'
+                                'cdef fwrap_default_integer fw_iserr__\n'
+                                'cdef fwrap_default_character fw_errstr__[FW_ERRSTR_LEN]')
 
     def test_func_declarations(self):
         buf = CodeBuffer()
         self.cy_func_wrapper.temp_declarations(buf)
         decls = '''\
-                cdef fwrap_default_integer int_arg_out
-                cdef fwrap_default_integer fwrap_return_var
+        cdef fwrap_default_integer fw_ret_arg
+        cdef fwrap_default_integer int_arg_out
+        cdef fwrap_default_integer fw_iserr__
+        cdef fwrap_default_character fw_errstr__[FW_ERRSTR_LEN]
                 '''
         compare(buf.getvalue(), decls)
 
@@ -417,7 +468,11 @@ class test_cy_proc_wrapper(object):
         cy_wrapper = '''\
         cpdef api object fort_subr(fwrap_default_integer int_arg_in, fwrap_default_integer int_arg_inout, fwrap_default_real real_arg):
             cdef fwrap_default_integer int_arg_out
-            fort_subr_c(&int_arg_in, &int_arg_inout, &int_arg_out, &real_arg)
+            cdef fwrap_default_integer fw_iserr__
+            cdef fwrap_default_character fw_errstr__[FW_ERRSTR_LEN]
+            fort_subr_c(&int_arg_in, &int_arg_inout, &int_arg_out, &real_arg, &fw_iserr__, fw_errstr__)
+            if fw_iserr__ != FW_NO_ERR__:
+                raise RuntimeError("an error was encountered when calling the 'fort_subr' wrapper.")
             return (int_arg_inout, int_arg_out, real_arg,)
 '''
         compare(cy_wrapper, buf.getvalue())
@@ -427,9 +482,13 @@ class test_cy_proc_wrapper(object):
         self.cy_func_wrapper.generate_wrapper(buf)
         cy_wrapper = '''\
         cpdef api object fort_func(fwrap_default_integer int_arg_in, fwrap_default_integer int_arg_inout, fwrap_default_real real_arg):
+            cdef fwrap_default_integer fw_ret_arg
             cdef fwrap_default_integer int_arg_out
-            cdef fwrap_default_integer fwrap_return_var
-            fwrap_return_var = fort_func_c(&int_arg_in, &int_arg_inout, &int_arg_out, &real_arg)
-            return (fwrap_return_var, int_arg_inout, int_arg_out, real_arg,)
+            cdef fwrap_default_integer fw_iserr__
+            cdef fwrap_default_character fw_errstr__[FW_ERRSTR_LEN]
+            fort_func_c(&fw_ret_arg, &int_arg_in, &int_arg_inout, &int_arg_out, &real_arg, &fw_iserr__, fw_errstr__)
+            if fw_iserr__ != FW_NO_ERR__:
+                raise RuntimeError("an error was encountered when calling the 'fort_func' wrapper.")
+            return (fw_ret_arg, int_arg_inout, int_arg_out, real_arg,)
         '''
         compare(cy_wrapper, buf.getvalue())

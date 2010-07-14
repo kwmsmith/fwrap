@@ -96,8 +96,10 @@ def find_c_type(ctp, config_cmd):
     if ctp.lang != 'c':
         raise ValueError("wrong language, given %s, expected 'c'" % ctp.lang)
     if ctp.basetype != 'integer':
-        raise ValueError("only integer basetype supported for C type discovery.")
-    basetypes = ('signed char', 'short int', 'int', 'long int', 'long long int')
+        raise ValueError(
+                "only integer basetype supported for C type discovery.")
+    basetypes = ('signed char', 'short int', 
+                    'int', 'long int', 'long long int')
     expected = ['sizeof(%s)' % basetype for basetype in basetypes]
     result = config_cmd.check_type_size(type_name=ctp.odecl,
                     headers=['Python.h', 'numpy/arrayobject.h'],
@@ -213,10 +215,12 @@ class fw_build_ext(np_build_ext):
                   "but no Fortran compiler found" % (ext.name)
         if ext.language in ['f77','f90'] and fcompiler is None:
             self.warn("extension %r has Fortran libraries " \
-                  "but no Fortran linker found, using default linker" % (ext.name))
+                      "but no Fortran linker "
+                      "found, using default linker" % (ext.name))
         if ext.language=='c++' and cxx_compiler is None:
             self.warn("extension %r has C++ libraries " \
-                  "but no C++ linker found, using default linker" % (ext.name))
+                      "but no C++ linker "
+                      "found, using default linker" % (ext.name))
 
         kws = {'depends':ext.depends}
         output_dir = self.build_temp
@@ -303,7 +307,8 @@ class fw_build_ext(np_build_ext):
         if self.compiler.compiler_type=='msvc':
             # expand libraries with fcompiler libraries as we are
             # not using fcompiler linker
-            self._libs_with_msvc_and_fortran(fcompiler, libraries, library_dirs)
+            self._libs_with_msvc_and_fortran(fcompiler, 
+                        libraries, library_dirs)
 
         # elif ext.language in ['f77','f90'] and fcompiler is not None:
             # linker = fcompiler.link_shared_object
@@ -353,7 +358,8 @@ class fw_config(np_config):
                     self.fcompiler.customize_cmd(self)
                     self.fcompiler.show_customization()
                 else:
-                    self.warn('f90_compiler=%s is not available.' % self.fcompiler.compiler_type)
+                    self.warn('f90_compiler=%s is not available.' % 
+                                self.fcompiler.compiler_type)
                     self.fcompiler = None
 
 class _dummy_scons(npscons):

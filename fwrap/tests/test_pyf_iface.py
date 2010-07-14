@@ -3,16 +3,19 @@ from nose.tools import ok_, eq_, set_trace, assert_raises
 
 class test_program_units(object):
     def test_function(self):
+        return_arg = pyf.Argument('fort_function', dtype=pyf.default_integer)
         ffun = pyf.Function(name="fort_function",
                 args=(),
-                return_type=pyf.default_integer)
+                return_arg=return_arg)
         ok_(ffun.name == 'fort_function')
         ok_(ffun.return_arg.dtype is pyf.default_integer)
 
     def test_function_args(self):
-        pyf.Function(name="ffun",
+        name = 'ffun'
+        return_arg = pyf.Argument(name, dtype=pyf.default_integer)
+        pyf.Function(name=name,
                 args=('a', 'b', 'c'),
-                return_type=pyf.default_integer)
+                return_arg=return_arg)
 
     def test_subroutine(self):
         pyf.Subroutine(name='subr',
@@ -38,18 +41,36 @@ class test_program_units(object):
                     ]
                 )
 
+def test_func_return_array():
+    args = [pyf.Argument(name='a', dtype=pyf.default_integer, intent='in'),
+            pyf.Argument(name='b', dtype=pyf.default_integer, intent='in')],
+    return_arg = pyf.Argument(name="arr_fun", 
+                              dtype=pyf.default_real, 
+                              dimension=('a', 'b'))
+    arrfun = pyf.Function(name="arr_fun", 
+                            args=args, 
+                            return_arg=return_arg)
+    
+    
+
+
+
+
+
 def test_valid_proc_name():
     ok_(pyf.Procedure('name', ()))
     assert_raises(pyf.InvalidNameException, pyf.Procedure, '_a', ())
 
 def test_valid_arg_name():
     ok_(pyf.Argument('name', pyf.default_integer))
-    assert_raises(pyf.InvalidNameException, pyf.Argument, '_a', pyf.default_integer)
+    assert_raises(pyf.InvalidNameException, 
+                        pyf.Argument, '_a', pyf.default_integer)
 
 class test_arg_manager(object):
     
     def test_declaration_order(self):
-        array_arg = pyf.Argument('arr', pyf.default_integer, 'in', dimension=('d1', 'd2'))
+        array_arg = pyf.Argument('arr', 
+                pyf.default_integer, 'in', dimension=('d1', 'd2'))
         d1 = pyf.Argument('d1', pyf.default_integer, 'in')
         d2 = pyf.Argument('d2', pyf.default_integer, 'in')
         am = pyf.ArgManager([array_arg, d2, d1])
@@ -61,11 +82,14 @@ integer(kind=fwrap_default_integer), dimension(d1, d2), intent(in) :: arr
         eq_(am.arg_declarations(), decls.splitlines())
 
 def test_parameter():
-    param = pyf.Parameter(name='FOO', dtype=pyf.default_integer, value='kind(1.0D0)')
+    param = pyf.Parameter(name='FOO', 
+                dtype=pyf.default_integer, value='kind(1.0D0)')
 
 def test_dtype():
-    assert_raises(pyf.InvalidNameException, pyf.IntegerType, 'selected_int_kind(10)')
-    assert_raises(pyf.InvalidNameException, pyf.RealType, 'selected_real_kind(10)')
+    assert_raises(pyf.InvalidNameException, 
+                        pyf.IntegerType, 'selected_int_kind(10)')
+    assert_raises(pyf.InvalidNameException, 
+                        pyf.RealType, 'selected_real_kind(10)')
 
 def test_valid_fort_name():
     ok_(pyf.valid_fort_name('F12_bar'))

@@ -11,7 +11,8 @@ from pprint import pprint
 #    text.
 
 def test_breakup():
-    line = """aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"""
+    line = ("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa "
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     
     for chunk in (1, 2, 3, 5, 10, 20, 50, len(line)):
         yield breakup_gen, line, chunk
@@ -45,7 +46,8 @@ def simple_break(text, chunk):
     return test_ret
 
 def test_nobreak():
-    line = """aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"""
+    line = ("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     ret = code.reflow_line(line, 0, 100)
     eq_(ret, [line])
 
@@ -54,9 +56,9 @@ def test_indent():
     ret = code.reflow_line(line, 1, 100)
     eq_(ret, [code.INDENT+line])
     ret = code.reflow_line(line, 1, 10)
-    eq_(ret, [code.INDENT+line[:8]+'&', code.INDENT+'&'+line[8:16]+'&', code.INDENT+'&'+line[16:]])
-    # set_trace()
-
+    eq_(ret, [code.INDENT+line[:8]+'&', 
+              code.INDENT+'&'+line[8:16]+'&', 
+              code.INDENT+'&'+line[16:]])
 def test_reflow():
     reflow_src = ("subroutine many_args(a0, a1, a2, a3, a4, a5, a6, a7, a8, "
                   "a9, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29, a30"

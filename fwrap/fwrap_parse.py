@@ -14,9 +14,8 @@ def generate_ast(fsrcs):
             if proc.blocktype == 'subroutine':
                 ast.append(pyf.Subroutine(name=proc.name, args=fargs))
             elif proc.blocktype == 'function':
-                ret_type = get_rettype(proc)
                 ast.append(pyf.Function(name=proc.name, args=fargs,
-                    return_type=pyf.default_integer))
+                    return_arg=_get_ret_arg(proc)))
             else:
                 raise RuntimeError("unsupported Fortran construct %r." % proc)
     return ast
@@ -25,33 +24,43 @@ def generate_ast(fsrcs):
 def is_proc(proc):
     return proc.blocktype in ('subroutine', 'function')
 
-def get_rettype(proc):
+def _get_ret_arg(proc):
     ret_var = proc.get_variable(proc.result)
-    return _get_dtype(ret_var.get_typedecl())
+    ret_arg = _get_arg(ret_var)
+    ret_arg.intent = None
+    return ret_arg
+
+def _get_arg(p_arg):
+    p_typedecl = p_arg.get_typedecl()
+    dtype = _get_dtype(p_typedecl)
+    name = p_arg.name
+    intent = _get_intent(p_arg)
+    if p_arg.is_scalar():
+        return pyf.Argument(name=name, dtype=dtype, intent=intent)
+    elif p_arg.is_array():
+        p_dims = p_arg.get_array_spec()
+        dims = []
+        for dim in p_dims:
+            if dim == ('',''):
+                dims.append(':')
+            elif len(dim) == 1:
+                dims.append(dim[0])
+            else:
+                raise RuntimeError(
+                        "can't handle dimension(x:y) declarations yet...")
+        return pyf.Argument(name=name, 
+                dtype=dtype, intent=intent, dimension=dims)
+    else:
+        raise RuntimeError(
+                "argument %s is neither "
+                    "a scalar or an array (derived type?)" % p_arg)
+
 
 def _get_args(proc):
     args = []
     for argname in proc.args:
         p_arg = proc.get_variable(argname)
-        p_typedecl = p_arg.get_typedecl()
-        dtype = _get_dtype(p_typedecl)
-        name = p_arg.name
-        intent = _get_intent(p_arg)
-        if p_arg.is_scalar():
-            args.append(pyf.Argument(name=name, dtype=dtype, intent=intent))
-        elif p_arg.is_array():
-            p_dims = p_arg.get_array_spec()
-            dims = []
-            for dim in p_dims:
-                if dim == ('',''):
-                    dims.append(':')
-                elif len(dim) == 1:
-                    dims.append(dim[0])
-                else:
-                    raise RuntimeError("can't handle dimension(x:y) declarations yet...")
-            args.append(pyf.Argument(name=name, dtype=dtype, intent=intent, dimension=dims))
-        else:
-            raise RuntimeError("argument %s is neither a scalar or an array (derived type?)" % p_arg)
+        args.append(_get_arg(p_arg))
     return args
 
 def _get_intent(arg):
@@ -68,7 +77,9 @@ def _get_intent(arg):
     if not intents:
         raise RuntimeError("argument has no intent specified, '%s'" % arg)
     if len(intents) > 1:
-        raise RuntimeError("argument has multiple intents specified, '%s', %s" % (arg, intents))
+        raise RuntimeError(
+                "argument has multiple "
+                    "intents specified, '%s', %s" % (arg, intents))
     return intents[0]
 
 name2default = {
@@ -90,25 +101,33 @@ name2type = {
 
 def _get_dtype(typedecl):
     if not typedecl.is_intrinsic():
-        raise RuntimeError("only intrinsic types supported ATM... [%s]" % str(typedecl))
+        raise RuntimeError(
+                "only intrinsic types supported ATM... [%s]" % str(typedecl))
     length, kind = typedecl.selector
     if not kind and not length:
         return name2default[typedecl.name]
     if length and kind and typedecl.name != 'character':
-        raise RuntimeError("both length and kind specified for"
-                           " non-character intrinsic type: length: %s kind: %s" % (length, kind))
+        raise RuntimeError("both length and kind specified for "
+                               "non-character intrinsic type: "
+                               "length: %s kind: %s" % (length, kind))
     if typedecl.name == 'character':
         if length == '*':
             fw_ktp = '%s_xX' % (typedecl.name)
         else:
             fw_ktp = '%s_x%s' % (typedecl.name, length)
-        return pyf.CharacterType(fw_ktp=fw_ktp, odecl=typedecl.tostr().lower(), len=length)
+        return pyf.CharacterType(fw_ktp=fw_ktp, 
+                odecl=typedecl.tostr().lower(), len=length)
     if length and not kind:
-        return name2type[typedecl.name](fw_ktp="%s_x%s" % (typedecl.name, length), odecl=typedecl.tostr().lower())
+        return name2type[typedecl.name](fw_ktp="%s_x%s" % 
+                (typedecl.name, length), 
+                odecl=typedecl.tostr().lower())
     try:
         int(kind)
     except ValueError:
-        raise RuntimeError("only integer constant kind parameters supported ATM, given '%s'" % kind)
+        raise RuntimeError(
+                "only integer constant kind "
+                    "parameters supported ATM, given '%s'" % kind)
     if typedecl.name == 'doubleprecision':
         return pyf.default_dbl
-    return name2type[typedecl.name](fw_ktp="%s_%s" % (typedecl.name, kind), odecl=typedecl.tostr().lower())
+    return name2type[typedecl.name](fw_ktp="%s_%s" % 
+            (typedecl.name, kind), odecl=typedecl.tostr().lower())

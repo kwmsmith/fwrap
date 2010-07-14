@@ -43,7 +43,8 @@ def _break_line(line, level, max_len):
         if idx+1 > max_len:
             if last_break_pos < 0:
                 raise RuntimeError("line too long and unable to break it up.")
-            return [line[:last_break_pos]] + break_line(line[last_break_pos:], level, max_len)
+            return [line[:last_break_pos]] + \
+                        break_line(line[last_break_pos:], level, max_len)
 
         if ch in BREAK_CHARS and not in_comment and not in_string:
             last_break_pos = idx
@@ -52,7 +53,8 @@ def _break_line(line, level, max_len):
             in_comment = True
         elif ch in ('"', "'") and not in_string and not in_comment:
             in_string = True
-        elif ch in ('"', "'") and in_string and not in_escape and not in_comment:
+        elif (ch in ('"', "'") and in_string and not 
+                    in_escape and not in_comment):
             in_string = False
 
         if ch == '\\' and not in_escape:

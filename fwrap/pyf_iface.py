@@ -11,9 +11,12 @@ class InvalidNameException(Exception):
 def ktp_namer(fw_ktp):
     return "fwrap_%s" % fw_ktp
 
-_do_nothing = lambda x: x
 
 class Dtype(object):
+
+    cdef_extern_decls = ''
+
+    cimport_decls = ''
 
     def __hash__(self):
         return hash(self.fw_ktp + (self.odecl or '') + self.type)
@@ -23,71 +26,99 @@ class Dtype(object):
                 self.odecl == other.odecl and \
                 self.type == other.type
 
-    def __init__(self, fw_ktp, odecl=None, lang='fortran'):
+    def __init__(self, fw_ktp, odecl=None, lang='fortran', mangler="fwrap_%s"):
         if not valid_fort_name(fw_ktp):
-            raise InvalidNameException("%s is not a valid fortran parameter name." % fw_ktp)
-        self.fw_ktp = ktp_namer(fw_ktp)
+            raise InvalidNameException(
+                    "%s is not a valid fortran parameter name." % fw_ktp)
+        if mangler:
+            self.fw_ktp = mangler % fw_ktp
+        else:
+            self.fw_ktp = fw_ktp
         self.odecl = odecl
         self.type = None
         self.lang = lang
 
-    def type_spec(self, len=None):
-        if len:
-            return '%s(kind=%s, len=%s)' % (self.type, self.fw_ktp, len)
-        else:
+    def type_spec(self):
+        # if len:
+            # return '%s(kind=%s, len=%s)' % (self.type, self.fw_ktp, len)
+        # else:
             return '%s(kind=%s)' % (self.type, self.fw_ktp)
-
 
     def orig_type_spec(self):
         return self.odecl
 
     def __str__(self):
-        return "%s(fw_ktp=%s, odecl=%s)" % (type(self), self.fw_ktp, self.odecl)
+        return ("%s(fw_ktp=%s, odecl=%s)" % 
+                (type(self), self.fw_ktp, self.odecl))
 
     def all_dtypes(self):
         return [self]
 
 
 class CharacterType(Dtype):
-    def __init__(self, fw_ktp, len, odecl=None):
-        super(CharacterType, self).__init__(fw_ktp, odecl)
+
+    cdef_extern_decls = '''\
+cdef extern from "string.h":
+    void *memcpy(void *dest, void *src, size_t n)
+'''
+
+    def __init__(self, fw_ktp, len, odecl=None, **kwargs):
+        super(CharacterType, self).__init__(fw_ktp, odecl, **kwargs)
         self.len = str(len)
         self.type = 'character'
 
     def all_dtypes(self):
         adts = super(CharacterType, self).all_dtypes()
-        return adts + [dim_dtype]
+        return adts + [dim_dtype, default_character]
 
-default_character = CharacterType(fw_ktp="default_character", len='1', odecl="character(kind=kind('a'))")
+    def type_spec(self):
+        if self.len:
+            return '%s(kind=%s, len=%s)' % (self.type, self.fw_ktp, self.len)
+        else:
+            return '%s(kind=%s)' % (self.type, self.fw_ktp)
+
+
+default_character = CharacterType(
+        fw_ktp="default_character", 
+        len='1', odecl="character(kind=kind('a'))")
+
 
 class IntegerType(Dtype):
 
-    def __init__(self, fw_ktp, odecl=None, lang='fortran'):
-        super(IntegerType, self).__init__(fw_ktp, odecl, lang)
+    def __init__(self, fw_ktp, odecl=None, lang='fortran', **kwargs):
+        super(IntegerType, self).__init__(fw_ktp, odecl, lang, **kwargs)
         self.type = 'integer'
 
-default_integer = IntegerType(fw_ktp='default_integer', odecl="integer(kind(0))")
+
+default_integer = IntegerType(
+        fw_ktp='default_integer', odecl="integer(kind(0))")
 
 dim_dtype = IntegerType(fw_ktp="npy_intp", odecl='npy_intp', lang='c')
 
+
 class LogicalType(Dtype):
 
-    def __init__(self, fw_ktp, odecl=None):
-        super(LogicalType, self).__init__(fw_ktp, odecl)
+    def __init__(self, fw_ktp, odecl=None, **kwargs):
+        super(LogicalType, self).__init__(fw_ktp, odecl, **kwargs)
         self.type = 'integer'
         if self.odecl:
             self.odecl = self.odecl.replace('logical', 'integer')
 
-default_logical = LogicalType(fw_ktp='default_logical', odecl="integer(kind=kind(0))")
+
+default_logical = LogicalType(
+        fw_ktp='default_logical', odecl="integer(kind=kind(0))")
+
 
 class RealType(Dtype):
 
-    def __init__(self, fw_ktp, odecl=None):
-        super(RealType, self).__init__(fw_ktp, odecl)
+    def __init__(self, fw_ktp, odecl=None, **kwargs):
+        super(RealType, self).__init__(fw_ktp, odecl, **kwargs)
         self.type = 'real'
+
 
 default_real = RealType(fw_ktp='default_real', odecl="real(kind(0.0))")
 default_dbl  = RealType(fw_ktp='default_double', odecl="real(kind(0.0D0))")
+
 
 class ComplexType(Dtype):
 
@@ -95,8 +126,18 @@ class ComplexType(Dtype):
         super(ComplexType, self).__init__(fw_ktp, odecl)
         self.type = 'complex'
 
-default_complex = ComplexType(fw_ktp='default_complex', odecl="complex(kind((0.0,0.0)))")
-default_double_complex = ComplexType(fw_ktp='default_double_complex', odecl="complex(kind((0.0D0,0.0D0)))")
+
+default_complex = ComplexType(
+        fw_ktp='default_complex', odecl="complex(kind((0.0,0.0)))")
+default_double_complex = ComplexType(
+        fw_ktp='default_double_complex', odecl="complex(kind((0.0D0,0.0D0)))")
+
+intrinsic_types = [RealType, 
+                   IntegerType, 
+                   ComplexType, 
+                   CharacterType, 
+                   LogicalType]
+
 
 class Parameter(object):
     
@@ -107,9 +148,11 @@ class Parameter(object):
 
 
 class Var(object):
+
     def __init__(self, name, dtype, dimension=None):
         if not valid_fort_name(name):
-            raise InvalidNameException("%s is not a valid fortran variable name.")
+            raise InvalidNameException(
+                    "%s is not a valid fortran variable name.")
         self.name = name
         self.dtype = dtype
         self.dimension = dimension
@@ -118,17 +161,17 @@ class Var(object):
         else:
             self.is_array = False
 
-    def var_specs(self, orig=False, len=None):
+    def var_specs(self, orig=False):
         if orig:
             specs = [self.dtype.orig_type_spec()]
         else:
-            specs = [self.dtype.type_spec(len)]
+            specs = [self.dtype.type_spec()]
         if self.dimension:
             specs.append('dimension(%s)' % ', '.join(self.dimension))
         return specs
 
-    def declaration(self, len=None):
-        return '%s :: %s' % (', '.join(self.var_specs(len=len)), self.name)
+    def declaration(self):
+        return '%s :: %s' % (', '.join(self.var_specs()), self.name)
 
     def orig_declaration(self):
         return "%s :: %s" % (', '.join(self.var_specs(orig=True)), self.name)
@@ -148,7 +191,9 @@ class Argument(object):
 
     def _get_name(self):
         return self._var.name
-    name = property(_get_name)
+    def _set_name(self, name):
+        self._var.name = name
+    name = property(_get_name, _set_name)
 
     def _get_dtype(self):
         return self._var.dtype
@@ -166,9 +211,9 @@ class Argument(object):
         return self._var.is_array
     is_array = property(_is_array)
 
-    def declaration(self):
+    def declaration(self, orig=False):
         var = self._var
-        specs = var.var_specs()
+        specs = var.var_specs(orig=orig)
         if self.intent and not self.is_return_arg:
             if self.intent != 'hide':
                 specs.append('intent(%s)' % self.intent)
@@ -183,10 +228,12 @@ class Argument(object):
             adts += [dim_dtype]
         return adts
 
+
 class ProcArgument(object):
     def __init__(self, proc):
         self.proc = proc
         self.name = proc.name
+
 
 class ArgManager(object):
     
@@ -241,12 +288,14 @@ class ArgManager(object):
             dts.extend(self._return_arg.all_dtypes())
         return dts
 
+
 class Procedure(object):
 
     def __init__(self, name, args):
         super(Procedure, self).__init__()
         if not valid_fort_name(name):
-            raise InvalidNameException("%s is not a valid Fortran procedure name.")
+            raise InvalidNameException(
+                    "%s is not a valid Fortran procedure name.")
         self.name = name
         self.args = args
         self.arg_man = None
@@ -258,7 +307,8 @@ class Procedure(object):
         return self.arg_man.arg_declarations()
 
     def proc_declaration(self):
-        return "%s %s(%s)" % (self.kind, self.name, ', '.join(self.extern_arg_list()))
+        return ("%s %s(%s)" % 
+                (self.kind, self.name, ', '.join(self.extern_arg_list())))
 
     def proc_preamble(self, ktp_mod, buf):
         buf.putln('use %s' % ktp_mod)
@@ -272,13 +322,16 @@ class Procedure(object):
     def all_dtypes(self):
         return self.arg_man.all_dtypes()
 
+
 class Function(Procedure):
     
-    def __init__(self, name, args, return_type):
+    def __init__(self, name, args, return_arg):
         super(Function, self).__init__(name, args)
-        self.return_arg = Argument(name=name, dtype=return_type, intent='out', is_return_arg=True)
+        self.return_arg = return_arg
+        self.return_arg.name = self.name
         self.kind = 'function'
         self.arg_man = ArgManager(self.args, self.return_arg)
+
 
 class Subroutine(Procedure):
 
@@ -287,10 +340,12 @@ class Subroutine(Procedure):
         self.kind = 'subroutine'
         self.arg_man = ArgManager(self.args)
 
+
 class Module(object):
 
     def __init__(self, name, mod_objects=None, uses=None):
         pass
+
 
 class Use(object):
 

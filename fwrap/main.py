@@ -208,7 +208,7 @@ def generate(fort_ast,name,project_path):
     cython_ast = cy_wrap.wrap_fc(c_ast)
     
     # Generate files and write them out
-    generators = ( (generate_type_specs,(fort_ast,name)),
+    generators = ( (generate_type_specs,(c_ast,name)),
                    (generate_fc_f,(c_ast,name)),
                    (generate_fc_h,(c_ast,name)),
                    (generate_fc_pxd,(c_ast,name)),
@@ -243,7 +243,7 @@ def generate_cy_pyx(cy_ast, name):
     buf = CodeBuffer()
     cy_wrap.generate_cy_pyx(cy_ast, buf)
     return constants.CY_PYX_TMPL % name, buf
- 
+
 def generate_fc_pxd(fc_ast, name):
     buf = CodeBuffer()
     fc_header_name = constants.FC_HDR_TMPL % name

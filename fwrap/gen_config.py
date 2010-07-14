@@ -1,78 +1,10 @@
 from cPickle import dumps
-from fwrap import pyf_iface
 import constants
 
-def read_type_spec(fname):
-    from cPickle import loads
-    fh = open(fname, 'rb')
-    ds = loads(fh.read())
-    fh.close()
-    return [ConfigTypeParam(**d) for d in ds]
+INDENT = "    "
 
-def write_f_mod(fname, ctps):
-    f_out = open(fname, 'w')
-    try:
-        f_out.write('''
-module fwrap_ktp_mod
-    use iso_c_binding
-    implicit none
-''')
-        for ctp in ctps:
-            for line in ctp.gen_f_mod():
-                f_out.write('    %s\n' % line)
-        f_out.write('end module fwrap_ktp_mod\n')
-    finally:
-        f_out.close()
-
-def write_header(fname, ctps):
-    h_out = open(fname, 'w')
-    try:
-        h_out.write("#ifndef %s\n" % fname.upper().replace('.','_'))
-        h_out.write("#define %s\n" % fname.upper().replace('.', '_'))
-        for ctp in ctps:
-            for line in ctp.gen_c_includes():
-                h_out.write(line+'\n')
-        for ctp in ctps:
-            for line in ctp.gen_c_typedef():
-                h_out.write(line+'\n')
-        for ctp in ctps:
-            for line in ctp.gen_c_extra():
-                h_out.write(line+'\n')
-
-        h_out.write("#endif")
-    finally:
-        h_out.close()
-
-def write_pxd(fname, h_name, ctps):
-    pxd_out = open(fname, 'w')
-    try:
-        for ctp in ctps:
-            for line in ctp.gen_pxd_cimports():
-                pxd_out.write(line+'\n')
-            for line in ctp.gen_pxd_intern_typedef():
-                pxd_out.write(line+'\n')
-        pxd_out.write('cdef extern from "%s":\n' % h_name)
-        for ctp in ctps:
-            for line in ctp.gen_pxd_extern_typedef():
-                pxd_out.write('    '+line+'\n')
-        for ctp in ctps:
-            for line in ctp.gen_pxd_extern_extra():
-                pxd_out.write('    '+line+'\n')
-    finally:
-        pxd_out.close()
-
-def generate_type_specs(ast, buf):
-    ctps = extract_ctps(ast)
-    _generate_type_specs(ctps, buf)
-
-def _generate_type_specs(ctps, buf):
-    out_lst = []
-    for ctp in ctps:
-        out_lst.append(dict(basetype=ctp.basetype,
-                            odecl=ctp.odecl,
-                            fwrap_name=ctp.fwrap_name,
-                            lang=ctp.lang))
-    buf.write(dumps(out_lst))
+#------------------------------------------------------------------------------
+# -- Collect, store and load type specifications to / from a file ---
 
 def extract_ctps(ast):
     dtypes = set()
@@ -92,6 +24,120 @@ def ctps_from_dtypes(dtypes):
                        lang=dtype.lang))
     return ret
 
+def generate_type_specs(ast, buf):
+    ctps = extract_ctps(ast)
+    _generate_type_specs(ctps, buf)
+
+def _generate_type_specs(ctps, buf):
+    out_lst = []
+    for ctp in ctps:
+        out_lst.append(dict(basetype=ctp.basetype,
+                            odecl=ctp.odecl,
+                            fwrap_name=ctp.fwrap_name,
+                            lang=ctp.lang))
+    buf.write(dumps(out_lst))
+
+def read_type_spec(fname):
+    from cPickle import loads
+    fh = open(fname, 'rb')
+    ds = loads(fh.read())
+    fh.close()
+    return [ConfigTypeParam(**d) for d in ds]
+
+#------------------------------------------------------------------------------
+# -- Write out the type information to a Fortran module, a C header and a
+#    cython .pxd
+
+def write_f_mod(fname, ctps):
+
+    def write_err_codes(f_out):
+        for err_name in sorted(constants.ERR_CODES):
+            f_out.write(INDENT+"integer, parameter :: %s = %d\n" % \
+                    (err_name, constants.ERR_CODES[err_name]))
+
+    f_out = open(fname, 'w')
+    try:
+        f_out.write('''
+module fwrap_ktp_mod
+    use iso_c_binding
+    implicit none
+''')
+        write_err_codes(f_out)
+        for ctp in ctps:
+            for line in ctp.gen_f_mod():
+                f_out.write(INDENT+'%s\n' % line)
+        f_out.write('end module fwrap_ktp_mod\n')
+    finally:
+        f_out.close()
+
+def get_c_includes(ctps):
+    used_ctp_types = set()
+    for ctp in ctps:
+        used_ctp_types.add(type(ctp))
+    includes = []
+    for tp in used_ctp_types:
+        includes.append(tp.c_includes)
+    return includes
+
+def write_header(fname, ctps):
+
+    def write_err_codes(h_out):
+        for err_name in sorted(constants.ERR_CODES):
+            h_out.write("#define %s %d\n" % \
+                    (err_name, constants.ERR_CODES[err_name]))
+
+    h_out = open(fname, 'w')
+    try:
+        h_out.write("#ifndef %s\n" % fname.upper().replace('.','_'))
+        h_out.write("#define %s\n" % fname.upper().replace('.', '_'))
+        write_err_codes(h_out)
+        for incl in get_c_includes(ctps):
+            if incl: h_out.write(incl+'\n')
+        for ctp in ctps:
+            for line in ctp.gen_c_typedef():
+                h_out.write(line+'\n')
+        for ctp in ctps:
+            for line in ctp.gen_c_extra():
+                h_out.write(line+'\n')
+
+        h_out.write("#endif")
+    finally:
+        h_out.close()
+
+def write_pxd(fname, h_name, ctps):
+
+    def write_err_codes(pxd_out):
+        pxd_out.write(INDENT+"enum:\n")
+        for err_name in sorted(constants.ERR_CODES):
+            pxd_out.write((INDENT*2)+"%s = %d\n" %\
+                    (err_name, constants.ERR_CODES[err_name]))
+
+    from cStringIO import StringIO
+    pxd_out = open(fname, 'w')
+    extern_block = StringIO()
+    try:
+        for ctp in ctps:
+            for line in ctp.gen_pxd_cimports():
+                pxd_out.write(line+'\n')
+            for line in ctp.gen_pxd_intern_typedef():
+                pxd_out.write(line+'\n')
+        for ctp in ctps:
+            for line in ctp.gen_pxd_extern_typedef():
+                extern_block.write(INDENT+line+'\n')
+        for ctp in ctps:
+            for line in ctp.gen_pxd_extern_extra():
+                extern_block.write(INDENT+line+'\n')
+        extern_block = extern_block.getvalue()
+        if extern_block.rstrip():
+            pxd_out.write('cdef extern from "%s":\n' % h_name)
+            write_err_codes(pxd_out)
+            pxd_out.write(extern_block)
+    finally:
+        pxd_out.close()
+
+#------------------------------------------------------------------------------
+# -- Factory function; creates _ConfigTypeParam instances. --
+
 def ConfigTypeParam(basetype, odecl, fwrap_name, lang='fortran'):
     if lang == 'c':
         return _CConfigTypeParam(basetype, odecl, fwrap_name)
@@ -103,11 +149,14 @@ def ConfigTypeParam(basetype, odecl, fwrap_name, lang='fortran'):
         else:
             return _ConfigTypeParam(basetype, odecl, fwrap_name)
     else:
-        raise ValueError("unknown language '%s' not one of 'c' or 'fortran'" % lang)
+        raise ValueError(
+                "unknown language '%s' not one of 'c' or 'fortran'" % lang)
 
 class _ConfigTypeParam(object):
 
     lang = 'fortran'
+
+    c_includes = ''
 
     def __init__(self, basetype, odecl, fwrap_name):
         self.basetype = basetype
@@ -130,12 +179,13 @@ class _ConfigTypeParam(object):
 
     def gen_f_mod(self):
         self.check_init()
-        return ['integer, parameter :: %s = %s' % (self.fwrap_name, self.fc_type)]
+        return ['integer, parameter :: %s = %s' % 
+                (self.fwrap_name, self.fc_type)]
 
     def gen_c_extra(self):
         return []
 
-    def gen_c_includes(self):
+    def _gen_c_includes(self):
         return []
 
     def gen_c_typedef(self):
@@ -160,7 +210,17 @@ class _CharTypeParam(_ConfigTypeParam):
     def gen_pxd_cimports(self):
         return ['from python_bytes cimport PyBytes_FromStringAndSize']
 
+    def _get_odecl(self):
+        return "character(1)"
+
+    def _set_odecl(self, od):
+        pass
+
+    odecl = property(_get_odecl, _set_odecl)
+
 class _CmplxTypeParam(_ConfigTypeParam):
+
+    c_includes = '#include <complex.h>'
 
     _c2r_map = {'c_float_complex' : 'c_float',
                'c_double_complex' : 'c_double',
@@ -172,43 +232,43 @@ class _CmplxTypeParam(_ConfigTypeParam):
                  'c_long_double_complex' : 'long double complex'
                 }
     
-    def gen_c_includes(self):
+    def _gen_c_includes(self):
         return ['#include <complex.h>']
 
     def gen_c_extra(self):
         self.check_init()
-        return ("#define %(ktp)s_creal(x) (creal(x))\n"
-                "#define %(ktp)s_cimag(x) (cimag(x))\n"
-                "#define %(ktp)s_from_parts(r, i, x)"
-                " (x = ((r) + _Complex_I * (i)))" % {'ktp' : self.fwrap_name}).splitlines()
+        return []
 
-    def gen_pxd_extern_extra(self):
+    def _gen_pxd_extern_extra(self):
         ctype = f2c[self._c2r_map[self.fc_type]]
         fktp = self.fwrap_name
-        cyktp = self.cy_name()
         d = {'fktp' : fktp,
-             'cyktp' : cyktp,
              'ctype' : ctype}
         code = ('%(ctype)s %(fktp)s_creal(%(fktp)s fdc)\n'
                 '%(ctype)s %(fktp)s_cimag(%(fktp)s fdc)\n'
-                'void %(fktp)s_from_parts(%(ctype)s r, %(ctype)s i, %(fktp)s fc)\n' % d)
+                'void %(fktp)s_from_parts(%(ctype)s r, '
+                    '%(ctype)s i, %(fktp)s fc)\n' % d)
         return code.splitlines()
 
     def gen_pxd_extern_typedef(self):
         self.check_init()
-        return ['ctypedef %s %s' % (f2c[self._c2r_map[self.fc_type]], self.fwrap_name)]
+        return []
 
     def gen_pxd_intern_typedef(self):
         self.check_init()
-        return ['ctypedef %s %s' % (self._c2cy_map[self.fc_type], self.cy_name())]
+        return ['ctypedef %s %s' % 
+                (self._c2cy_map[self.fc_type], self.fwrap_name)]
 
-    def cy_name(self):
+    def _cy_name(self):
         return "cy_%s" % self.fwrap_name
 
 
 class _CConfigTypeParam(_ConfigTypeParam):
 
     lang = 'c'
+
+#------------------------------------------------------------------------------
+# -- Type mapping info. --
 
 f2c = {
     'c_int'             : 'int',
@@ -247,6 +307,8 @@ type_dict = {
         'integer' : ('c_signed_char', 'c_short', 'c_int',
                   'c_long', 'c_long_long'),
         'real' : ('c_float', 'c_double', 'c_long_double'),
-        'complex' : ('c_float_complex', 'c_double_complex', 'c_long_double_complex'),
+        'complex' : ('c_float_complex', 
+                     'c_double_complex', 
+                     'c_long_double_complex'),
         'character' : ('c_char',),
         }
