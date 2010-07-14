@@ -30,8 +30,9 @@ logger = logging.getLogger('fwrap')
 
 # Available options parsed from default config files
 _config_parser = ConfigParser.SafeConfigParser() 
-_config_parser.readfp(open(os.path.join(os.path.dirname(__file__),
-                        'default.config'),'r'))
+fp = open(os.path.join(os.path.dirname(__file__), 'default.config'),'r')
+_config_parser.readfp(fp)
+fp.close()
 _available_options = {}
 for section in _config_parser.sections():
     for opt in _config_parser.options(section):
@@ -228,14 +229,15 @@ def generate(fort_ast,name,project_path):
 
 def write_to_project_dir(project_path, file_name, buf):
     fh = open(os.path.join(project_path,file_name),'w')
-    if isinstance(buf, basestring):
-        fh.write(buf)
-    else:
-        fh.write(buf.getvalue())
-    fh.close()
+    try:
+        if isinstance(buf, basestring):
+            fh.write(buf)
+        else:
+            fh.write(buf.getvalue())
+    finally:
+        fh.close()
 
 def generate_setup(name, log_file, sources):
-    import pdb; pdb.set_trace()
     tmpl = '''\
 from fwrap.fwrap_setup import setup, fwrap_cmdclass, configuration
 

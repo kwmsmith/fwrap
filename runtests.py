@@ -197,49 +197,16 @@ class FwrapCompileTestCase(unittest.TestCase):
     def runTest(self):
         self.projname = os.path.splitext(self.filename)[0] + '_fwrap'
         self.projdir = os.path.join(self.workdir, self.projname)
-        self.wrapped_filename = self.projname+'_fc.f90'
-        self.fwrap_cython_source=self.projname+'.pyx'
         fq_fname = os.path.join(os.path.abspath(self.directory), self.filename)
-        # options = FwrapOptions()
-        # options.projectname = self.projname
-        # options.outdir = self.projdir
         wrap([fq_fname],name=self.projname,out_dir=self.workdir)
         self.runCompileTest_distutils()
 
     def runCompileTest_distutils(self):
-        import sys
-        FILENAME = self.filename
-        PROJNAME = self.projname
-
-        LOG_FILE = 'fwrap_setup.log'
-        if self.verbosity == 3:
-            LOG_FILE = ''
-
-        setup_source = '''
-from fwrap_setup import setup, fwrap_cmdclass, configuration
-      
-cfg = configuration(projname='%(PROJNAME)s', extra_sources=['%(FILENAME)s'])
-
-setup(log='%(LOG_FILE)s', cmdclass=fwrap_cmdclass, configuration=cfg)
-''' % {'PROJNAME': PROJNAME,
-       'FILENAME': FILENAME,
-       'LOG_FILE': LOG_FILE}
-
-        setup_fqpath = os.path.join(self.projdir, 'setup.py')
-        f = open(setup_fqpath,'w')
-        f.write(setup_source)
-        f.close()
-
-        shutil.copy(FWRAP_SETUP, self.projdir)
-        shutil.copy(os.path.join(self.directory, self.filename), self.projdir)
-        from distutils.core import run_setup
         thisdir = os.path.abspath(os.curdir)
-        fcomp_arg = '--fcompiler=%s' % (self.fcompiler or 'gnu95')
         try:
             os.chdir(self.projdir)
             if self.projdir not in sys.path:
                 sys.path.insert(0, self.projdir)
-            run_setup(setup_fqpath, script_args=['config', fcomp_arg, 'build_ext', fcomp_arg, '--inplace'])
             # try to import the compiled extension module
             __import__(self.projname)
             del sys.modules[self.projname]
