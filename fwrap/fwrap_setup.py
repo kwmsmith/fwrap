@@ -266,6 +266,16 @@ class fw_build_ext(np_build_ext):
                 existing_modules = glob('*.mod')
             extra_postargs += fcompiler.module_options(
                 module_dirs,module_build_dir)
+
+            #-----------------------------------------------------------------
+            #XXX: hack, but the same can be said for this ENTIRE MODULE!
+            # since fwrap only works with F90 compilers, fcompiler.compiler_f77
+            # is None, so we replace it with fcompiler.compiler_fix, which is
+            # an F90 compiler.
+            #-----------------------------------------------------------------
+            if fcompiler.compiler_f77 is None:
+                fcompiler.compiler_f77 = fcompiler.compiler_fix
+
             f_objects += fcompiler.compile(fmodule_sources,
                                            output_dir=self.build_temp,
                                            macros=macros,
