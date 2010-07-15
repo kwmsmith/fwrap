@@ -207,16 +207,21 @@ def _get_cy_version():
     major, minor = version.split('.')[:2]
     return (int(major), int(minor))
 
+def _get_py_version():
+    import sys
+    major, minor = sys.version_info[:2]
+    return major, minor
+
 def _get_pybytes():
-    major, minor = _get_cy_version()
-    if major or (not major and minor >= 12):
-        return ['from python_bytes cimport PyBytes_FromStringAndSize',
-                'ctypedef bytes fw_bytes'
-                ]
-    else:
+    major, minor = _get_py_version()
+    if major < 3:
         return ['from python_string cimport PyString_FromStringAndSize '
                             'as PyBytes_FromStringAndSize',
                 'ctypedef str fw_bytes']
+    elif major == 3:
+        return ['from python_bytes cimport PyBytes_FromStringAndSize',
+                'ctypedef bytes fw_bytes'
+                ]
 
 class _CharTypeParam(_ConfigTypeParam):
 
