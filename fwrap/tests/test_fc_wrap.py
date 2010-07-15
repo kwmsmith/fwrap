@@ -346,7 +346,7 @@ subroutine arr_arg_c(arr_d1, arr_d2, arr, d1, d2, fw_iserr__, fw_errstr__) bind(
     fw_iserr__ = FW_INIT_ERR__
     if (d1 .ne. arr_d1 .or. d2 .ne. arr_d2) then
         fw_iserr__ = FW_ARR_DIM__
-        fw_errstr__ = transfer("arr", fw_errstr__)
+        fw_errstr__ = transfer("arr                                                            ", fw_errstr__)
         fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
         return
     endif
@@ -479,25 +479,23 @@ character(kind=fwrap_default_character, len=1), dimension(cs_d1, cs_d2), intent(
         #    ... set error flag and return ...
         #    return
         # endif
-
-        charr1_res = ['if (20 .ne. charr1_d1) then', 
-                      '    fw_iserr__ = FW_CHAR_SIZE__', 
-                      '    fw_errstr__ = transfer("charr1", fw_errstr__)', 
-                      '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR', 
-                      '    return', 
-                      'endif', 
-                      'fw_charr1 = reshape(transfer(charr1, fw_charr1), shape(fw_charr1))']
-
+        charr1_res = ['if (20 .ne. charr1_d1) then',
+                        '    fw_iserr__ = FW_CHAR_SIZE__',
+                        '    fw_errstr__ = transfer("charr1                                                         ", fw_errstr__)',
+                        '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR',
+                        '    return',
+                        'endif',
+                        'fw_charr1 = reshape(transfer(charr1, fw_charr1), shape(fw_charr1))']
         charr3_res = ['if (30 .ne. charr3_d1) then', 
-                      '    fw_iserr__ = FW_CHAR_SIZE__', 
-                      '    fw_errstr__ = transfer("charr3", fw_errstr__)', 
-                      '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR', 
-                      '    return', 
-                      'endif', 
-                      'fw_charr3 = reshape(transfer(charr3, fw_charr3), shape(fw_charr3))']
+                '    fw_iserr__ = FW_CHAR_SIZE__', 
+                '    fw_errstr__ = transfer("charr3                                                         ", fw_errstr__)', 
+                '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR', 
+                '    return', 
+                'endif', 
+                'fw_charr3 = reshape(transfer(charr3, fw_charr3), shape(fw_charr3))']
 
         cs_res = ['if (n1 .ne. cs_d2) then', '    fw_iserr__ = FW_ARR_DIM__', 
-                  '    fw_errstr__ = transfer("cs", fw_errstr__)', 
+                  '    fw_errstr__ = transfer("cs                                                             ", fw_errstr__)', 
                   '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR', 
                   '    return', 
                   'endif', 
@@ -567,7 +565,7 @@ real(kind=fwrap_default_real), dimension(real_arr_arg_d1, real_arr_arg_d2, real_
                 ('if (d1 .ne. real_exp_arg_d1 .or. '
                  'd2 .ne. real_exp_arg_d2 .or. d3 .ne. real_exp_arg_d3) then\n'
                  '    fw_iserr__ = FW_ARR_DIM__\n'
-                 '    fw_errstr__ = transfer("real_exp_arg", fw_errstr__)\n'
+                 '    fw_errstr__ = transfer("real_exp_arg                                                   ", fw_errstr__)\n'
                  '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR\n'
                  '    return\n'
                  'endif').splitlines())
@@ -643,7 +641,7 @@ class test_char_arg(object):
         r1 = '''\
 if (20 .ne. fw_ch1_len) then
     fw_iserr__ = FW_CHAR_SIZE__
-    fw_errstr__ = transfer("ch1", fw_errstr__)
+    fw_errstr__ = transfer("ch1                                                            ", fw_errstr__)
     fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
     return
 endif
@@ -652,7 +650,7 @@ fw_ch1 = transfer(ch1, fw_ch1)
         r2 = '''\
 if (10 .ne. fw_ch2_len) then
     fw_iserr__ = FW_CHAR_SIZE__
-    fw_errstr__ = transfer("ch2", fw_errstr__)
+    fw_errstr__ = transfer("ch2                                                            ", fw_errstr__)
     fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
     return
 endif
@@ -899,13 +897,13 @@ subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assume
     fw_iserr__ = FW_INIT_ERR__
     if (d1 .ne. assumed_size_d1) then
         fw_iserr__ = FW_ARR_DIM__
-        fw_errstr__ = transfer("assumed_size", fw_errstr__)
+        fw_errstr__ = transfer("assumed_size                                                   ", fw_errstr__)
         fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
         return
     endif
     if (c1 .ne. explicit_shape_d1 .or. c2 .ne. explicit_shape_d2) then
         fw_iserr__ = FW_ARR_DIM__
-        fw_errstr__ = transfer("explicit_shape", fw_errstr__)
+        fw_errstr__ = transfer("explicit_shape                                                 ", fw_errstr__)
         fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
         return
     endif
