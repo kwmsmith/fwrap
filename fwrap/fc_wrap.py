@@ -48,6 +48,8 @@ if (%(test)s) then
     return
 endif
 '''
+    fs = "%%-%ds" % constants.FORT_MAX_ARG_NAME_LEN
+    argname = (fs % argname)[:constants.FORT_MAX_ARG_NAME_LEN]
     if test:
         return (tmpl % locals()).splitlines()
     return []
