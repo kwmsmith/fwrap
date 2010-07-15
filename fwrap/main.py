@@ -164,13 +164,15 @@ def wrap(source=None,**kargs):
     logger.info("Wrapping fortran...")
     generate(f_ast,name,project_path)
     logger.info("Wrapping was successful.")
+
+    # generate setup.py file
+    file_name, buf = generate_setup(name, 'fwrap_setup.log',
+                            source_files, libraries, library_dirs, extra_objects)
+    write_to_project_dir(project_path, file_name, buf)
     
     # Generate library module if requested
     if build:
         logger.info("Compiling sources and generating extension module...")
-        file_name, buf = generate_setup(name, 'fwrap_setup.log',
-                                source_files, libraries, library_dirs)
-        write_to_project_dir(project_path, file_name, buf)
         odir = os.path.abspath(os.curdir)
         try:
             os.chdir(project_path)
@@ -241,7 +243,8 @@ def write_to_project_dir(project_path, file_name, buf):
 def generate_setup(name, log_file,
                     sources,
                     libraries=None,
-                    library_dirs=None):
+                    library_dirs=None,
+                    extra_objects=None):
     tmpl = '''\
 from fwrap.fwrap_setup import setup, fwrap_cmdclass, configuration
 
@@ -251,9 +254,11 @@ cfg = configuration(projname='%(PROJNAME)s', **cfg_args)
 setup(log='%(LOG_FILE)s', cmdclass=fwrap_cmdclass, configuration=cfg)
 ''' 
     sources = [os.path.abspath(source) for source in sources]
+    extra_objects = [os.path.abspath(eo) for eo in extra_objects]
     cfg_args = {'extra_sources' : sources,
                 'libraries' : libraries or [],
                 'library_dirs' : library_dirs or [],
+                'extra_objects' : extra_objects or [],
                }
     dd = {'PROJNAME': name,
             'LOG_FILE': log_file,
@@ -301,23 +306,40 @@ def generate_fc_h(fc_ast, name):
     fc_wrap.generate_fc_h(fc_ast, constants.KTP_HEADER_SRC, buf)
     return constants.FC_HDR_TMPL % name, buf
 
+def varargs_cb(option, opt_str, value, parser):
+    assert value is None
+    value = []
+
+    for arg in parser.rargs[:]:
+        if arg.startswith('--') or arg.startswith('-'):
+            break
+        value.append(arg)
+        del parser.rargs[0]
+
+    setattr(parser.values, option.dest, value)
+
 def main():
     # Parse command line options
     parser = OptionParser("usage: fwrap [options] SOURCE_FILES",
                             version=__version__)
     
-    parser.add_option('-m',dest='name',help='')
-    parser.add_option('-C','--config',dest='config',help='')
-    parser.add_option('-c','-b','--build',dest='build',action='store_true',help='')
-    parser.add_option('-o','--out_dir',dest='out_dir',help='')
-    parser.add_option('-F','--fcompiler',dest='fcompiler',help='')
-    parser.add_option('-f','--fflags',dest='fflags',help='')
-    parser.add_option('-l', '--library', dest='libraries', action='append')
-    parser.add_option('-L', '--libdir', dest='library_dirs', action='append')
-    parser.add_option('-r','--recompile',action="store_true",dest='recompile',help='')
-    parser.add_option('--no-recompile',action="store_false",dest='recompile',help='')
-    parser.add_option('--override',action="store_true",dest='override',help='')
-    parser.add_option('--no-override',action="store_false",dest='override',help='')
+    parser.add_option('-m', dest='name', help='')
+    parser.add_option('-C', '--config', dest='config', help='')
+    parser.add_option('-c',  '-b',  '--build',  dest='build',
+                        action='store_true', default=False,  help='')
+    parser.add_option('-o', '--out_dir', dest='out_dir', help='')
+    parser.add_option('-F', '--fcompiler', dest='fcompiler', help='')
+    parser.add_option('-f', '--fflags',  dest='fflags',  action='callback',
+                        callback=varargs_cb,  help='')
+    parser.add_option('--objects', dest='extra_objects', action='callback',
+                        callback=varargs_cb, help='')
+    parser.add_option('-l', dest='libraries',  action='append')
+    parser.add_option('-L', dest='library_dirs',  action='append')
+    parser.add_option('-r', '--recompile', action="store_true",
+                        dest='recompile', help='')
+    parser.add_option('--no-recompile', action="store_false", dest='recompile', help='')
+    parser.add_option('--override', action="store_true", dest='override', help='')
+    parser.add_option('--no-override', action="store_false", dest='override', help='')
     
     parsed_options, source_files = parser.parse_args()
     
