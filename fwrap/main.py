@@ -353,6 +353,9 @@ def main():
                 logger.debug("  %s = %s" % (opt,kargs[opt]))
         except:
             pass
+
+    if not source_files:
+        parser.error("no input fortran source files")
     
     # Call main routine
     wrap(source_files,**kargs)
