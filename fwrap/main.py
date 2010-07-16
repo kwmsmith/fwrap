@@ -17,19 +17,19 @@ import ConfigParser
 import tempfile
 from optparse import OptionParser
 from cStringIO import StringIO
-from code import CodeBuffer, reflow_fort
+from fwrap.code import CodeBuffer, reflow_fort
 
-import constants
-import pyf_iface as pyf
-import gen_config as gc
-import fc_wrap
-import cy_wrap
+from fwrap import constants
+from fwrap import pyf_iface as pyf
+from fwrap import gen_config as gc
+from fwrap import fc_wrap
+from fwrap import cy_wrap
 
 # Logging utility, see log.config for default configuration
 logger = logging.getLogger('fwrap')
 
 # Available options parsed from default config files
-_config_parser = ConfigParser.SafeConfigParser() 
+_config_parser = ConfigParser.SafeConfigParser()
 fp = open(os.path.join(os.path.dirname(__file__), 'default.config'),'r')
 _config_parser.readfp(fp)
 fp.close()
