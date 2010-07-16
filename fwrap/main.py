@@ -320,7 +320,7 @@ def varargs_cb(option, opt_str, value, parser):
 
 def main():
     # Parse command line options
-    parser = OptionParser("usage: fwrap [options] SOURCE_FILES",
+    parser = OptionParser("usage: %prog [options] SOURCE_FILES",
                             version=__version__)
     
     parser.add_option('-m', dest='name', help='')
@@ -355,7 +355,7 @@ def main():
             pass
 
     if not source_files:
-        parser.error("no input fortran source files")
+        parser.error("no source files")
     
     # Call main routine
     wrap(source_files,**kargs)
