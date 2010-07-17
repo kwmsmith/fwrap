@@ -54,6 +54,9 @@ class Dtype(object):
     def all_dtypes(self):
         return [self]
 
+    def c_declaration(self):
+        return "%s *" % self.fw_ktp
+
 
 class CharacterType(Dtype):
 
@@ -138,6 +141,27 @@ intrinsic_types = [RealType,
                    CharacterType, 
                    LogicalType]
 
+class _InternCPtrType(Dtype):
+    """
+    Not meant to be instantiated beyond the c_ptr_type instance.
+    """
+
+    def __init__(self):
+        self.type = "c_ptr"
+
+    def type_spec(self):
+        return "type(c_ptr)"
+
+    def all_dtypes(self):
+        return []
+
+    def c_declaration(self):
+        return "void *"
+
+c_ptr_type = _InternCPtrType()
+
+# we delete it from the module so others aren't tempted to instantiate the class.
+del _InternCPtrType
 
 class Parameter(object):
     
@@ -149,13 +173,14 @@ class Parameter(object):
 
 class Var(object):
 
-    def __init__(self, name, dtype, dimension=None):
+    def __init__(self, name, dtype, dimension=None, isptr=False):
         if not valid_fort_name(name):
             raise InvalidNameException(
                     "%s is not a valid fortran variable name.")
         self.name = name
         self.dtype = dtype
         self.dimension = dimension
+        self.isptr = isptr
         if self.dimension:
             self.is_array = True
         else:
@@ -168,6 +193,8 @@ class Var(object):
             specs = [self.dtype.type_spec()]
         if self.dimension:
             specs.append('dimension(%s)' % ', '.join(self.dimension))
+        if self.isptr:
+            specs.append('pointer')
         return specs
 
     def declaration(self):
@@ -176,18 +203,26 @@ class Var(object):
     def orig_declaration(self):
         return "%s :: %s" % (', '.join(self.var_specs(orig=True)), self.name)
 
+    def c_declaration(self):
+        return "%s%s" % (self.dtype.c_declaration(), self.name)
+
 
 class Argument(object):
 
     def __init__(self, name, dtype,
                  intent=None,
                  dimension=None,
-                 value=None,
+                 isvalue=None,
                  is_return_arg=False):
         self._var = Var(name=name, dtype=dtype, dimension=dimension)
         self.intent = intent
-        self.value = value
+        self.isvalue = isvalue
         self.is_return_arg = is_return_arg
+
+        if self.dtype.type == 'c_ptr' and not self.isvalue:
+            raise ValueError(
+                "argument '%s' has datatype 'type(c_ptr)' "
+                "but does not have the 'value' attribute." % self.name)
 
     def _get_name(self):
         return self._var.name
@@ -214,13 +249,18 @@ class Argument(object):
     def declaration(self, orig=False):
         var = self._var
         specs = var.var_specs(orig=orig)
-        if self.intent and not self.is_return_arg:
-            if self.intent != 'hide':
-                specs.append('intent(%s)' % self.intent)
+        if self.isvalue:
+            specs.append('value')
+        specs.extend(self.intent_spec())
         return '%s :: %s' % (', '.join(specs), self.name)
 
+    def intent_spec(self):
+        if self.intent and not self.is_return_arg:
+            return ['intent(%s)' % self.intent]
+        return []
+
     def c_declaration(self):
-        return "%s *%s" % (self.ktp, self.name)
+        return self._var.c_declaration()
 
     def all_dtypes(self):
         adts = self.dtype.all_dtypes()
@@ -228,6 +268,20 @@ class Argument(object):
             adts += [dim_dtype]
         return adts
 
+class HiddenArgument(Argument):
+    
+    def __init__(self, name, dtype,
+                 value,
+                 intent=None,
+                 dimension=None,
+                 isvalue=None,
+                 is_return_arg=False,):
+        super(HiddenArgument, self).__init__(name, dtype,
+                intent, dimension, isvalue, is_return_arg)
+        self.value = value
+
+    def intent_spec(self):
+        return []
 
 class ProcArgument(object):
     def __init__(self, proc):

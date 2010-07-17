@@ -187,7 +187,7 @@ def test_gen_iface():
 
 def test_intent_hide():
     hide_arg_subr = pyf.Subroutine('hide_subr',
-                            args=[pyf.Argument('hide_arg',
+                            args=[pyf.HiddenArgument('hide_arg',
                                         dtype=pyf.default_integer,
                                         intent='hide',
                                         value='10')])
@@ -595,49 +595,41 @@ class test_char_arg(object):
     def test_c_declarations(self):
         results = [
                 ['fwrap_npy_intp *fw_ch1_len',
-                 'fwrap_default_character *ch1'],
+                 'void *ch1'],
                 ['fwrap_npy_intp *fw_ch2_len',
-                 'fwrap_default_character *ch2'],
+                 'void *ch2'],
                 ['fwrap_npy_intp *fw_ch3_len',
-                 'fwrap_default_character *ch3'],
+                 'void *ch3'],
                 ]
         for wrap, result in zip(self.inout_wraps, results):
             eq_(wrap.c_declarations(), result)
 
     def test_extern_decl(self):
         results = [
-                ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch1_len',
-                 'character(kind=fwrap_default_character, len=1), '
-                     'dimension(fw_ch1_len), intent(inout) :: ch1'],
-                
-                ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch2_len',
-                 'character(kind=fwrap_default_character, len=1), '
-                     'dimension(fw_ch2_len), intent(inout) :: ch2'],
+            ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch1_len',
+             'type(c_ptr), value :: ch1'],
+            
+            ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch2_len',
+             'type(c_ptr), value :: ch2'],
 
-                ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch3_len',
-                 'character(kind=fwrap_default_character, len=1), '
-                     'dimension(fw_ch3_len), intent(inout) :: ch3'],
-                ]
+            ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch3_len',
+             'type(c_ptr), value :: ch3'],
+            ]
         for wrap, result in zip(self.inout_wraps, results):
             eq_(wrap.extern_declarations(), result)
 
     def test_intern_decl(self):
         results = [
-                ['character*20 :: fw_ch1'],
-                ['character(len=10) :: fw_ch2'],
-                ['character(kind=fwrap_char_x, len=fw_ch3_len) :: fw_ch3'],
-                ]
+            ['character(kind=fwrap_char_20, len=20), pointer :: fw_ch1'],
+            ['character(kind=fwrap_char_10, len=10), pointer :: fw_ch2'],
+            ['character(kind=fwrap_char_x, len=fw_ch3_len), '
+                'pointer :: fw_ch3'],
+           ]
 
         for wrap, result in zip(self.inout_wraps, results):
             eq_(wrap.intern_declarations(), result)
 
     def test_pre_call_code(self):
-        #XXX: there should be a test in the generated code along the lines of:
-        # if(len(ch) .ne. size(fw_ch)) then
-        #    ... set error flag and return ...
-        #    return
-        # endif
-
         r1 = '''\
 if (20 .ne. fw_ch1_len) then
     fw_iserr__ = FW_CHAR_SIZE__
@@ -645,7 +637,7 @@ if (20 .ne. fw_ch1_len) then
     fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
     return
 endif
-fw_ch1 = transfer(ch1, fw_ch1)
+call c_f_pointer(ch1, fw_ch1)
 '''.splitlines()
         r2 = '''\
 if (10 .ne. fw_ch2_len) then
@@ -654,11 +646,9 @@ if (10 .ne. fw_ch2_len) then
     fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
     return
 endif
-fw_ch2 = transfer(ch2, fw_ch2)
+call c_f_pointer(ch2, fw_ch2)
 '''.splitlines()
-        r3 = ['fw_ch3 = transfer(ch3, fw_ch3)']
-
-
+        r3 = ['call c_f_pointer(ch3, fw_ch3)']
 
         results =  (r1, r2, r3)
 
@@ -666,13 +656,8 @@ fw_ch2 = transfer(ch2, fw_ch2)
             eq_(wrap.pre_call_code(), result)
 
     def test_post_call_code(self):
-        #XXX: see comment for test_pre_call_code.
-        results =  ( ['ch1 = transfer(fw_ch1, ch1)'],
-                     ['ch2 = transfer(fw_ch2, ch2)'],
-                     ['ch3 = transfer(fw_ch3, ch3)'])
-
-        for wrap, result in zip(self.inout_wraps, results):
-            eq_(wrap.post_call_code(), result)
+        for wrap in self.inout_wraps:
+            eq_(wrap.post_call_code(), [])
 
 class test_arg_wrapper(object):
 

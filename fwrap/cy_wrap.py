@@ -46,7 +46,10 @@ class _CyArgWrapper(object):
         self.arg = arg
         self.intern_name = self.arg.name
         self.name = self.arg.name
-        self.cy_dtype_name = self.arg.ktp
+        self.cy_dtype_name = self._get_cy_dtype_name()
+
+    def _get_cy_dtype_name(self):
+        return self.arg.ktp
 
     def extern_declarations(self):
         if self.arg.intent in ('in', 'inout', None):
@@ -82,7 +85,9 @@ class _CyCharArg(_CyArgWrapper):
         self.intern_name = 'fw_%s' % self.name
         self.intern_len_name = '%s_len' % self.intern_name
         self.intern_buf_name = '%s_buf' % self.intern_name
-        self.cy_dtype_name = 'fw_bytes'
+
+    def _get_cy_dtype_name(self):
+        return "fw_bytes"
 
     def extern_declarations(self):
         if self.arg.intent in ('in', 'inout', None):

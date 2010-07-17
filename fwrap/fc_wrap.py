@@ -334,23 +334,35 @@ class CharArgWrapper(ArgWrapperBase):
     _transfer_templ = '%s = transfer(%s, %s)'
 
     def __init__(self, arg):
-        self.intern_arg = pyf.Argument(name="fw_%s" % arg.name,
-                                       dtype=arg.dtype,
-                                       intent=arg.intent)
+        self.orig_arg = arg
         self.len_arg = pyf.Argument(name="fw_%s_len" % arg.name,
                                     dtype=pyf.dim_dtype,
                                     intent='in')
-        self.extern_arg = pyf.Argument(name=arg.name,
-                                       dtype=pyf.default_character,
-                                       intent='inout',
-                                       dimension=[self.len_arg.name])
-        self.dtype = self.intern_arg.dtype
-        self.intern_name = self.intern_arg.name
-        self.name = self.extern_arg.name
-        self.ktp = self.extern_arg.ktp
+        # self.extern_arg = pyf.Argument(name=arg.name,
+                                       # dtype=pyf.default_character,
+                                       # intent='inout',
+                                       # dimension=[self.len_arg.name])
+        self.extern_arg = pyf.Argument(
+                                name=arg.name,
+                                dtype=pyf.c_ptr_type,
+                                isvalue=True)
+        self.dtype = arg.dtype
+        self.intern_name = "fw_%s" % arg.name
+        self.name = arg.name
+        # self.ktp = pyf.default_character.fw_ktp
+        self.is_assumed_size = (arg.dtype.len == '*')
+        self.orig_len = arg.dtype.len
 
-    def is_assumed_size(self):
-        return self.intern_arg.dtype.len == '*'
+        if self.is_assumed_size:
+            intern_dtype = pyf.CharacterType(arg.ktp,
+                                 len=self.len_arg.name,
+                                 mangler=None)
+        else:
+            intern_dtype = self.dtype
+
+        self.intern_var = pyf.Var(name=self.intern_name,
+                                       dtype=intern_dtype,
+                                       isptr=True)
 
     def c_declarations(self):
         return [self.len_arg.c_declaration(),
@@ -361,7 +373,7 @@ class CharArgWrapper(ArgWrapperBase):
                 self.extern_arg.name]
 
     def _get_intent(self):
-        return self.intern_arg.intent
+        return self.orig_arg.intent
 
     intent = property(_get_intent)
 
@@ -370,34 +382,22 @@ class CharArgWrapper(ArgWrapperBase):
                 self.extern_arg.declaration()]
 
     def intern_declarations(self):
-        if self.is_assumed_size():
-            dtype = pyf.CharacterType(self.intern_arg.ktp,
-                                 len=self.len_arg.name,
-                                 mangler=None)
-            var = pyf.Var(self.intern_arg.name,
-                          dtype=dtype)
-            return [var.declaration()]
-        return [self.intern_arg._var.orig_declaration()]
+        return [self.intern_var.declaration()]
 
     def pre_call_code(self):
-        if self.is_assumed_size():
+        if self.is_assumed_size:
             ck_code = []
         else:
             test = ("%s .ne. %s" % 
-                    (self.intern_arg.dtype.len, self.len_arg.name))
+                    (self.orig_len, self.len_arg.name))
             errcode = "FW_CHAR_SIZE__"
             argname = self.extern_arg.name
             ck_code = _err_test_block(test, errcode, argname)
 
         return ck_code + \
-                [self._transfer_templ % (self.intern_arg.name,
-                                        self.extern_arg.name,
-                                        self.intern_arg.name)]
-
-    def post_call_code(self):
-        return [self._transfer_templ % (self.extern_arg.name,
-                                           self.intern_arg.name,
-                                           self.extern_arg.name)]
+                ["call c_f_pointer(%s, %s)" %
+                            (self.extern_arg.name,
+                             self.intern_var.name)]
 
 
 class ErrStrArgWrapper(ArgWrapperBase):
