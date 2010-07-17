@@ -1,3 +1,4 @@
 from subprocess import call
+import sys
 
-call("nosetests -s fwrap/tests".split())
+call(("%s/bin/nosetests -s fwrap/tests" % sys.exec_prefix).split())
