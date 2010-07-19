@@ -5,3 +5,5 @@ fparser
 *.vim
 BUILD/*
 *.log
+doc/sphinxdocs/build/*
+doc/sphinxdocs/sphinx-build
