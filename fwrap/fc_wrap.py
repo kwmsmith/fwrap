@@ -307,41 +307,39 @@ class ArgWrapperBase(object):
 class ArgWrapper(ArgWrapperBase):
 
     def __init__(self, arg):
-        self._extern_arg = arg
-        self._intern_var = None
-        self.dtype = self._extern_arg.dtype
-        self.name = self._extern_arg.name
-        self.ktp = self._extern_arg.ktp
+        self.orig_arg = arg
+        self.dtype = arg.dtype
+        self.name = arg.name
+        self.ktp = arg.ktp
+        self.intent = arg.intent
+        self._set_intern_name()
+        self._set_intern_vars()
+        self._set_extern_args()
 
-    def _get_intern_name(self):
-        if self._intern_var:
-            return self._intern_var.name
-        else:
-            return self._extern_arg.name
+    def _set_intern_name(self):
+        self.intern_name = self.name
 
-    intern_name = property(_get_intern_name)
+    def _set_intern_vars(self):
+        self.intern_var = None
+
+    def _set_extern_args(self):
+        self.extern_arg = self.orig_arg
+        self.extern_args = [self.extern_arg]
 
     def extern_arg_list(self):
-        return [self._extern_arg.name]
+        return [extern_arg.name for extern_arg in self.extern_args]
 
     def extern_declarations(self):
-        return [self._extern_arg.declaration()]
-
-    def intern_declarations(self):
-        if self._intern_var:
-            return [self._intern_var.declaration()]
-        else:
-            return []
+        return [extern_arg.declaration() for extern_arg in self.extern_args]
 
     def c_declarations(self):
-        return [self._extern_arg.c_declaration()]
+        return [extern_arg.c_declaration() for extern_arg in self.extern_args]
 
-    def _get_intent(self):
-        return self._extern_arg.intent
-
-    intent = property(_get_intent)
-
-
+    def intern_declarations(self):
+        if self.intern_var:
+            return [self.intern_var.declaration()]
+        else:
+            return []
 
 class ErrStrArgWrapper(ArgWrapperBase):
 
@@ -395,159 +393,51 @@ class HideArgWrapper(ArgWrapperBase):
         return ["%s = (%s)" % (self._intern_var.name, self.value)]
 
 
-class ArrayArgWrapper(ArgWrapperBase):
+class ArrayArgWrapper(ArgWrapper):
 
     is_array = True
 
-    def __init__(self, arg):
-        self._orig_arg = arg
-        self.dtype = arg.dtype
+    def _set_extern_args(self):
         self._arr_dims = []
-        self._extern_arr = None
-        self._dims = arg.dimension
-        self._create_args(ndims=len(self._dims))
-        self.intern_name = self._extern_arr.name
-        self.ktp = self._extern_arr.ktp
-
-    def _create_dims(self, ndims):
-        orig_name = self._orig_arg.name
-        for idx in range(ndims):
+        self.ndims = len(self.orig_arg.dimension)
+        for idx in range(self.ndims):
             self._arr_dims.append(
-                    pyf.Argument(name='%s_d%d' % (orig_name, idx+1),
+                    pyf.Argument(name='%s_d%d' % (self.name, idx+1),
                                  dtype=pyf.dim_dtype, intent='in'))
-
-    def _create_args(self, ndims):
-        self._create_dims(ndims)
-        dims = [dim.name for dim in self._arr_dims]
-        self._extern_arr = pyf.Argument(name=self._orig_arg.name,
-                                        dtype=self._orig_arg.dtype,
-                                        intent=self._orig_arg.intent,
-                                        dimension=dims)
-
-    def get_ndims(self):
-        return len(self._dims)
-
-    def extern_declarations(self):
-        return [arg.declaration() for arg in self._arr_dims] + \
-                [self._extern_arr.declaration()]
-
-    def c_declarations(self):
-        return [arg.c_declaration() for arg in self._arr_dims] + \
-                [self._extern_arr.c_declaration()]
-
-    def extern_arg_list(self):
-        return [arg.name for arg in self._arr_dims] + \
-                [self._extern_arr.name]
-
-    def _get_intent(self):
-        return self._orig_arg.intent
+        dim_names = [dim.name for dim in self._arr_dims]
+        self.extern_arg = pyf.Argument(
+                                name=self.name,
+                                dtype=self.dtype,
+                                intent=self.intent,
+                                dimension=dim_names)
+        self.extern_args = self._arr_dims + [self.extern_arg]
 
     def pre_call_code(self):
         dim_names = [dim.name for dim in self._arr_dims]
-        ckstr = _dim_test(self._orig_arg.dimension, dim_names)
+        ckstr = _dim_test(self.orig_arg.dimension, dim_names)
         if ckstr:
-            return _err_test_block(ckstr, 
-                            'FW_ARR_DIM__', 
-                            self._extern_arr.name)
+            return _err_test_block(
+                            ckstr,
+                            'FW_ARR_DIM__',
+                            self.extern_arg.name)
         return []
 
-    intent = property(_get_intent)
 
+class ScalarPtrWrapper(ArgWrapper):
 
-class CharArrayArgWrapper(ArrayArgWrapper):
-
-    def __init__(self, arg):
-        super(CharArrayArgWrapper, self).__init__(arg)
-        self.intern_name = _arg_name_mangler(self._orig_arg.name)
-        self.len_arg = pyf.Argument(name="%s_len" % self.intern_name,
-                                    dtype=pyf.dim_dtype,
-                                    intent='in')
-        self.is_assumed_len = (self._orig_arg.dtype.len == '*')
-
-        if self.is_assumed_len:
-            intern_dtype = pyf.CharacterType(
-                                    self._orig_arg.ktp,
-                                    len=self.len_arg.name,
-                                    mangler=None)
-        else:
-            intern_dtype = self._orig_arg.dtype
-
-        self._intern_arr = pyf.Var(
-                                name=self.intern_name,
-                                dtype=intern_dtype,
-                                dimension=(':',)*len(self._arr_dims),
-                                isptr=True)
-
-        self._extern_arr = pyf.Argument(
-                                name=self._orig_arg.name,
-                                dtype=pyf.c_ptr_type,
-                                isvalue=True)
-
-    def extern_arg_list(self):
-        return [self.len_arg.name] + \
-                super(CharArrayArgWrapper, self).extern_arg_list()
-
-    def extern_declarations(self):
-        return [self.len_arg.declaration()] + \
-                super(CharArrayArgWrapper, self).extern_declarations()
-
-    def intern_declarations(self):
-        if self.is_assumed_len:
-            decl = self._intern_arr.declaration
-            return [decl()]
-        return [self._intern_arr.declaration()]
-
-    def pre_call_code(self):
-        dim_ck = super(CharArrayArgWrapper, self).pre_call_code()
-        if self.is_assumed_len:
-            char_ck = []
-        else:
-            test = "%s .ne. %s" % (self._orig_arg.dtype.len, self.len_arg.name)
-            char_ck = _err_test_block(test, 
-                                'FW_CHAR_SIZE__', 
-                                self._extern_arr.name)
-
-        dim_names = [dim.name for dim in self._arr_dims]
-        cfp = ("call c_f_pointer(%s, %s, (/ %s /))" %
-                    (self._orig_arg.name, self.intern_name, ', '.join(dim_names)))
-
-        return char_ck + dim_ck + [cfp]
-
-    def c_declarations(self):
-        return [self.len_arg.c_declaration()] + \
-                super(CharArrayArgWrapper, self).c_declarations()
-
-class ScalarPtrWrapper(ArgWrapperBase):
-
-    def __init__(self, arg):
-        super(ScalarPtrWrapper, self).__init__(arg)
-        self.orig_arg = arg
-        self.dtype = arg.dtype
-        self.name = arg.name
-        self.ktp = arg.ktp
-        self.intent = arg.intent
-        self.intern_name = _arg_name_mangler(arg.name)
-        self.extern_arg = pyf.Argument(name=arg.name,
-                                        dtype=pyf.c_ptr_type,
-                                        isvalue=True)
-        self._set_intern_vars()
+    def _set_intern_name(self):
+        self.intern_name = _arg_name_mangler(self.name)
 
     def _set_intern_vars(self):
         self.intern_var = pyf.Var(name=self.intern_name,
                                    dtype=self.orig_arg.dtype,
                                    isptr=True)
 
-    def c_declarations(self):
-        return [self.extern_arg.c_declaration()]
-
-    def extern_arg_list(self):
-        return [self.extern_arg.name]
-
-    def extern_declarations(self):
-        return [self.extern_arg.declaration()]
-
-    def intern_declarations(self):
-        return [self.intern_var.declaration()]
+    def _set_extern_args(self):
+        self.extern_arg = pyf.Argument(name=self.name,
+                                        dtype=pyf.c_ptr_type,
+                                        isvalue=True)
+        self.extern_args = [self.extern_arg]
 
     def pre_call_code(self):
         return ['call c_f_pointer(%s, %s)' %
@@ -567,27 +457,21 @@ class CharArgWrapper(ScalarPtrWrapper):
         self.is_assumed_len = (self.dtype.len == '*')
         self.orig_len = self.dtype.len
         if self.is_assumed_len:
-            intern_dtype = pyf.CharacterType(self.ktp,
+            self.intern_dtype = pyf.CharacterType(self.ktp,
                                  len=self.len_arg.name,
                                  mangler=None)
         else:
-            intern_dtype = self.dtype
+            self.intern_dtype = self.dtype
+        self._set_intern_var()
 
+    def _set_intern_var(self):
         self.intern_var = pyf.Var(name=self.intern_name,
-                                       dtype=intern_dtype,
+                                       dtype=self.intern_dtype,
                                        isptr=True)
 
-    def c_declarations(self):
-        return [self.len_arg.c_declaration()] + \
-                super(CharArgWrapper, self).c_declarations()
-
-    def extern_arg_list(self):
-        return [self.len_arg.name] + \
-                super(CharArgWrapper, self).extern_arg_list()
-
-    def extern_declarations(self):
-        return [self.len_arg.declaration()] + \
-                super(CharArgWrapper, self).extern_declarations()
+    def _set_extern_args(self):
+        super(CharArgWrapper, self)._set_extern_args()
+        self.extern_args = [self.len_arg] + self.extern_args
 
     def _err_ck_code(self):
         if self.is_assumed_len:
@@ -604,3 +488,74 @@ class CharArgWrapper(ScalarPtrWrapper):
     def pre_call_code(self):
         return self._err_ck_code() + \
                 super(CharArgWrapper, self).pre_call_code()
+
+
+class ArrayPtrArg(ArrayArgWrapper):
+
+    def _set_intern_name(self):
+        self.intern_name = _arg_name_mangler(self.name)
+
+    def _set_intern_vars(self):
+        self.intern_var = pyf.Var(name=self.intern_name,
+                                   dtype=self.orig_arg.dtype,
+                                   dimension=(':',)*len(self.orig_arg.dimension),
+                                   isptr=True)
+
+    def _set_extern_args(self):
+        super(ArrayPtrArg, self)._set_extern_args()
+        self.extern_arg = pyf.Argument(name=self.name,
+                                       dtype=pyf.c_ptr_type,
+                                       isvalue=True)
+        self.extern_args = self._arr_dims + [self.extern_arg]
+
+    def _pointer_call(self):
+        return ['call c_f_pointer(%s, %s)' %
+                (self.extern_arg.name, self.intern_var.name)]
+
+    def _check_code(self):
+        return super(ArrayPtrArg, self).pre_call_code()
+
+    def pre_call_code(self):
+        return self._check_code() + self._pointer_call()
+
+
+class CharArrayArgWrapper(ArrayPtrArg):
+
+    def _set_intern_vars(self):
+        self.len_arg = pyf.Argument(name="%s_len" % self.intern_name,
+                                    dtype=pyf.dim_dtype,
+                                    intent='in')
+        self.is_assumed_len = (self.dtype.len == '*')
+        self.orig_len = self.dtype.len
+        if self.is_assumed_len:
+            self.intern_dtype = pyf.CharacterType(self.ktp,
+                                 len=self.len_arg.name,
+                                 mangler=None)
+        else:
+            self.intern_dtype = self.dtype
+
+        self.intern_var = pyf.Var(name=self.intern_name,
+                                       dtype=self.intern_dtype,
+                                       dimension=(':',)*len(self.orig_arg.dimension),
+                                       isptr=True)
+
+    def _set_extern_args(self):
+        super(CharArrayArgWrapper, self)._set_extern_args()
+        self.extern_args = [self.len_arg] + self.extern_args
+
+
+    def _check_code(self):
+        orig_check = super(CharArrayArgWrapper, self)._check_code()
+        if self.is_assumed_len:
+            char_ck = []
+        else:
+            test = "%s .ne. %s" % (self.dtype.len, self.len_arg.name)
+            char_ck = _err_test_block(test,
+                                'FW_CHAR_SIZE__',
+                                self.name)
+        return char_ck + orig_check
+
+    def _pointer_call(self):
+        dim_names = [dim.name for dim in self._arr_dims]
+        return [("call c_f_pointer(%s, %s, (/ %s /))" %
+                    (self.name, self.intern_name, ', '.join(dim_names)))]

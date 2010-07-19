@@ -219,13 +219,13 @@ class _CyArrayArgWrapper(object):
     def intern_declarations(self):
         return ["cdef np.ndarray[%s, ndim=%d, mode='fortran'] %s" % \
                 (self.arg.ktp,
-                 self.arg.get_ndims(),
+                 self.arg.ndims,
                  self.intern_name,)
                 ]
                  
     def call_arg_list(self):
         shapes = ['<fwrap_npy_intp*>&%s.shape[%d]' % (self.intern_name, i) \
-                                for i in range(self.arg.get_ndims())]
+                                for i in range(self.arg.ndims)]
         data = ['<%s*>%s.data' % (self.arg.ktp, self.intern_name)]
         return shapes + data
 
@@ -252,7 +252,7 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
     def intern_declarations(self):
         ret = super(CyCharArrayArgWrapper, self).intern_declarations()
         return ret + ["cdef fwrap_npy_intp %s[%d]" % 
-                (self.shape_name, self.arg.get_ndims()+1)]
+                (self.shape_name, self.arg.ndims+1)]
     
     def pre_call_code(self):
         tmpl = ("%(odtype)s = %(name)s.dtype\n"
@@ -263,7 +263,7 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
                 "%(shape)s[0] = <fwrap_npy_intp>"
                     "(%(name)s.shape[0]/%(shape)s[1])")
         D = {"odtype" : self.odtype_name,
-             "ndim" : self.arg.get_ndims(),
+             "ndim" : self.arg.ndims,
              "name" : self.name,
              "intern" : self.intern_name,
              "shape" : self.shape_name}
@@ -275,7 +275,7 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
 
     def call_arg_list(self):
         shapes = ["&%s[%d]" % (self.shape_name, i) 
-                    for i in range(self.arg.get_ndims()+1)]
+                    for i in range(self.arg.ndims+1)]
         data = ["<%s*>%s.data" % (self.arg.ktp, self.intern_name)]
         return shapes + data
 
