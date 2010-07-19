@@ -48,7 +48,7 @@ def _get_arg(p_arg):
             else:
                 raise RuntimeError(
                         "can't handle dimension(x:y) declarations yet...")
-        return pyf.Argument(name=name, 
+        return pyf.Argument(name=name,
                 dtype=dtype, intent=intent, dimension=dims)
     else:
         raise RuntimeError(
@@ -115,11 +115,11 @@ def _get_dtype(typedecl):
             fw_ktp = '%s_xX' % (typedecl.name)
         else:
             fw_ktp = '%s_x%s' % (typedecl.name, length)
-        return pyf.CharacterType(fw_ktp=fw_ktp, 
+        return pyf.CharacterType(fw_ktp=fw_ktp,
                 odecl=typedecl.tostr().lower(), len=length)
     if length and not kind:
-        return name2type[typedecl.name](fw_ktp="%s_x%s" % 
-                (typedecl.name, length), 
+        return name2type[typedecl.name](fw_ktp="%s_x%s" %
+                (typedecl.name, length),
                 odecl=typedecl.tostr().lower())
     try:
         int(kind)
@@ -129,5 +129,5 @@ def _get_dtype(typedecl):
                     "parameters supported ATM, given '%s'" % kind)
     if typedecl.name == 'doubleprecision':
         return pyf.default_dbl
-    return name2type[typedecl.name](fw_ktp="%s_%s" % 
+    return name2type[typedecl.name](fw_ktp="%s_%s" %
             (typedecl.name, kind), odecl=typedecl.tostr().lower())

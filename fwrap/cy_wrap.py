@@ -95,7 +95,7 @@ class _CyCharArg(_CyArgWrapper):
         elif self.is_assumed_size():
             return ['%s %s' % (self.cy_dtype_name, self.arg.name)]
         return []
-        
+
     def intern_declarations(self):
         ret = ['cdef %s %s' % (self.cy_dtype_name, self.intern_name),
                 'cdef fwrap_npy_intp %s' % self.intern_len_name]
@@ -119,7 +119,7 @@ class _CyCharArg(_CyArgWrapper):
     def _in_pre_call_code(self):
         return ['%s = len(%s)' % (self.intern_len_name, self.name),
                 '%s = %s' % (self.intern_name, self.name)]
-        
+
     def _out_pre_call_code(self):
         len_str = self._len_str()
         return ['%s = %s' % (self.intern_len_name, len_str),
@@ -128,7 +128,7 @@ class _CyCharArg(_CyArgWrapper):
 
     def _inout_pre_call_code(self):
        ret = self._out_pre_call_code()
-       ret += ['memcpy(%s, <char*>%s, %s+1)' % 
+       ret += ['memcpy(%s, <char*>%s, %s+1)' %
                (self.intern_buf_name, self.name, self.intern_len_name)]
        return ret
 
@@ -146,7 +146,7 @@ class _CyCharArg(_CyArgWrapper):
 
     def call_arg_list(self):
         if self.arg.intent == 'in':
-            return ['&%s' % self.intern_len_name, 
+            return ['&%s' % self.intern_len_name,
                     '<char*>%s' % self.intern_name]
         else:
             return ['&%s' % self.intern_len_name, self.intern_buf_name]
@@ -222,7 +222,7 @@ class _CyArrayArgWrapper(object):
                  self.arg.ndims,
                  self.intern_name,)
                 ]
-                 
+
     def call_arg_list(self):
         shapes = ['<fwrap_npy_intp*>&%s.shape[%d]' % (self.intern_name, i) \
                                 for i in range(self.arg.ndims)]
@@ -251,9 +251,9 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
 
     def intern_declarations(self):
         ret = super(CyCharArrayArgWrapper, self).intern_declarations()
-        return ret + ["cdef fwrap_npy_intp %s[%d]" % 
+        return ret + ["cdef fwrap_npy_intp %s[%d]" %
                 (self.shape_name, self.arg.ndims+1)]
-    
+
     def pre_call_code(self):
         tmpl = ("%(odtype)s = %(name)s.dtype\n"
                 "for i in range(%(ndim)d): "
@@ -274,7 +274,7 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
         return ["%s.dtype = %s" % (self.name, self.odtype_name)]
 
     def call_arg_list(self):
-        shapes = ["&%s[%d]" % (self.shape_name, i) 
+        shapes = ["&%s[%d]" % (self.shape_name, i)
                     for i in range(self.arg.ndims+1)]
         data = ["<%s*>%s.data" % (self.arg.ktp, self.intern_name)]
         return shapes + data
@@ -335,7 +335,7 @@ class CyArgWrapperManager(object):
 
 
 class ProcWrapper(object):
-    
+
     def __init__(self, wrapped):
         self.wrapped = wrapped
         self.name = self.wrapped.wrapped_name()

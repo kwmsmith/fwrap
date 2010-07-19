@@ -48,7 +48,7 @@ class Dtype(object):
         return self.odecl
 
     def __str__(self):
-        return ("%s(fw_ktp=%s, odecl=%s)" % 
+        return ("%s(fw_ktp=%s, odecl=%s)" %
                 (type(self), self.fw_ktp, self.odecl))
 
     def all_dtypes(self):
@@ -82,7 +82,7 @@ cdef extern from "string.h":
 
 
 default_character = CharacterType(
-        fw_ktp="default_character", 
+        fw_ktp="default_character",
         len='1', odecl="character(kind=kind('a'))")
 
 
@@ -135,10 +135,10 @@ default_complex = ComplexType(
 default_double_complex = ComplexType(
         fw_ktp='default_double_complex', odecl="complex(kind((0.0D0,0.0D0)))")
 
-intrinsic_types = [RealType, 
-                   IntegerType, 
-                   ComplexType, 
-                   CharacterType, 
+intrinsic_types = [RealType,
+                   IntegerType,
+                   ComplexType,
+                   CharacterType,
                    LogicalType]
 
 class _InternCPtrType(Dtype):
@@ -164,7 +164,7 @@ c_ptr_type = _InternCPtrType()
 del _InternCPtrType
 
 class Parameter(object):
-    
+
     def __init__(self, name, dtype, value):
         self.name = name
         self.dtype = dtype
@@ -269,7 +269,7 @@ class Argument(object):
         return adts
 
 class HiddenArgument(Argument):
-    
+
     def __init__(self, name, dtype,
                  value,
                  intent=None,
@@ -290,7 +290,7 @@ class ProcArgument(object):
 
 
 class ArgManager(object):
-    
+
     def __init__(self, args, return_arg=None):
         self._args = list(args)
         self._return_arg = return_arg
@@ -361,7 +361,7 @@ class Procedure(object):
         return self.arg_man.arg_declarations()
 
     def proc_declaration(self):
-        return ("%s %s(%s)" % 
+        return ("%s %s(%s)" %
                 (self.kind, self.name, ', '.join(self.extern_arg_list())))
 
     def proc_preamble(self, ktp_mod, buf):
@@ -378,7 +378,7 @@ class Procedure(object):
 
 
 class Function(Procedure):
-    
+
     def __init__(self, name, args, return_arg):
         super(Function, self).__init__(name, args)
         self.return_arg = return_arg

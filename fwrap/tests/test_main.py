@@ -26,7 +26,7 @@ end function empty_func
     def setup(self):
         self.name = 'test'
         self.source_file_lst = [self.fsrc]
-        
+
 
 
 
@@ -132,5 +132,5 @@ cpdef api object empty_func():
         ctps = loads(buf.getvalue())
         for ctp in ctps:
             ok_(isinstance(ctp, dict))
-            eq_(sorted(ctp.keys()), 
+            eq_(sorted(ctp.keys()),
                     ['basetype', 'fwrap_name', 'lang', 'odecl'])

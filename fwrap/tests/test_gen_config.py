@@ -40,9 +40,9 @@ class test_genconfig(object):
         mock_f2c_types(self.ctps)
 
     def test_gen_f_mod(self):
-        eq_(self.int.gen_f_mod(), 
+        eq_(self.int.gen_f_mod(),
                 ['integer, parameter :: fwrap_default_integer = c_int'])
-        eq_(self.cmplx.gen_f_mod(), 
+        eq_(self.cmplx.gen_f_mod(),
                 ['integer, parameter :: '
                     'fwrap_default_complex = c_float_complex'])
 
@@ -51,12 +51,12 @@ class test_genconfig(object):
         eq_(self.cmplx.gen_c_typedef(), ['typedef float _Complex fwrap_default_complex;'])
 
     def test_gen_pxd(self):
-        eq_(self.int.gen_pxd_extern_typedef(), 
+        eq_(self.int.gen_pxd_extern_typedef(),
                 ['ctypedef int fwrap_default_integer'])
         eq_(self.cmplx.gen_pxd_extern_typedef(), [])
 
         eq_(self.int.gen_pxd_intern_typedef(), [])
-        eq_(self.cmplx.gen_pxd_intern_typedef(), 
+        eq_(self.cmplx.gen_pxd_intern_typedef(),
                 ['ctypedef float complex fwrap_default_complex'])
 
         eq_(self.int.gen_pxd_extern_extra(), [])
@@ -66,7 +66,7 @@ class test_genconfig(object):
 
         def _compare(ctp_dict, ctp):
             cd = ctp_dict
-            x_ = gc.ConfigTypeParam(cd['basetype'], 
+            x_ = gc.ConfigTypeParam(cd['basetype'],
                             cd['odecl'], cd['fwrap_name'])
             eq_(x_,y)
 

@@ -18,7 +18,7 @@ def wrap_pyf_iface(ast):
     return fc_wrapper
 
 def generate_fc_pxd(ast, fc_header_name, buf):
-    buf.putln("from %s cimport *" % 
+    buf.putln("from %s cimport *" %
                 constants.KTP_PXD_HEADER_SRC.split('.')[0])
     buf.putln('')
     buf.putln('cdef extern from "%s":' % fc_header_name)
@@ -141,7 +141,7 @@ class ProcWrapper(object):
 
     def cy_prototype(self):
         args = ", ".join(self.arg_man.c_proto_args())
-        return ('%s %s(%s)' % (self.arg_man.c_proto_return_type(), 
+        return ('%s %s(%s)' % (self.arg_man.c_proto_return_type(),
                                 self.name, args))
 
     def all_dtypes(self):
@@ -170,7 +170,7 @@ class FunctionWrapper(ProcWrapper):
 
 
 class ArgWrapperManager(object):
-    
+
     def __init__(self, proc):
         self.proc = proc
         self.isfunction = (proc.kind == 'function')
@@ -195,9 +195,9 @@ class ArgWrapperManager(object):
         self.arg_wrappers = wargs + [self.errstr]
 
     def call_arg_list(self):
-        cl = [argw.intern_name for argw in self.arg_wrappers 
+        cl = [argw.intern_name for argw in self.arg_wrappers
                 if (argw.intern_name != FunctionWrapper.RETURN_ARG_NAME and
-                    argw.intern_name != constants.ERR_NAME and 
+                    argw.intern_name != constants.ERR_NAME and
                     argw.intern_name != constants.ERRSTR_NAME)]
         return cl
 
@@ -261,8 +261,8 @@ class ArgWrapperManager(object):
         return self.return_arg_wrapper.intern_name
 
     def all_dtypes(self):
-        return (self.proc.all_dtypes() + 
-                self.errstr.all_dtypes() + 
+        return (self.proc.all_dtypes() +
+                self.errstr.all_dtypes() +
                 [self.errflag.dtype])
 
 

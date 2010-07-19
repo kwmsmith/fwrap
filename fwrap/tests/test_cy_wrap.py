@@ -106,12 +106,12 @@ class test_cy_arg_wrapper(object):
 class test_cy_char_array_arg_wrapper(object):
 
     def setup(self):
-        arg1d = pyf.Argument('charr1', 
+        arg1d = pyf.Argument('charr1',
                             dtype=pyf.CharacterType(
                                 fw_ktp='charr_x8',
                                 len='20', odecl='character(20)'),
                             dimension=[':'], intent='inout')
-        arg2d = pyf.Argument('charr2', 
+        arg2d = pyf.Argument('charr2',
                             dtype=pyf.CharacterType(
                                 fw_ktp='charr_x30',
                                 len='30', odecl='character(30)'),
@@ -120,7 +120,7 @@ class test_cy_char_array_arg_wrapper(object):
         fc_arg2d = fc_wrap.ArrayArgWrapper(arg2d)
         self.cy_arg1d = cy_wrap.CyCharArrayArgWrapper(fc_arg1d)
         self.cy_arg2d = cy_wrap.CyCharArrayArgWrapper(fc_arg2d)
-    
+
     def test_intern_declarations(self):
         eq_(self.cy_arg1d.intern_declarations(),
                 ["cdef np.ndarray[fwrap_charr_x8, "
@@ -165,7 +165,7 @@ class test_cy_char_array_arg_wrapper(object):
              "<fwrap_charr_x30*>charr2_.data"])
 
 class test_cy_array_arg_wrapper(object):
-    
+
     def setup(self):
         arg1 = pyf.Argument('array', dtype=pyf.default_real,
                             dimension=[':']*3, intent='in')
@@ -219,10 +219,10 @@ class test_char_assumed_size(object):
                                         len='*',
                                         odecl='character(len=*)')
                                         for _ in range(4)]
-        self.caws = make_caws(self.dtypes, 
-                              ['name']*len(self.dtypes), 
+        self.caws = make_caws(self.dtypes,
+                              ['name']*len(self.dtypes),
                               self.intents)
-        (self.intent_in, self.intent_out, 
+        (self.intent_in, self.intent_out,
                 self.intent_inout, self.no_intent) = self.caws
 
     def test_extern_declarations(self):
@@ -248,10 +248,10 @@ class test_char_args(object):
                                         len=str(d),
                                         odecl='character(len=%d)'%d) \
                             for d in (10,20,30,40)]
-        self.caws = make_caws(self.dtypes, 
-                                ['name']*len(self.dtypes), 
+        self.caws = make_caws(self.dtypes,
+                                ['name']*len(self.dtypes),
                                 self.intents)
-        (self.intent_in, self.intent_out, 
+        (self.intent_in, self.intent_out,
                 self.intent_inout, self.no_intent) = self.caws
 
     def test_extern_declarations(self):
@@ -300,9 +300,9 @@ class test_char_args(object):
 
     def test_call_arg_list(self):
         eq_(self.intent_out.call_arg_list(), ['&fw_name_len', 'fw_name_buf'])
-        eq_(self.intent_in.call_arg_list(), 
+        eq_(self.intent_in.call_arg_list(),
                 ['&fw_name_len', '<char*>fw_name'])
-        eq_(self.intent_inout.call_arg_list(), 
+        eq_(self.intent_inout.call_arg_list(),
                 ['&fw_name_len', 'fw_name_buf'])
 
     def test_return_tuple_list(self):
@@ -315,8 +315,8 @@ class test_cmplx_args(object):
     def setup(self):
         self.intents = ('in', 'out', 'inout', None)
         self.dts = ('default_complex',)*len(self.intents)
-        self.caws = make_caws(self.dts, 
-                              ['name']*len(self.intents), 
+        self.caws = make_caws(self.dts,
+                              ['name']*len(self.intents),
                               self.intents)
         self.intent_in, self.intent_out, self.intent_inout, \
                 self.intent_none = self.caws

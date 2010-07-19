@@ -13,7 +13,7 @@ from pprint import pprint
 def test_breakup():
     line = ("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa "
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-    
+
     for chunk in (1, 2, 3, 5, 10, 20, 50, len(line)):
         yield breakup_gen, line, chunk
 
@@ -56,8 +56,8 @@ def test_indent():
     ret = code.reflow_line(line, 1, 100)
     eq_(ret, [code.INDENT+line])
     ret = code.reflow_line(line, 1, 10)
-    eq_(ret, [code.INDENT+line[:8]+'&', 
-              code.INDENT+'&'+line[8:16]+'&', 
+    eq_(ret, [code.INDENT+line[:8]+'&',
+              code.INDENT+'&'+line[8:16]+'&',
               code.INDENT+'&'+line[16:]])
 def test_reflow():
     reflow_src = ("subroutine many_args(a0, a1, a2, a3, a4, a5, a6, a7, a8, "
@@ -70,11 +70,11 @@ def test_reflow():
                   "a29, a30, a31, a32, a33, a34, a35, a36, a37, a38, a39, "
                   "a40, a41, a42, a43, a44, a45, a46, a47, a48, a49\n"
                   "end subroutine many_args")
-    
+
     buf = code.CodeBuffer()
     buf.putline(code.reflow_fort(reflow_src))
     for line in buf.getvalue().splitlines():
         ok_(len(line) <= 79, "len('%s') > 79" % line)
 
-            
-    
+
+

@@ -41,17 +41,17 @@ for section in _config_parser.sections():
 _available_options.pop('source')
 # Add config option
 _available_options['config'] = None
-        
+
 
 def wrap(source=None,**kargs):
     r"""Wrap the source given and compile if requested
-    
+
     This function is the main driving routine for fwrap and for most use
     cases should be sufficient.  It performs argument validation, compilation
     of the base source if requested, parses the source, writes out the
     necessary fortran, c, and cython files for wrapping, and again compiles
     those into a module if requested.
-    
+
     :Input:
      - *source* - (id) Path to source or a list of paths to source to be
        wrapped.  It can also be a piece of raw source in a string (assumed if
@@ -72,7 +72,7 @@ def wrap(source=None,**kargs):
      - *f90* - (string) Compiler or path to compiler, default is 'gfortran'
      - *fcompiler* - (string) Class name of fortran compiler requested, this
        name is the one that distutils recognizes.  Default is 'gnu95'.
-     - *fflags* - (string) Compilation flags used, appended to the end of 
+     - *fflags* - (string) Compilation flags used, appended to the end of
        distutils compilation run
      - *libraries* - (list)
      - *library_dirs* - (list)
@@ -92,7 +92,7 @@ def wrap(source=None,**kargs):
                 exec("%s = kargs[opt]" % opt)
             else:
                 exec("%s = _config_parser.get(_available_options[opt],opt)" % opt)
-    
+
     # Do some option parsing
     out_dir = out_dir.strip()
     name.strip()
@@ -100,7 +100,7 @@ def wrap(source=None,**kargs):
     for opt in _available_options:
         if not (opt == 'source' or opt == 'config'):
             logger.debug("  %s = %s" % (opt,locals()[opt]))
-    
+
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
     project_path = os.path.join(out_dir,name)
@@ -116,7 +116,7 @@ def wrap(source=None,**kargs):
         name.strip()
         os.mkdir(project_path)
     # *** TODO: Check if distutils can use this fcompiler and f90
-    
+
     # Check to see if each source exists and expand to full paths
     raw_source = False
     source_files = []
@@ -142,7 +142,7 @@ def wrap(source=None,**kargs):
                 source_files.append(src)
         else:
             raise ValueError("Must provide either a string or list of source")
-    
+
     # Validate and parse source list
     if len(source_files) < 1:
         raise ValueError("Must provide at least one source to wrap.")
@@ -154,7 +154,7 @@ def wrap(source=None,**kargs):
     logger.debug("Wrapping the following source:")
     for src in source_files:
         logger.debug("  %s" % src)
-    
+
     # Parse fortran using fparser
     logger.info("Parsing source files.")
     f_ast = parse(source_files)
@@ -169,7 +169,7 @@ def wrap(source=None,**kargs):
     file_name, buf = generate_setup(name, 'fwrap_setup.log',
                             source_files, libraries, library_dirs, extra_objects)
     write_to_project_dir(project_path, file_name, buf)
-    
+
     # Generate library module if requested
     if build:
         logger.info("Compiling sources and generating extension module...")
@@ -188,15 +188,15 @@ def wrap(source=None,**kargs):
                 logger.info("Returning to %s" % odir)
                 os.chdir(odir)
         logger.info("Compiling was successful.")
-        
+
     # If raw source was passed in, we need to delete the temp file we created
     if raw_source:
         os.remove(source_files[0])
-        
+
 
 def parse(source_files):
     r"""Parse fortran code returning parse tree
-    
+
     :Input:
      - *source_files* - (list) List of valid source files
     """
@@ -205,20 +205,20 @@ def parse(source_files):
 
 def generate(fort_ast,name,project_path):
     r"""Given a fortran abstract syntax tree ast, generate wrapper files
-    
+
     :Input:
      - *fort_ast* - (`fparser.ProgramBlock`) Abstract syntax tree from parser
      - *name* - (string) Name of the library module
      - *out_dir* - (string) Path to build directory, defaults to './'
-     
+
      Raises `Exception.IOError` if writing the generated code fails.
     """
-    
+
     # Generate wrapping abstract syntax trees
     logger.info("Generating abstract syntax tress for c and cython.")
     c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
     cython_ast = cy_wrap.wrap_fc(c_ast)
-    
+
     # Generate files and write them out
     generators = ( (generate_type_specs,(c_ast,name)),
                    (generate_fc_f,(c_ast,name)),
@@ -252,7 +252,7 @@ cfg_args = %(CFG_ARGS)s
 
 cfg = configuration(projname='%(PROJNAME)s', **cfg_args)
 setup(log='%(LOG_FILE)s', cmdclass=fwrap_cmdclass, configuration=cfg)
-''' 
+'''
     sources = [os.path.abspath(source) for source in sources]
     extra_objects = [os.path.abspath(eo) for eo in extra_objects]
     cfg_args = {'extra_sources' : sources,
@@ -265,7 +265,7 @@ setup(log='%(LOG_FILE)s', cmdclass=fwrap_cmdclass, configuration=cfg)
             'CFG_ARGS': repr(cfg_args)}
 
     return 'setup.py', (tmpl % dd)
-        
+
 def generate_genconfig(f_ast, name):
     buf = CodeBuffer()
     gc.generate_genconfig(f_ast, buf)
@@ -322,7 +322,7 @@ def main():
     # Parse command line options
     parser = OptionParser("usage: %prog [options] SOURCE_FILES",
                             version=__version__)
-    
+
     parser.add_option('-m', dest='name', help='')
     parser.add_option('-C', '--config', dest='config', help='')
     parser.add_option('-c',  '-b',  '--build',  dest='build',
@@ -340,9 +340,9 @@ def main():
     parser.add_option('--no-recompile', action="store_false", dest='recompile', help='')
     parser.add_option('--override', action="store_true", dest='override', help='')
     parser.add_option('--no-override', action="store_false", dest='override', help='')
-    
+
     parsed_options, source_files = parser.parse_args()
-    
+
     # Loop over options and put in a dictionary for passing into wrap
     kargs = {}
     logger.debug("Command line arguments: ")
@@ -356,7 +356,7 @@ def main():
 
     if not source_files:
         parser.error("no source files")
-    
+
     # Call main routine
     wrap(source_files,**kargs)
     sys.exit(0)

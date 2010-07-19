@@ -187,7 +187,7 @@ class _ConfigTypeParam(object):
 
     def gen_f_mod(self):
         self.check_init()
-        return ['integer, parameter :: %s = %s' % 
+        return ['integer, parameter :: %s = %s' %
                 (self.fwrap_name, self.fc_type)]
 
     def gen_c_typedef(self):
@@ -260,10 +260,10 @@ class _CmplxTypeParam(_ConfigTypeParam):
                  'c_double_complex' : 'double complex',
                  'c_long_double_complex' : 'long double complex'
                 }
-    
+
     def gen_pxd_intern_typedef(self):
         self.check_init()
-        return ['ctypedef %s %s' % 
+        return ['ctypedef %s %s' %
                 (self._c2cy_map[self.fc_type], self.fwrap_name)]
 
     def _cy_name(self):
@@ -318,8 +318,8 @@ type_dict = {
         'integer' : ('c_signed_char', 'c_short', 'c_int',
                   'c_long', 'c_long_long'),
         'real' : ('c_float', 'c_double', 'c_long_double'),
-        'complex' : ('c_float_complex', 
-                     'c_double_complex', 
+        'complex' : ('c_float_complex',
+                     'c_double_complex',
                      'c_long_double_complex'),
         'character' : ('c_char',),
         }

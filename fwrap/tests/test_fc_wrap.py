@@ -27,7 +27,7 @@ def test_generate_fc_h():
     fc_wrap.generate_fc_h(ast, header_name, buf)
     code = '''\
     #include "foobar"
-    
+
     void two_arg_c(fwrap_default_real *fw_ret_arg, fwrap_default_integer *a, fwrap_default_integer *b, fwrap_default_integer *c, fwrap_default_integer *d, fwrap_default_integer *fw_iserr__, fwrap_default_character *fw_errstr__);
     '''
     compare(buf.getvalue(), code)
@@ -91,7 +91,7 @@ def test_gen_empty_func_wrapper():
                       args=(),
                       return_arg=return_arg)
     empty_func_wrapper = fc_wrap.FunctionWrapper(wrapped=empty_func)
-                      
+
     empty_func_wrapped = '''\
     subroutine empty_func_c(fw_ret_arg, fw_iserr__, fw_errstr__) bind(c, name="empty_func_c")
         use fwrap_ktp_mod
@@ -217,7 +217,7 @@ def test_intent_hide():
     compare(check, buf.getvalue())
 
 def test_logical_function():
-    return_arg = pyf.Argument('lgcl_fun', 
+    return_arg = pyf.Argument('lgcl_fun',
             dtype=pyf.LogicalType(fw_ktp='lgcl'))
     lgcl_fun = pyf.Function(name='lgcl_fun', args=[],
                             return_arg=return_arg)
@@ -316,10 +316,10 @@ def test_explicit_shape_int_array():
                        dtype=pyf.default_integer,
                        dimension=('d1', 'd2'),
                        intent="inout"),
-          pyf.Argument(name='d1', 
+          pyf.Argument(name='d1',
                        dtype=pyf.default_integer,
                        intent='in'),
-          pyf.Argument(name='d2', 
+          pyf.Argument(name='d2',
                        dtype=pyf.default_integer,
                        intent='in')
         ]
@@ -361,12 +361,12 @@ end subroutine arr_arg_c
     compare(fort_file, buf.getvalue())
 
 def test_many_arrays():
-    args=[pyf.Argument('assumed_size', 
+    args=[pyf.Argument('assumed_size',
                 pyf.default_integer, "inout", dimension=('d1','*')),
           pyf.Argument('d1', pyf.default_integer, 'in'),
-          pyf.Argument('assumed_shape', 
+          pyf.Argument('assumed_shape',
                 pyf.default_logical, 'out', dimension=(':', ':')),
-          pyf.Argument('explicit_shape', 
+          pyf.Argument('explicit_shape',
                 pyf.default_complex, 'inout', ('c1', 'c2')),
           pyf.Argument('c1', pyf.default_integer, 'inout'),
           pyf.Argument('c2', pyf.default_integer)
@@ -379,7 +379,7 @@ def test_many_arrays():
 
 def test_declaration_order():
     args=[
-        pyf.Argument('explicit_shape', 
+        pyf.Argument('explicit_shape',
             pyf.default_complex, 'out', dimension=('d1', 'd2')),
         pyf.Argument('d2', pyf.default_integer, 'in'),
         pyf.Argument('d1', pyf.default_integer, 'in'),
@@ -403,13 +403,13 @@ def test_declaration_order():
 class test_char_array_arg_wrapper(object):
 
     def setup(self):
-        charr1 = pyf.Argument('charr1', 
+        charr1 = pyf.Argument('charr1',
                               pyf.CharacterType("char_x20",
                                                 len="20",
                                                 odecl="character(20)"),
                               dimension=(":",),
                               intent="inout")
-        charr3 = pyf.Argument('charr3', 
+        charr3 = pyf.Argument('charr3',
                               pyf.CharacterType("char_x30",
                                                 len="30",
                                                 odecl="character(30)"),
@@ -458,21 +458,21 @@ type(c_ptr), value :: cs
         eq_(self.fc_charr_star.extern_declarations(), decls_star.splitlines())
 
     def test_intern_decls(self):
-        eq_(self.fc_charr1.intern_declarations(), 
+        eq_(self.fc_charr1.intern_declarations(),
                 ["character(kind=fwrap_char_x20, len=20), "
                     "dimension(:), pointer :: fw_charr1"])
-        eq_(self.fc_charr3.intern_declarations(), 
+        eq_(self.fc_charr3.intern_declarations(),
                 ["character(kind=fwrap_char_x30, len=30), "
                     "dimension(:, :, :), pointer :: fw_charr3"])
-        eq_(self.fc_charr_star.intern_declarations(), 
+        eq_(self.fc_charr_star.intern_declarations(),
                 ['character(kind=fwrap_char_xX, len=fw_cs_len), '
                     'dimension(:), pointer :: fw_cs'])
 
     def test_extern_arg_list(self):
-        eq_(self.fc_charr1.extern_arg_list(), 
+        eq_(self.fc_charr1.extern_arg_list(),
                 ['fw_charr1_len', 'charr1_d1', 'charr1'])
-        eq_(self.fc_charr3.extern_arg_list(), 
-                ['fw_charr3_len', 'charr3_d1', 'charr3_d2', 
+        eq_(self.fc_charr3.extern_arg_list(),
+                ['fw_charr3_len', 'charr3_d1', 'charr3_d2',
                  'charr3_d3', 'charr3'])
         eq_(self.fc_charr_star.extern_arg_list(),
                 ['fw_cs_len', 'cs_d1', 'cs'])
@@ -486,20 +486,20 @@ type(c_ptr), value :: cs
                         'endif',
                         'call c_f_pointer(charr1, fw_charr1, (/ charr1_d1 /))']
 
-        charr3_res = ['if (30 .ne. fw_charr3_len) then', 
-                '    fw_iserr__ = FW_CHAR_SIZE__', 
-                '    fw_errstr__ = transfer("charr3                                                         ", fw_errstr__)', 
-                '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR', 
-                '    return', 
-                'endif', 
+        charr3_res = ['if (30 .ne. fw_charr3_len) then',
+                '    fw_iserr__ = FW_CHAR_SIZE__',
+                '    fw_errstr__ = transfer("charr3                                                         ", fw_errstr__)',
+                '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR',
+                '    return',
+                'endif',
                 'call c_f_pointer(charr3, fw_charr3, (/ charr3_d1, charr3_d2, charr3_d3 /))']
 
-        cs_res = ['if (n1 .ne. cs_d1) then', 
-                  '    fw_iserr__ = FW_ARR_DIM__', 
-                  '    fw_errstr__ = transfer("cs                                                             ", fw_errstr__)', 
-                  '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR', 
-                  '    return', 
-                  'endif', 
+        cs_res = ['if (n1 .ne. cs_d1) then',
+                  '    fw_iserr__ = FW_ARR_DIM__',
+                  '    fw_errstr__ = transfer("cs                                                             ", fw_errstr__)',
+                  '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR',
+                  '    return',
+                  'endif',
                   'call c_f_pointer(cs, fw_cs, (/ cs_d1 /))']
 
         eq_(self.fc_charr1.pre_call_code(), charr1_res)
@@ -525,21 +525,21 @@ type(c_ptr), value :: cs
              'fwrap_npy_intp *charr3_d3',
              'void *charr3']
             )
- 
+
 class test_array_arg_wrapper(object):
 
     def setup(self):
-        self.real_arr_arg = pyf.Argument('real_arr_arg', 
-                                pyf.default_real, 
+        self.real_arr_arg = pyf.Argument('real_arr_arg',
+                                pyf.default_real,
                                 dimension=(':',':',':'), intent='out')
-        self.int_arr_arg = pyf.Argument('arr_arg', 
-                                pyf.default_integer, 
+        self.int_arr_arg = pyf.Argument('arr_arg',
+                                pyf.default_integer,
                                 dimension=(':',':'), intent='inout')
         self.int_arr_wrapper = fc_wrap.ArrayArgWrapper(self.int_arr_arg)
         self.real_arr_wrapper = fc_wrap.ArrayArgWrapper(self.real_arr_arg)
 
-        self.real_explicit_arg = pyf.Argument('real_exp_arg', 
-                                pyf.default_real, 
+        self.real_explicit_arg = pyf.Argument('real_exp_arg',
+                                pyf.default_real,
                                 dimension=('d1', 'd2', 'd3'), intent='inout')
         self.real_explicit_wrapper = fc_wrap.ArrayArgWrapper(self.real_explicit_arg)
 
@@ -555,16 +555,16 @@ integer(kind=fwrap_npy_intp), intent(in) :: real_arr_arg_d2
 integer(kind=fwrap_npy_intp), intent(in) :: real_arr_arg_d3
 real(kind=fwrap_default_real), dimension(real_arr_arg_d1, real_arr_arg_d2, real_arr_arg_d3), intent(out) :: real_arr_arg
 '''
-        eq_(self.int_arr_wrapper.extern_declarations(), 
+        eq_(self.int_arr_wrapper.extern_declarations(),
                 int_decls.splitlines())
-        eq_(self.real_arr_wrapper.extern_declarations(), 
+        eq_(self.real_arr_wrapper.extern_declarations(),
                 real_decls.splitlines())
 
     def test_extern_arg_list(self):
-        eq_(self.int_arr_wrapper.extern_arg_list(), 
+        eq_(self.int_arr_wrapper.extern_arg_list(),
                 ['arr_arg_d1', 'arr_arg_d2', 'arr_arg'])
-        eq_(self.real_arr_wrapper.extern_arg_list(), 
-                ['real_arr_arg_d1', 'real_arr_arg_d2', 
+        eq_(self.real_arr_wrapper.extern_arg_list(),
+                ['real_arr_arg_d1', 'real_arr_arg_d2',
                  'real_arr_arg_d3', 'real_arr_arg'])
 
     def test_pre_call_code(self):
@@ -616,19 +616,19 @@ class test_char_arg(object):
 
     def setup(self):
         dchar1 = pyf.CharacterType('char_20', len='20', odecl='character*20')
-        dchar2 = pyf.CharacterType('char_10', 
+        dchar2 = pyf.CharacterType('char_10',
                 len='10', odecl='character(len=10)')
-        dchar3 = pyf.CharacterType('char_x', 
+        dchar3 = pyf.CharacterType('char_x',
                 len='*', odecl='character(len=*)')
 
         names = ['ch1', 'ch2', 'ch3']
 
         dchs = [dchar1, dchar2, dchar3]
 
-        inout_args = [pyf.Argument(name=name, dtype=dch, intent='inout') 
+        inout_args = [pyf.Argument(name=name, dtype=dch, intent='inout')
                 for (name, dch) in zip(names, dchs)]
 
-        self.inout_wraps = [fc_wrap.ArgWrapperFactory(ioa) 
+        self.inout_wraps = [fc_wrap.ArgWrapperFactory(ioa)
                 for ioa in inout_args]
 
     def test_c_declarations(self):
@@ -647,7 +647,7 @@ class test_char_arg(object):
         results = [
             ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch1_len',
              'type(c_ptr), value :: ch1'],
-            
+
             ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch2_len',
              'type(c_ptr), value :: ch2'],
 
@@ -710,12 +710,12 @@ class test_arg_wrapper(object):
         self.lgcl_arg = pyf.Argument(name='lgcl', dtype=dlgcl, intent='inout')
         self.lgcl_arg_wrap = fc_wrap.ArgWrapperFactory(self.lgcl_arg)
 
-        self.lgcl_arg_in = pyf.Argument(name='lgcl_in', 
+        self.lgcl_arg_in = pyf.Argument(name='lgcl_in',
                                 dtype=dlgcl, intent='in')
         self.lgcl_arg_in_wrap = fc_wrap.ArgWrapperFactory(self.lgcl_arg_in)
 
     def test_extern_int_arg(self):
-        eq_(self.int_arg_wrap.extern_declarations(), 
+        eq_(self.int_arg_wrap.extern_declarations(),
                 [self.int_arg.declaration()])
 
     def test_intern_int_var(self):
@@ -744,7 +744,7 @@ class test_arg_wrapper(object):
             eq_(argw.post_call_code(), [])
 
 class test_arg_wrapper_manager(object):
-    
+
     def setup(self):
         dlgcl = pyf.default_logical
         dint = pyf.IntegerType(fw_ktp='int')
@@ -788,9 +788,9 @@ class test_arg_manager_return(object):
     def setup(self):
         dlgcl = pyf.default_logical
         dint = pyf.IntegerType(fw_ktp='int')
-        self.lgcl = pyf.Argument(name='ll', dtype=dlgcl, 
+        self.lgcl = pyf.Argument(name='ll', dtype=dlgcl,
                 intent='out', is_return_arg=True)
-        self.int = pyf.Argument(name='int', dtype=dint, 
+        self.int = pyf.Argument(name='int', dtype=dint,
                 intent='out', is_return_arg=True)
         subr = pyf.Subroutine('foo', args=[self.lgcl])
         self.am_lgcl = fc_wrap.ArgWrapperManager(subr)
@@ -810,25 +810,25 @@ character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_e
                 ['logical(kind=fwrap_default_logical), pointer :: fw_ll'])
 
 class test_c_proto_generation(object):
-    
+
     def test_c_proto_args(self):
-        args = [pyf.Argument(name='int_arg', 
+        args = [pyf.Argument(name='int_arg',
                         dtype=pyf.default_integer, intent='in'),
-                pyf.Argument(name='real_arg', 
+                pyf.Argument(name='real_arg',
                         dtype=pyf.default_real,    intent='out')]
         return_arg = pyf.Argument(name='fname', dtype=pyf.default_real)
         func = pyf.Function('foo', args=args, return_arg=return_arg)
         arg_man = fc_wrap.ArgWrapperManager(func)
-        eq_(arg_man.c_proto_args(), 
-                ['fwrap_default_real *fw_ret_arg', 
-                 'fwrap_default_integer *int_arg', 
+        eq_(arg_man.c_proto_args(),
+                ['fwrap_default_real *fw_ret_arg',
+                 'fwrap_default_integer *int_arg',
                  'fwrap_default_real *real_arg',
                  'fwrap_default_integer *fw_iserr__',
                  'fwrap_default_character *fw_errstr__'])
 
     def test_c_proto_array_args(self):
-        args = [pyf.Argument(name='array', 
-                        dtype=pyf.default_real, 
+        args = [pyf.Argument(name='array',
+                        dtype=pyf.default_real,
                         dimension=(':',)*3, intent='out')]
         subr = pyf.Subroutine('foo', args=args)
         arg_man = fc_wrap.ArgWrapperManager(subr)
@@ -841,7 +841,7 @@ class test_c_proto_generation(object):
 
     def test_c_proto_return_type(self):
         for dtype in (pyf.default_real, pyf.default_integer):
-            return_arg = pyf.Argument(name='ret_arg', 
+            return_arg = pyf.Argument(name='ret_arg',
                                 dtype=dtype, is_return_arg=True)
             empty_func = pyf.Function(name='foo',
                                 args=[],
@@ -854,26 +854,26 @@ class test_c_proto_generation(object):
         eq_(am_subr.c_proto_return_type(), 'void')
 
     def test_c_prototype_empty(self):
-        return_arg = pyf.Argument(name="empty_func", 
+        return_arg = pyf.Argument(name="empty_func",
                             dtype=pyf.default_integer)
         empty_func = pyf.Function(name='empty_func',
                           args=(),
                           return_arg=return_arg)
         empty_func_wrapper = fc_wrap.FunctionWrapper(wrapped=empty_func)
-        eq_(empty_func_wrapper.c_prototype(), 
+        eq_(empty_func_wrapper.c_prototype(),
                 ('void empty_func_c(fwrap_default_integer *fw_ret_arg, '
                     'fwrap_default_integer *fw_iserr__, fwrap_default_character *fw_errstr__);'))
         empty_subr = pyf.Subroutine(name='empty_subr',
                             args=())
         empty_subr_wrapper = fc_wrap.SubroutineWrapper(wrapped=empty_subr)
-        eq_(empty_subr_wrapper.c_prototype(), 
+        eq_(empty_subr_wrapper.c_prototype(),
                 'void empty_subr_c(fwrap_default_integer *fw_iserr__, fwrap_default_character *fw_errstr__);')
 
     def test_c_prototype_args(self):
-        args = [pyf.Argument(name='int_arg', 
+        args = [pyf.Argument(name='int_arg',
                         dtype=pyf.default_integer, intent='in'),
-                pyf.Argument(name='array', 
-                        dtype=pyf.default_real, 
+                pyf.Argument(name='array',
+                        dtype=pyf.default_real,
                         dimension=(':',)*3, intent='out')]
         return_arg = pyf.Argument(name="func", dtype=pyf.default_integer)
         func = pyf.Function(name='func', args=args, return_arg=return_arg)

@@ -53,7 +53,7 @@ def _break_line(line, level, max_len):
             in_comment = True
         elif ch in ('"', "'") and not in_string and not in_comment:
             in_string = True
-        elif (ch in ('"', "'") and in_string and not 
+        elif (ch in ('"', "'") and in_string and not
                     in_escape and not in_comment):
             in_string = False
 

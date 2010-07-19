@@ -98,7 +98,7 @@ def find_c_type(ctp, config_cmd):
     if ctp.basetype != 'integer':
         raise ValueError(
                 "only integer basetype supported for C type discovery.")
-    basetypes = ('signed char', 'short int', 
+    basetypes = ('signed char', 'short int',
                     'int', 'long int', 'long long int')
     expected = ['sizeof(%s)' % basetype for basetype in basetypes]
     result = config_cmd.check_type_size(type_name=ctp.odecl,
@@ -321,7 +321,7 @@ class fw_build_ext(np_build_ext):
         if self.compiler.compiler_type=='msvc':
             # expand libraries with fcompiler libraries as we are
             # not using fcompiler linker
-            self._libs_with_msvc_and_fortran(fcompiler, 
+            self._libs_with_msvc_and_fortran(fcompiler,
                         libraries, library_dirs)
 
         # elif ext.language in ['f77','f90'] and fcompiler is not None:
@@ -355,7 +355,7 @@ class fw_build_src(np_build_src):
         return sources
 
 class fw_config(np_config):
-    
+
     def _check_compiler(self):
         old_config._check_compiler(self)
         from numpy.distutils.fcompiler import FCompiler, new_fcompiler
@@ -372,7 +372,7 @@ class fw_config(np_config):
                     self.fcompiler.customize_cmd(self)
                     self.fcompiler.show_customization()
                 else:
-                    self.warn('f90_compiler=%s is not available.' % 
+                    self.warn('f90_compiler=%s is not available.' %
                                 self.fcompiler.compiler_type)
                     self.fcompiler = None
 
