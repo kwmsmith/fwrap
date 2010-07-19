@@ -1,0 +1,5 @@
+
+
+to administer via ssh:
+
+$ ssh -t kwmsmith,fwrap@shell.sourceforge.net create
