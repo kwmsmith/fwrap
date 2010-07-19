@@ -150,6 +150,8 @@ def ConfigTypeParam(basetype, odecl, fwrap_name, lang='fortran'):
             return _CmplxTypeParam(basetype, odecl, fwrap_name)
         if basetype == 'character':
             return _CharTypeParam(basetype, odecl, fwrap_name)
+        if basetype == 'logical':
+            return _LogicalTypeParam(basetype, odecl, fwrap_name)
         else:
             return _ConfigTypeParam(basetype, odecl, fwrap_name)
     else:
@@ -234,6 +236,16 @@ class _CharTypeParam(_ConfigTypeParam):
         pass
 
     odecl = property(_get_odecl, _set_odecl)
+
+class _LogicalTypeParam(_ConfigTypeParam):
+
+    def gen_f_mod(self):
+        self.check_init()
+        temp_var_name = "%s_tmp_var" % (self.fwrap_name)
+        temp_var = "%s :: %s" % (self.odecl, temp_var_name)
+        return [temp_var,
+                ("integer, parameter :: %s = kind(%s)" %
+                    (self.fwrap_name, temp_var_name))]
 
 class _CmplxTypeParam(_ConfigTypeParam):
 

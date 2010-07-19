@@ -103,7 +103,7 @@ class LogicalType(Dtype):
 
     def __init__(self, fw_ktp, odecl=None, **kwargs):
         super(LogicalType, self).__init__(fw_ktp, odecl, **kwargs)
-        self.type = 'integer'
+        self.type = 'logical'
         if self.odecl:
             self.odecl = self.odecl.replace('logical', 'integer')
 

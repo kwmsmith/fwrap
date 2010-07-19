@@ -1,6 +1,11 @@
 from fwrap import pyf_iface as pyf
 from fwrap import constants
 
+def _arg_name_mangler(name):
+    if name == constants.RETURN_ARG_NAME:
+        return name
+    return "fw_%s" % name
+
 def wrap_pyf_iface(ast):
     fc_wrapper = []
     for proc in ast:
@@ -266,6 +271,8 @@ def ArgWrapperFactory(arg):
         if arg.dtype.type == 'character':
             return CharArrayArgWrapper(arg)
         return ArrayArgWrapper(arg)
+    elif arg.dtype.type == 'logical':
+        return LogicalWrapper(arg)
     elif arg.intent == 'hide':
         return HideArgWrapper(arg)
     elif arg.dtype.type == 'character':
@@ -288,6 +295,12 @@ class ArgWrapperBase(object):
         return []
 
     def c_declarations(self):
+        return []
+
+    def call_arg_list(self):
+        return []
+
+    def extern_arg_list(self):
         return []
 
 
@@ -333,7 +346,8 @@ class CharArgWrapper(ArgWrapperBase):
 
     def __init__(self, arg):
         self.orig_arg = arg
-        self.len_arg = pyf.Argument(name="fw_%s_len" % arg.name,
+        self.intern_name = _arg_name_mangler(arg.name)
+        self.len_arg = pyf.Argument(name="%s_len" % self.intern_name,
                                     dtype=pyf.dim_dtype,
                                     intent='in')
         self.extern_arg = pyf.Argument(
@@ -341,7 +355,6 @@ class CharArgWrapper(ArgWrapperBase):
                                 dtype=pyf.c_ptr_type,
                                 isvalue=True)
         self.dtype = arg.dtype
-        self.intern_name = "fw_%s" % arg.name
         self.name = arg.name
         # self.ktp = pyf.default_character.fw_ktp
         self.is_assumed_len = (arg.dtype.len == '*')
@@ -509,10 +522,10 @@ class CharArrayArgWrapper(ArrayArgWrapper):
 
     def __init__(self, arg):
         super(CharArrayArgWrapper, self).__init__(arg)
-        self.len_arg = pyf.Argument(name="fw_%s_len" % arg.name,
+        self.intern_name = _arg_name_mangler(self._orig_arg.name)
+        self.len_arg = pyf.Argument(name="%s_len" % self.intern_name,
                                     dtype=pyf.dim_dtype,
                                     intent='in')
-        self.intern_name = "fw_%s" % self._orig_arg.name
         self.is_assumed_len = (self._orig_arg.dtype.len == '*')
 
         if self.is_assumed_len:
@@ -569,36 +582,35 @@ class CharArrayArgWrapper(ArrayArgWrapper):
                 super(CharArrayArgWrapper, self).c_declarations()
 
 
-class LogicalWrapper(ArgWrapper):
+class LogicalWrapper(ArgWrapperBase):
 
     def __init__(self, arg):
         super(LogicalWrapper, self).__init__(arg)
-        dt = pyf.default_integer
-        self._extern_arg = pyf.Argument(name=arg.name, 
-                                        dtype=dt, 
-                                        intent=arg.intent, 
-                                        is_return_arg=arg.is_return_arg)
-        self._intern_var = pyf.Var(name=arg.name+'_tmp', dtype=arg.dtype)
+        self.extern_arg = pyf.Argument(name=arg.name,
+                                        dtype=pyf.c_ptr_type,
+                                        isvalue=True)
+        self.intern_name = _arg_name_mangler(arg.name)
+        self.intern_var = pyf.Var(name=self.intern_name,
+                                   dtype=arg.dtype,
+                                   isptr=True)
+        self.dtype = arg.dtype
+        self.name = arg.name
+        self.ktp = arg.ktp
+        self.intent = arg.intent
+
+    def c_declarations(self):
+        return [self.extern_arg.c_declaration()]
+
+    def extern_arg_list(self):
+        return [self.extern_arg.name]
+
+    def extern_declarations(self):
+        return [self.extern_arg.declaration()]
+
+    def intern_declarations(self):
+        return [self.intern_var.declaration()]
 
     def pre_call_code(self):
-        pcc = '''\
-if(%(extern_arg)s .ne. 0) then
-    %(intern_var)s = .true.
-else
-    %(intern_var)s = .false.
-end if
-''' % {'extern_arg' : self._extern_arg.name,
-       'intern_var' : self._intern_var.name}
-
-        return pcc.splitlines()
-
-    def post_call_code(self):
-        pcc = '''\
-if(%(intern_var)s) then
-    %(extern_arg)s = 1
-else
-    %(extern_arg)s = 0
-end if
-''' % {'extern_arg' : self._extern_arg.name,
-       'intern_var' : self._intern_var.name}
-        return pcc.splitlines()
+        return ['call c_f_pointer(%s, %s)' %
+                (self.extern_arg.name,
+                 self.intern_var.name)]

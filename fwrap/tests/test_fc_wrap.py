@@ -228,17 +228,19 @@ def test_logical_function():
     subroutine lgcl_fun_c(fw_ret_arg, fw_iserr__, fw_errstr__) bind(c, name="lgcl_fun_c")
         use fwrap_ktp_mod
         implicit none
-        integer(kind=fwrap_lgcl), intent(out) :: fw_ret_arg
+        type(c_ptr), value :: fw_ret_arg
         integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
         character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_errstr__
         interface
             function lgcl_fun()
                 use fwrap_ktp_mod
                 implicit none
-                integer(kind=fwrap_lgcl) :: lgcl_fun
+                logical(kind=fwrap_lgcl) :: lgcl_fun
             end function lgcl_fun
         end interface
+        logical(kind=fwrap_lgcl), pointer :: fw_ret_arg
         fw_iserr__ = FW_INIT_ERR__
+        call c_f_pointer(fw_ret_arg, fw_ret_arg)
         fw_ret_arg = lgcl_fun()
         fw_iserr__ = FW_NO_ERR__
     end subroutine lgcl_fun_c
@@ -257,18 +259,20 @@ def test_logical_wrapper():
     subroutine lgcl_arg_c(lgcl, fw_iserr__, fw_errstr__) bind(c, name="lgcl_arg_c")
         use fwrap_ktp_mod
         implicit none
-        integer(kind=fwrap_lgcl_ktp), intent(inout) :: lgcl
+        type(c_ptr), value :: lgcl
         integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
         character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_errstr__
         interface
             subroutine lgcl_arg(lgcl)
                 use fwrap_ktp_mod
                 implicit none
-                integer(kind=fwrap_lgcl_ktp), intent(inout) :: lgcl
+                logical(kind=fwrap_lgcl_ktp), intent(inout) :: lgcl
             end subroutine lgcl_arg
         end interface
+        logical(kind=fwrap_lgcl_ktp), pointer :: fw_lgcl
         fw_iserr__ = FW_INIT_ERR__
-        call lgcl_arg(lgcl)
+        call c_f_pointer(lgcl, fw_lgcl)
+        call lgcl_arg(fw_lgcl)
         fw_iserr__ = FW_NO_ERR__
     end subroutine lgcl_arg_c
 '''
@@ -575,6 +579,37 @@ real(kind=fwrap_default_real), dimension(real_arr_arg_d1, real_arr_arg_d2, real_
                  'endif').splitlines())
 
 
+class test_logical_arg(object):
+
+    def setup(self):
+        intents = ('in', 'inout', 'out', None)
+        self.args = [fc_wrap.ArgWrapperFactory(
+                        pyf.Argument(
+                            name='larg',
+                            dtype=pyf.default_logical,
+                            intent=intent)
+                        ) for intent in intents]
+        self.arg_dict = dict(zip(intents, self.args))
+
+    def test_c_declarations(self):
+        result = ['void *larg']
+        for arg in self.arg_dict.values():
+            eq_(arg.c_declarations(), result)
+
+    def test_extern_declarations(self):
+        result = ['type(c_ptr), value :: larg']
+        for arg in self.arg_dict.values():
+            eq_(arg.extern_declarations(), result)
+
+    def test_intern_declarations(self):
+        result = ['logical(kind=fwrap_default_logical), pointer :: fw_larg']
+        for arg in self.arg_dict.values():
+            eq_(arg.intern_declarations(), result)
+
+    def test_pre_call_code(self):
+        result = ['call c_f_pointer(larg, fw_larg)']
+        for arg in self.arg_dict.values():
+            eq_(arg.pre_call_code(), result)
 
 
 class test_char_arg(object):
@@ -694,15 +729,15 @@ class test_arg_wrapper(object):
 
     def test_extern_lgcl_arg(self):
         eq_(self.lgcl_arg_wrap.extern_declarations(),
-                ['integer(kind=fwrap_default_logical), '
-                    'intent(inout) :: lgcl'])
+                ['type(c_ptr), value :: lgcl'])
         eq_(self.lgcl_arg_in_wrap.extern_declarations(),
-                ['integer(kind=fwrap_default_logical), '
-                    'intent(in) :: lgcl_in'])
+                ['type(c_ptr), value :: lgcl_in'])
 
     def test_intern_lgcl_var(self):
-        eq_(self.lgcl_arg_wrap.intern_declarations(), [])
-        eq_(self.lgcl_arg_in_wrap.intern_declarations(), [])
+        eq_(self.lgcl_arg_wrap.intern_declarations(),
+                ['logical(kind=fwrap_default_logical), pointer :: fw_lgcl'])
+        eq_(self.lgcl_arg_in_wrap.intern_declarations(),
+                ['logical(kind=fwrap_default_logical), pointer :: fw_lgcl_in'])
 
     def test_post_call_code(self):
         for argw in (self.lgcl_arg_wrap, self.lgcl_arg_in_wrap):
@@ -717,15 +752,15 @@ class test_arg_wrapper_manager(object):
         self.lgcl2 = pyf.Argument(name='lgcl2', dtype=dlgcl, intent='inout')
         self.intarg = pyf.Argument(name='int', dtype=dint, intent='inout')
         self.args = [self.lgcl1, self.lgcl2, self.intarg]
-        self.l1wrap = fc_wrap.ArgWrapper(self.lgcl1)
-        self.l2wrap = fc_wrap.ArgWrapper(self.lgcl2)
+        self.l1wrap = fc_wrap.LogicalWrapper(self.lgcl1)
+        self.l2wrap = fc_wrap.LogicalWrapper(self.lgcl2)
         subr = pyf.Subroutine('foo', args=self.args)
         self.am = fc_wrap.ArgWrapperManager(subr)
 
     def test_arg_declarations(self):
         decls = '''\
-integer(kind=fwrap_default_logical), intent(inout) :: lgcl1
-integer(kind=fwrap_default_logical), intent(inout) :: lgcl2
+type(c_ptr), value :: lgcl1
+type(c_ptr), value :: lgcl2
 integer(kind=fwrap_int), intent(inout) :: int
 integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
 character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_errstr__
@@ -745,7 +780,7 @@ character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_e
         eq_(self.am.extern_arg_list(), al)
 
     def test_call_arg_list(self):
-        cl = 'lgcl1 lgcl2 int'.split()
+        cl = 'fw_lgcl1 fw_lgcl2 int'.split()
         eq_(self.am.call_arg_list(), cl)
 
 class test_arg_manager_return(object):
@@ -764,14 +799,15 @@ class test_arg_manager_return(object):
 
     def test_declarations(self):
         declaration = '''\
-integer(kind=fwrap_default_logical) :: ll
+type(c_ptr), value :: ll
 integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
 character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_errstr__
 '''.splitlines()
         eq_(self.am_lgcl.arg_declarations(), declaration)
 
     def test_temp_declarations(self):
-        eq_(self.am_lgcl.temp_declarations(), [])
+        eq_(self.am_lgcl.temp_declarations(),
+                ['logical(kind=fwrap_default_logical), pointer :: fw_ll'])
 
 class test_c_proto_generation(object):
     
@@ -863,7 +899,7 @@ subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assume
     integer(kind=fwrap_default_integer), intent(in) :: d1
     integer(kind=fwrap_npy_intp), intent(in) :: assumed_shape_d1
     integer(kind=fwrap_npy_intp), intent(in) :: assumed_shape_d2
-    integer(kind=fwrap_default_logical), dimension(assumed_shape_d1, assumed_shape_d2), intent(out) :: assumed_shape
+    logical(kind=fwrap_default_logical), dimension(assumed_shape_d1, assumed_shape_d2), intent(out) :: assumed_shape
     integer(kind=fwrap_npy_intp), intent(in) :: explicit_shape_d1
     integer(kind=fwrap_npy_intp), intent(in) :: explicit_shape_d2
     complex(kind=fwrap_default_complex), dimension(explicit_shape_d1, explicit_shape_d2), intent(inout) :: explicit_shape
@@ -876,7 +912,7 @@ subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assume
             use fwrap_ktp_mod
             implicit none
             integer(kind=fwrap_default_integer), intent(in) :: d1
-            integer(kind=fwrap_default_logical), dimension(:, :), intent(out) :: assumed_shape
+            logical(kind=fwrap_default_logical), dimension(:, :), intent(out) :: assumed_shape
             integer(kind=fwrap_default_integer), intent(inout) :: c1
             integer(kind=fwrap_default_integer) :: c2
             integer(kind=fwrap_default_integer), dimension(d1, *), intent(inout) :: assumed_size
