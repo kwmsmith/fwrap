@@ -38,8 +38,11 @@ compiler.  `Gfortran <http://gcc.gnu.org/wiki/GFortran>`_ version >= 4.3.3
 works well, as does Intel's `ifort
 <http://software.intel.com/en-us/intel-compilers/>`_.
 
-Mailing list
-============
+Bug reports, Wiki & Mailing list
+================================
+
+`Fwrap trac <https://sourceforge.net/apps/trac/fwrap/>`_
+    For bug reports, wiki pages, etc.
 
 `<http://groups.google.com/group/fwrap-users>`_
     Questions, comments, patches, help...
