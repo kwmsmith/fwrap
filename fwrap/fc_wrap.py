@@ -49,7 +49,7 @@ def _err_test_block(test, errcode, argname):
 if (%(test)s) then
     fw_iserr__ = %(errcode)s
     fw_errstr__ = transfer("%(argname)s", fw_errstr__)
-    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
+    fw_errstr__(fw_errstr_len) = C_NULL_CHAR
     return
 endif
 '''
@@ -61,9 +61,12 @@ endif
 
 def _dim_test(dims1, dims2):
     ck = []
-    for dim1, dim2 in zip(dims1, dims2):
-        if dim1 not in (':', '*') and dim2 not in (':', '*'):
-            ck += ['%s .ne. %s' % (dim1, dim2)]
+    try:
+        for dim1, dim2 in zip(dims1, dims2):
+            if dim1.is_explicit_shape and dim2.is_explicit_shape:
+                ck += ['%s .ne. %s' % (dim1.sizeexpr, dim2.sizeexpr)]
+    except TypeError:
+        import pdb; pdb.set_trace()
     return ' .or. '.join(ck)
 
 
@@ -413,8 +416,8 @@ class ArrayArgWrapper(ArgWrapper):
         self.extern_args = self._arr_dims + [self.extern_arg]
 
     def pre_call_code(self):
-        dim_names = [dim.name for dim in self._arr_dims]
-        ckstr = _dim_test(self.orig_arg.dimension, dim_names)
+        dims = pyf.Dimension([dim.name for dim in self._arr_dims])
+        ckstr = _dim_test(self.orig_arg.dimension, dims)
         if ckstr:
             return _err_test_block(
                             ckstr,

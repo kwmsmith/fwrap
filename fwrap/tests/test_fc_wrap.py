@@ -70,7 +70,7 @@ def test_gen_fortran_one_arg_func():
         implicit none
         integer(kind=fwrap_default_integer), intent(in) :: a
         integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-        character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_errstr__
+        character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
         interface
             subroutine one_arg(a)
                 use fwrap_ktp_mod
@@ -98,7 +98,7 @@ def test_gen_empty_func_wrapper():
         implicit none
         integer(kind=fwrap_default_integer), intent(out) :: fw_ret_arg
         integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-        character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_errstr__
+        character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
         interface
             function empty_func()
                 use fwrap_ktp_mod
@@ -199,7 +199,7 @@ def test_intent_hide():
         use fwrap_ktp_mod
         implicit none
         integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-        character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_errstr__
+        character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
         interface
             subroutine hide_subr(hide_arg)
                 use fwrap_ktp_mod
@@ -230,7 +230,7 @@ def test_logical_function():
         implicit none
         type(c_ptr), value :: fw_ret_arg
         integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-        character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_errstr__
+        character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
         interface
             function lgcl_fun()
                 use fwrap_ktp_mod
@@ -261,7 +261,7 @@ def test_logical_wrapper():
         implicit none
         type(c_ptr), value :: lgcl
         integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-        character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_errstr__
+        character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
         interface
             subroutine lgcl_arg(lgcl)
                 use fwrap_ktp_mod
@@ -296,7 +296,7 @@ def test_assumed_shape_int_array():
         integer(kind=fwrap_npy_intp), intent(in) :: arr_d2
         integer(kind=fwrap_default_integer), dimension(arr_d1, arr_d2), intent(inout) :: arr
         integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-        character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_errstr__
+        character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
         interface
             subroutine arr_arg(arr)
                 use fwrap_ktp_mod
@@ -337,7 +337,7 @@ subroutine arr_arg_c(arr_d1, arr_d2, arr, d1, d2, fw_iserr__, fw_errstr__) bind(
     integer(kind=fwrap_default_integer), intent(in) :: d1
     integer(kind=fwrap_default_integer), intent(in) :: d2
     integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-    character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_errstr__
+    character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
     interface
         subroutine arr_arg(arr, d1, d2)
             use fwrap_ktp_mod
@@ -348,10 +348,10 @@ subroutine arr_arg_c(arr_d1, arr_d2, arr, d1, d2, fw_iserr__, fw_errstr__) bind(
         end subroutine arr_arg
     end interface
     fw_iserr__ = FW_INIT_ERR__
-    if (d1 .ne. arr_d1 .or. d2 .ne. arr_d2) then
+    if ((d1) .ne. (arr_d1) .or. (d2) .ne. (arr_d2)) then
         fw_iserr__ = FW_ARR_DIM__
         fw_errstr__ = transfer("arr                                                            ", fw_errstr__)
-        fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
+        fw_errstr__(fw_errstr_len) = C_NULL_CHAR
         return
     endif
     call arr_arg(arr, d1, d2)
@@ -481,7 +481,7 @@ type(c_ptr), value :: cs
         charr1_res = ['if (20 .ne. fw_charr1_len) then',
                         '    fw_iserr__ = FW_CHAR_SIZE__',
                         '    fw_errstr__ = transfer("charr1                                                         ", fw_errstr__)',
-                        '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR',
+                        '    fw_errstr__(fw_errstr_len) = C_NULL_CHAR',
                         '    return',
                         'endif',
                         'call c_f_pointer(charr1, fw_charr1, (/ charr1_d1 /))']
@@ -489,15 +489,15 @@ type(c_ptr), value :: cs
         charr3_res = ['if (30 .ne. fw_charr3_len) then',
                 '    fw_iserr__ = FW_CHAR_SIZE__',
                 '    fw_errstr__ = transfer("charr3                                                         ", fw_errstr__)',
-                '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR',
+                '    fw_errstr__(fw_errstr_len) = C_NULL_CHAR',
                 '    return',
                 'endif',
                 'call c_f_pointer(charr3, fw_charr3, (/ charr3_d1, charr3_d2, charr3_d3 /))']
 
-        cs_res = ['if (n1 .ne. cs_d1) then',
+        cs_res = ['if ((n1) .ne. (cs_d1)) then',
                   '    fw_iserr__ = FW_ARR_DIM__',
                   '    fw_errstr__ = transfer("cs                                                             ", fw_errstr__)',
-                  '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR',
+                  '    fw_errstr__(fw_errstr_len) = C_NULL_CHAR',
                   '    return',
                   'endif',
                   'call c_f_pointer(cs, fw_cs, (/ cs_d1 /))']
@@ -570,11 +570,11 @@ real(kind=fwrap_default_real), dimension(real_arr_arg_d1, real_arr_arg_d2, real_
     def test_pre_call_code(self):
         eq_(self.int_arr_wrapper.pre_call_code(), [])
         eq_(self.real_explicit_wrapper.pre_call_code(),
-                ('if (d1 .ne. real_exp_arg_d1 .or. '
-                 'd2 .ne. real_exp_arg_d2 .or. d3 .ne. real_exp_arg_d3) then\n'
+                ('if ((d1) .ne. (real_exp_arg_d1) .or. '
+                 '(d2) .ne. (real_exp_arg_d2) .or. (d3) .ne. (real_exp_arg_d3)) then\n'
                  '    fw_iserr__ = FW_ARR_DIM__\n'
                  '    fw_errstr__ = transfer("real_exp_arg                                                   ", fw_errstr__)\n'
-                 '    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR\n'
+                 '    fw_errstr__(fw_errstr_len) = C_NULL_CHAR\n'
                  '    return\n'
                  'endif').splitlines())
 
@@ -673,7 +673,7 @@ class test_char_arg(object):
 if (20 .ne. fw_ch1_len) then
     fw_iserr__ = FW_CHAR_SIZE__
     fw_errstr__ = transfer("ch1                                                            ", fw_errstr__)
-    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
+    fw_errstr__(fw_errstr_len) = C_NULL_CHAR
     return
 endif
 call c_f_pointer(ch1, fw_ch1)
@@ -682,7 +682,7 @@ call c_f_pointer(ch1, fw_ch1)
 if (10 .ne. fw_ch2_len) then
     fw_iserr__ = FW_CHAR_SIZE__
     fw_errstr__ = transfer("ch2                                                            ", fw_errstr__)
-    fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
+    fw_errstr__(fw_errstr_len) = C_NULL_CHAR
     return
 endif
 call c_f_pointer(ch2, fw_ch2)
@@ -763,7 +763,7 @@ type(c_ptr), value :: lgcl1
 type(c_ptr), value :: lgcl2
 integer(kind=fwrap_int), intent(inout) :: int
 integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_errstr__
+character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
 '''.splitlines()
         eq_(self.am.arg_declarations(), decls)
 
@@ -801,7 +801,7 @@ class test_arg_manager_return(object):
         declaration = '''\
 type(c_ptr), value :: ll
 integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_errstr__
+character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
 '''.splitlines()
         eq_(self.am_lgcl.arg_declarations(), declaration)
 
@@ -906,7 +906,7 @@ subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assume
     integer(kind=fwrap_default_integer), intent(inout) :: c1
     integer(kind=fwrap_default_integer) :: c2
     integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-    character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) :: fw_errstr__
+    character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
     interface
         subroutine arr_args(assumed_size, d1, assumed_shape, explicit_shape, c1, c2)
             use fwrap_ktp_mod
@@ -920,16 +920,16 @@ subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assume
         end subroutine arr_args
     end interface
     fw_iserr__ = FW_INIT_ERR__
-    if (d1 .ne. assumed_size_d1) then
+    if ((d1) .ne. (assumed_size_d1)) then
         fw_iserr__ = FW_ARR_DIM__
         fw_errstr__ = transfer("assumed_size                                                   ", fw_errstr__)
-        fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
+        fw_errstr__(fw_errstr_len) = C_NULL_CHAR
         return
     endif
-    if (c1 .ne. explicit_shape_d1 .or. c2 .ne. explicit_shape_d2) then
+    if ((c1) .ne. (explicit_shape_d1) .or. (c2) .ne. (explicit_shape_d2)) then
         fw_iserr__ = FW_ARR_DIM__
         fw_errstr__ = transfer("explicit_shape                                                 ", fw_errstr__)
-        fw_errstr__(FW_ERRSTR_LEN) = C_NULL_CHAR
+        fw_errstr__(fw_errstr_len) = C_NULL_CHAR
         return
     endif
     call arr_args(assumed_size, d1, assumed_shape, explicit_shape, c1, c2)

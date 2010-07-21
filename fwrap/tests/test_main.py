@@ -51,7 +51,7 @@ end function empty_func
             implicit none
             integer(kind=fwrap_default_integer), intent(out) :: fw_ret_arg
             integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-            character(kind=fwrap_default_character, len=1), dimension(FW_ERRSTR_LEN) &
+            character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) &
         &:: fw_errstr__
             interface
                 function empty_func()
@@ -115,7 +115,7 @@ cdef extern from "string.h":
 cpdef api object empty_func():
     cdef fwrap_default_integer fw_ret_arg
     cdef fwrap_default_integer fw_iserr__
-    cdef fwrap_default_character fw_errstr__[FW_ERRSTR_LEN]
+    cdef fwrap_default_character fw_errstr__[fw_errstr_len]
     empty_func_c(&fw_ret_arg, &fw_iserr__, fw_errstr__)
     if fw_iserr__ != FW_NO_ERR__:
         raise RuntimeError("an error was encountered when calling the 'empty_func' wrapper.")

@@ -170,6 +170,98 @@ class Parameter(object):
         self.dtype = dtype
         self.value = value
 
+class ScalarIntExpr(object):
+
+    _find_names = re.compile(r'[a-z][a-z0-9_%]*', re.IGNORECASE).findall
+
+    def __init__(self, expr):
+        self.expr = expr.lower()
+
+    def find_names(self):
+        depnames = [s.split('%',1)[0] for s in self._find_names(self.expr)]
+        return set(depnames)
+
+class Dim(object):
+
+    def __init__(self, spec):
+        if isinstance(spec, basestring):
+            spec = tuple(spec.split(':'))
+        self.spec = tuple([ScalarIntExpr(s) for s in spec])
+
+        self.is_assumed_shape = False
+        self.is_assumed_size = False
+        self.is_explicit_shape = False
+
+        if len(self.spec) == 2:
+            lbound, ubound = [sp.expr for sp in self.spec]
+            if ubound and not lbound:
+                raise ValueError(
+                        "%r is an invalid dimension spec" % self.dim_spec_str())
+            if ubound:
+                self.is_explicit_shape = True
+            else:
+                self.is_assumed_shape = True
+
+        elif len(self.spec) == 1:
+            if self.spec[0].expr == '*':
+                self.is_assumed_size = True
+            else:
+                self.is_explicit_shape = True
+
+        if not (self.is_explicit_shape or 
+                self.is_assumed_shape or 
+                self.is_assumed_size):
+            raise ValueError(
+                    ("Unable to classify %r dimension spec." %
+                        self.dim_spec_str()))
+
+        if self.is_assumed_size:
+            self.sizeexpr = "*"
+        elif self.is_assumed_shape:
+            self.sizeexpr = None
+        elif len(self.spec) == 2:
+            self.sizeexpr = ("((%s) - (%s) + 1)" %
+                    tuple(reversed([sp.expr for sp in self.spec])))
+        elif len(self.spec) == 1:
+            self.sizeexpr = "(%s)" % self.spec[0].expr
+
+        self._set_depnames()
+
+    def _set_depnames(self):
+        self.depnames = set()
+        for sie in self.spec:
+            names = sie.find_names()
+            self.depnames.update(names)
+
+    def dim_spec_str(self):
+        return ":".join([sp.expr for sp in self.spec])
+
+class Dimension(object):
+
+    def __init__(self, dims):
+        self.dims = []
+        for dim in dims:
+            if not isinstance(dim, Dim):
+                self.dims.append(Dim(dim))
+            else:
+                self.dims.append(dim)
+        self.depnames = set()
+        for dim in self.dims:
+            self.depnames.update(dim.depnames)
+        self._set_attrspec()
+
+    def _set_attrspec(self):
+        dimlist = []
+        for dim in self.dims:
+            dimlist.append(dim.dim_spec_str())
+        self.attrspec = "dimension(%s)" % (", ".join(dimlist))
+
+    def __len__(self):
+        return len(self.dims)
+
+    def __iter__(self):
+        return iter(self.dims)
+
 
 class Var(object):
 
@@ -179,7 +271,11 @@ class Var(object):
                     "%s is not a valid fortran variable name.")
         self.name = name
         self.dtype = dtype
-        self.dimension = dimension
+        # self.dimension = dimension
+        if dimension:
+            self.dimension = Dimension(dimension)
+        else:
+            self.dimension = None
         self.isptr = isptr
         if self.dimension:
             self.is_array = True
@@ -192,7 +288,7 @@ class Var(object):
         else:
             specs = [self.dtype.type_spec()]
         if self.dimension:
-            specs.append('dimension(%s)' % ', '.join(self.dimension))
+            specs.append(self.dimension.attrspec)
         if self.isptr:
             specs.append('pointer')
         return specs
@@ -205,6 +301,12 @@ class Var(object):
 
     def c_declaration(self):
         return "%s%s" % (self.dtype.c_declaration(), self.name)
+
+    def depends(self):
+        if not self.is_array:
+            return set()
+        else:
+            return self.dimension.depnames
 
 
 class Argument(object):
@@ -268,6 +370,9 @@ class Argument(object):
             adts += [dim_dtype]
         return adts
 
+    def depends(self):
+        return self._var.depends()
+
 class HiddenArgument(Argument):
 
     def __init__(self, name, dtype,
@@ -303,22 +408,15 @@ class ArgManager(object):
 
     def order_declarations(self):
         decl_list = []
+        decl_set = set()
         undeclared = list(self._args)
         while undeclared:
             for arg in undeclared[:]:
-                if not arg.is_array:
+                deps = arg.depends()
+                if not deps or deps <= decl_set:
                     decl_list.append(arg)
+                    decl_set.add(arg.name)
                     undeclared.remove(arg)
-                else:
-                    shape_declared = True
-                    undecl_names = [_arg.name for _arg in undeclared]
-                    for ext_name in arg.dimension:
-                        if ext_name in undecl_names:
-                            shape_declared = False
-                            break
-                    if shape_declared:
-                        decl_list.append(arg)
-                        undeclared.remove(arg)
         assert not undeclared
         assert len(decl_list) == len(self._args)
         return decl_list

@@ -449,7 +449,7 @@ class test_cy_proc_wrapper(object):
         self.cy_subr_wrapper.temp_declarations(buf)
         compare(buf.getvalue(), 'cdef fwrap_default_integer int_arg_out\n'
                                 'cdef fwrap_default_integer fw_iserr__\n'
-                                'cdef fwrap_default_character fw_errstr__[FW_ERRSTR_LEN]')
+                                'cdef fwrap_default_character fw_errstr__[fw_errstr_len]')
 
     def test_func_declarations(self):
         buf = CodeBuffer()
@@ -458,7 +458,7 @@ class test_cy_proc_wrapper(object):
         cdef fwrap_default_integer fw_ret_arg
         cdef fwrap_default_integer int_arg_out
         cdef fwrap_default_integer fw_iserr__
-        cdef fwrap_default_character fw_errstr__[FW_ERRSTR_LEN]
+        cdef fwrap_default_character fw_errstr__[fw_errstr_len]
                 '''
         compare(buf.getvalue(), decls)
 
@@ -469,7 +469,7 @@ class test_cy_proc_wrapper(object):
         cpdef api object fort_subr(fwrap_default_integer int_arg_in, fwrap_default_integer int_arg_inout, fwrap_default_real real_arg):
             cdef fwrap_default_integer int_arg_out
             cdef fwrap_default_integer fw_iserr__
-            cdef fwrap_default_character fw_errstr__[FW_ERRSTR_LEN]
+            cdef fwrap_default_character fw_errstr__[fw_errstr_len]
             fort_subr_c(&int_arg_in, &int_arg_inout, &int_arg_out, &real_arg, &fw_iserr__, fw_errstr__)
             if fw_iserr__ != FW_NO_ERR__:
                 raise RuntimeError("an error was encountered when calling the 'fort_subr' wrapper.")
@@ -485,7 +485,7 @@ class test_cy_proc_wrapper(object):
             cdef fwrap_default_integer fw_ret_arg
             cdef fwrap_default_integer int_arg_out
             cdef fwrap_default_integer fw_iserr__
-            cdef fwrap_default_character fw_errstr__[FW_ERRSTR_LEN]
+            cdef fwrap_default_character fw_errstr__[fw_errstr_len]
             fort_func_c(&fw_ret_arg, &int_arg_in, &int_arg_inout, &int_arg_out, &real_arg, &fw_iserr__, fw_errstr__)
             if fw_iserr__ != FW_NO_ERR__:
                 raise RuntimeError("an error was encountered when calling the 'fort_func' wrapper.")

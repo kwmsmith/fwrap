@@ -19,7 +19,7 @@ MAP_SRC = "fwrap_type_map.out"
 RETURN_ARG_NAME = "fw_ret_arg"
 ERR_NAME = "fw_iserr__"
 ERRSTR_NAME = "fw_errstr__"
-ERRSTR_LEN = "FW_ERRSTR_LEN"
+ERRSTR_LEN = "fw_errstr_len"
 FORT_MAX_ARG_NAME_LEN = 63
 
 ERR_CODES = {
