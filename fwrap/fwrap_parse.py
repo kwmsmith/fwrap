@@ -39,17 +39,18 @@ def _get_arg(p_arg):
         return pyf.Argument(name=name, dtype=dtype, intent=intent)
     elif p_arg.is_array():
         p_dims = p_arg.get_array_spec()
-        dims = []
-        for dim in p_dims:
-            if dim == ('',''):
-                dims.append(':')
-            elif len(dim) == 1:
-                dims.append(dim[0])
-            else:
-                raise RuntimeError(
-                        "can't handle dimension(x:y) declarations yet...")
+        dimspec = pyf.Dimension(p_dims)
+        # dims = []
+        # for dim in p_dims:
+            # if dim == ('',''):
+                # dims.append(':')
+            # elif len(dim) == 1:
+                # dims.append(dim[0])
+            # else:
+                # raise RuntimeError(
+                        # "can't handle dimension(x:y) declarations yet...")
         return pyf.Argument(name=name,
-                dtype=dtype, intent=intent, dimension=dims)
+                dtype=dtype, intent=intent, dimension=dimspec)
     else:
         raise RuntimeError(
                 "argument %s is neither "
