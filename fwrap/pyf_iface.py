@@ -1,3 +1,4 @@
+from intrinsics import intrinsics
 import re
 
 vfn_matcher = re.compile(r'[a-zA-Z][_a-zA-Z0-9]{,62}$').match
@@ -11,6 +12,16 @@ class InvalidNameException(Exception):
 def ktp_namer(fw_ktp):
     return "fwrap_%s" % fw_ktp
 
+class ScalarIntExpr(object):
+
+    _find_names = re.compile(r'(?<![_\d])[a-z][a-z0-9_%]*', re.IGNORECASE).findall
+
+    def __init__(self, expr):
+        self.expr = expr.lower()
+
+    def find_names(self):
+        depnames = [s.split('%',1)[0] for s in self._find_names(self.expr)]
+        return set(depnames)
 
 class Dtype(object):
 
@@ -34,15 +45,15 @@ class Dtype(object):
             self.fw_ktp = mangler % fw_ktp
         else:
             self.fw_ktp = fw_ktp
-        self.odecl = odecl
+        if odecl:
+            self.odecl = odecl
+        else:
+            self.odecl = None
         self.type = None
         self.lang = lang
 
     def type_spec(self):
-        # if len:
-            # return '%s(kind=%s, len=%s)' % (self.type, self.fw_ktp, len)
-        # else:
-            return '%s(kind=%s)' % (self.type, self.fw_ktp)
+        return '%s(kind=%s)' % (self.type, self.fw_ktp)
 
     def orig_type_spec(self):
         return self.odecl
@@ -56,6 +67,12 @@ class Dtype(object):
 
     def c_declaration(self):
         return "%s *" % self.fw_ktp
+
+    def depends(self):
+        if not self.odecl:
+            return set()
+        else:
+            return ScalarIntExpr(self.odecl).find_names() - intrinsics
 
 
 class CharacterType(Dtype):
@@ -102,11 +119,10 @@ dim_dtype = IntegerType(fw_ktp="npy_intp", odecl='npy_intp', lang='c')
 class LogicalType(Dtype):
 
     def __init__(self, fw_ktp, odecl=None, **kwargs):
+        if odecl is not None:
+            odecl = odecl.replace('logical', 'integer')
         super(LogicalType, self).__init__(fw_ktp, odecl, **kwargs)
         self.type = 'logical'
-        if self.odecl:
-            self.odecl = self.odecl.replace('logical', 'integer')
-
 
 default_logical = LogicalType(
         fw_ktp='default_logical', odecl="integer(kind=kind(0))")
@@ -163,23 +179,60 @@ c_ptr_type = _InternCPtrType()
 # we delete it from the module so others aren't tempted to instantiate the class.
 del _InternCPtrType
 
-class Parameter(object):
+class _NamedType(object):
+    '''
+    Abstractish base class for something with a name & a type,
+    including Parameters, Vars and Arguments.
+    '''
 
-    def __init__(self, name, dtype, value):
+    def __init__(self, name, dtype, dimension=None):
+        if not valid_fort_name(name):
+            raise InvalidNameException(
+                    "%s is not a valid fortran variable name.")
         self.name = name
         self.dtype = dtype
-        self.value = value
+        if dimension:
+            self.dimension = Dimension(dimension)
+        else:
+            self.dimension = None
+        self.is_array = bool(self.dimension)
 
-class ScalarIntExpr(object):
+    def var_specs(self, orig=False):
+        if orig:
+            specs = [self.dtype.orig_type_spec()]
+        else:
+            specs = [self.dtype.type_spec()]
+        if self.dimension:
+            specs.append(self.dimension.attrspec)
+        return specs
 
-    _find_names = re.compile(r'[a-z][a-z0-9_%]*', re.IGNORECASE).findall
+    def declaration(self):
+        return '%s :: %s' % ( ', '.join(self.var_specs()), self.name)
 
-    def __init__(self, expr):
-        self.expr = expr.lower()
+    def c_declaration(self):
+        return "%s%s" % (self.dtype.c_declaration(), self.name)
 
-    def find_names(self):
-        depnames = [s.split('%',1)[0] for s in self._find_names(self.expr)]
-        return set(depnames)
+    def depends(self):
+        deps = self.dtype.depends()
+        if self.is_array:
+            deps = deps.union(self.dimension.depnames)
+        return deps - intrinsics
+
+class Parameter(_NamedType):
+
+    def __init__(self, name, dtype, expr, dimension=None):
+        super(Parameter, self).__init__(name, dtype, dimension)
+        self.expr = ScalarIntExpr(expr)
+        self.depnames = self.expr.find_names()
+
+    def var_specs(self, orig=False):
+        specs = super(Parameter, self).var_specs(orig)
+        specs.append('parameter')
+        return specs
+
+    def depends(self):
+        deps = super(Parameter, self).depends()
+        return deps.union(self.expr.find_names()) - intrinsics
 
 class Dim(object):
 
@@ -263,51 +316,18 @@ class Dimension(object):
         return iter(self.dims)
 
 
-class Var(object):
+class Var(_NamedType):
 
     def __init__(self, name, dtype, dimension=None, isptr=False):
-        if not valid_fort_name(name):
-            raise InvalidNameException(
-                    "%s is not a valid fortran variable name.")
-        self.name = name
-        self.dtype = dtype
-        # self.dimension = dimension
-        if dimension:
-            self.dimension = Dimension(dimension)
-        else:
-            self.dimension = None
+        super(Var, self).__init__(name, dtype, dimension)
+        self._base = _NamedType(name, dtype, dimension)
         self.isptr = isptr
-        if self.dimension:
-            self.is_array = True
-        else:
-            self.is_array = False
 
     def var_specs(self, orig=False):
-        if orig:
-            specs = [self.dtype.orig_type_spec()]
-        else:
-            specs = [self.dtype.type_spec()]
-        if self.dimension:
-            specs.append(self.dimension.attrspec)
+        specs = super(Var, self).var_specs(orig)
         if self.isptr:
             specs.append('pointer')
         return specs
-
-    def declaration(self):
-        return '%s :: %s' % (', '.join(self.var_specs()), self.name)
-
-    def orig_declaration(self):
-        return "%s :: %s" % (', '.join(self.var_specs(orig=True)), self.name)
-
-    def c_declaration(self):
-        return "%s%s" % (self.dtype.c_declaration(), self.name)
-
-    def depends(self):
-        if not self.is_array:
-            return set()
-        else:
-            return self.dimension.depnames
-
 
 class Argument(object):
 
@@ -396,9 +416,11 @@ class ProcArgument(object):
 
 class ArgManager(object):
 
-    def __init__(self, args, return_arg=None):
+    def __init__(self, args, return_arg=None, params=()):
         self._args = list(args)
         self._return_arg = return_arg
+        self._params = list(params)
+        self.check_namespace()
 
     def extern_arg_list(self):
         ret = []
@@ -406,24 +428,43 @@ class ArgManager(object):
             ret.append(arg.name)
         return ret
 
+    def check_namespace(self):
+        provided_names = set()
+        required_names = set()
+        for arg in self._args:
+            provided_names.add(arg.name)
+            required_names.update(arg.depends())
+        for par in self._params:
+            provided_names.add(par.name)
+            required_names.update(par.depends())
+
+        provided_names.update(intrinsics)
+
+        left_out = required_names - provided_names
+
+        if left_out:
+            raise RuntimeError(
+                    "Required names not provided by scope %r" % list(left_out))
+
     def order_declarations(self):
         decl_list = []
         decl_set = set()
-        undeclared = list(self._args)
+        undeclared = list(self._args) + list(self._params)
         while undeclared:
             for arg in undeclared[:]:
                 deps = arg.depends()
-                if not deps or deps <= decl_set:
+                if not deps or deps <= decl_set.union(intrinsics):
                     decl_list.append(arg)
                     decl_set.add(arg.name)
                     undeclared.remove(arg)
         assert not undeclared
-        assert len(decl_list) == len(self._args)
+        assert len(decl_list) == len(self._args) + len(self._params)
         return decl_list
 
     def arg_declarations(self):
         decls = []
-        for arg in self.order_declarations():
+        od = self.order_declarations()
+        for arg in od:
             decls.append(arg.declaration())
         if self._return_arg:
             decls.append(self._return_arg.declaration())
@@ -443,7 +484,7 @@ class ArgManager(object):
 
 class Procedure(object):
 
-    def __init__(self, name, args):
+    def __init__(self, name, args, params=()):
         super(Procedure, self).__init__()
         if not valid_fort_name(name):
             raise InvalidNameException(
@@ -451,6 +492,7 @@ class Procedure(object):
         self.name = name
         self.args = args
         self.arg_man = None
+        self.params = params
 
     def extern_arg_list(self):
         return self.arg_man.extern_arg_list()
@@ -477,20 +519,22 @@ class Procedure(object):
 
 class Function(Procedure):
 
-    def __init__(self, name, args, return_arg):
-        super(Function, self).__init__(name, args)
+    def __init__(self, name, args, return_arg, params=()):
+        super(Function, self).__init__(name, args, params)
         self.return_arg = return_arg
         self.return_arg.name = self.name
         self.kind = 'function'
-        self.arg_man = ArgManager(self.args, self.return_arg)
+        self.arg_man = ArgManager(args=self.args,
+                            return_arg=self.return_arg,
+                            params=self.params)
 
 
 class Subroutine(Procedure):
 
-    def __init__(self, name, args):
-        super(Subroutine, self).__init__(name, args)
+    def __init__(self, name, args, params=()):
+        super(Subroutine, self).__init__(name, args, params)
         self.kind = 'subroutine'
-        self.arg_man = ArgManager(self.args)
+        self.arg_man = ArgManager(self.args, params=self.params)
 
 
 class Module(object):

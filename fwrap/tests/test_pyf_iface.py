@@ -14,7 +14,7 @@ class test_program_units(object):
         name = 'ffun'
         return_arg = pyf.Argument(name, dtype=pyf.default_integer)
         pyf.Function(name=name,
-                args=('a', 'b', 'c'),
+                args=(pyf.Argument('a', dtype=pyf.default_integer),),
                 return_arg=return_arg)
 
     def test_subroutine(self):
@@ -43,7 +43,7 @@ class test_program_units(object):
 
 def test_func_return_array():
     args = [pyf.Argument(name='a', dtype=pyf.default_integer, intent='in'),
-            pyf.Argument(name='b', dtype=pyf.default_integer, intent='in')],
+            pyf.Argument(name='b', dtype=pyf.default_integer, intent='in')]
     return_arg = pyf.Argument(name="arr_fun",
                               dtype=pyf.default_real,
                               dimension=('a', 'b'))
@@ -83,7 +83,7 @@ integer(kind=fwrap_default_integer), dimension(d1, d2), intent(in) :: arr
 
 def test_parameter():
     param = pyf.Parameter(name='FOO',
-                dtype=pyf.default_integer, value='kind(1.0D0)')
+                dtype=pyf.default_integer, expr='kind(1.0D0)')
 
 def test_dtype():
     assert_raises(pyf.InvalidNameException,
