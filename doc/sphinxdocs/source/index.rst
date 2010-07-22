@@ -61,6 +61,8 @@ Some helpful links
 
 `Sourceforge support wiki <https://sourceforge.net/apps/trac/sourceforge/wiki/WikiStart>`_
 
+`Fortran standards <http://gcc.gnu.org/wiki/GFortranStandards>`_
+
 .. rubric:: Footnotes
 
 .. [#sane-def]
