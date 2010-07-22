@@ -451,12 +451,14 @@ class ArgManager(object):
         decl_set = set()
         undeclared = list(self._args) + list(self._params)
         while undeclared:
-            for arg in undeclared[:]:
+            undecl_cpy = undeclared[:]
+            for arg in undecl_cpy:
                 deps = arg.depends()
                 if not deps or deps <= decl_set.union(intrinsics):
                     decl_list.append(arg)
                     decl_set.add(arg.name)
                     undeclared.remove(arg)
+            assert len(undecl_cpy) > len(undeclared)
         assert not undeclared
         assert len(decl_list) == len(self._args) + len(self._params)
         return decl_list
