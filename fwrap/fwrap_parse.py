@@ -117,7 +117,7 @@ def _get_dtype(typedecl):
         else:
             fw_ktp = '%s_x%s' % (typedecl.name, length)
         return pyf.CharacterType(fw_ktp=fw_ktp,
-                odecl=typedecl.tostr().lower(), len=length)
+                        len=length, kind=kind)
     if length and not kind:
         return name2type[typedecl.name](fw_ktp="%s_x%s" %
                 (typedecl.name, length),

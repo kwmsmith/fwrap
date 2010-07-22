@@ -404,27 +404,19 @@ class test_char_array_arg_wrapper(object):
 
     def setup(self):
         charr1 = pyf.Argument('charr1',
-                              pyf.CharacterType("char_x20",
-                                                len="20",
-                                                odecl="character(20)"),
+                              pyf.CharacterType("char_x20", len="20"),
                               dimension=(":",),
                               intent="inout")
         charr3 = pyf.Argument('charr3',
-                              pyf.CharacterType("char_x30",
-                                                len="30",
-                                                odecl="character(30)"),
+                              pyf.CharacterType("char_x30", len="30"),
                               dimension=[':']*3,
                               intent="inout")
         charr_star = pyf.Argument('cs',
-                                  pyf.CharacterType("char_xX",
-                                                    len="*",
-                                                    odecl="character(*)"),
+                                  pyf.CharacterType("char_xX", len="*"),
                                   dimension=('n1',),
                                   intent='inout')
         charr_in = pyf.Argument('charrin',
-                                pyf.CharacterType("char_in",
-                                                  len="20",
-                                                  odecl="character(20"),
+                                pyf.CharacterType("char_in", len="20"),
                                 dimension=(":",),
                                 intent="in")
         self.fc_charr1 = fc_wrap.CharArrayArgWrapper(charr1)
@@ -615,11 +607,9 @@ class test_logical_arg(object):
 class test_char_arg(object):
 
     def setup(self):
-        dchar1 = pyf.CharacterType('char_20', len='20', odecl='character*20')
-        dchar2 = pyf.CharacterType('char_10',
-                len='10', odecl='character(len=10)')
-        dchar3 = pyf.CharacterType('char_x',
-                len='*', odecl='character(len=*)')
+        dchar1 = pyf.CharacterType('char_20', len='20')
+        dchar2 = pyf.CharacterType('char_10', len='10')
+        dchar3 = pyf.CharacterType('char_x', len='*')
 
         names = ['ch1', 'ch2', 'ch3']
 

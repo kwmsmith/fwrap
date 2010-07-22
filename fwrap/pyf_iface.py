@@ -29,15 +29,17 @@ class Dtype(object):
 
     cimport_decls = ''
 
-    def __hash__(self):
-        return hash(self.fw_ktp + (self.odecl or '') + self.type)
+    def __init__(self, fw_ktp, odecl=None,
+                 lang='fortran', mangler="fwrap_%s",
+                 length=None, kind=None):
 
-    def __eq__(self, other):
-        return self.fw_ktp == other.fw_ktp and \
-                self.odecl == other.odecl and \
-                self.type == other.type
+        if odecl and length:
+            raise ValueError(
+                    "at most one of odecl or length may be given.")
+        elif odecl and kind:
+            raise ValueError(
+                    "at most one of odecl or kind may be given.")
 
-    def __init__(self, fw_ktp, odecl=None, lang='fortran', mangler="fwrap_%s"):
         if not valid_fort_name(fw_ktp):
             raise InvalidNameException(
                     "%s is not a valid fortran parameter name." % fw_ktp)
@@ -45,12 +47,41 @@ class Dtype(object):
             self.fw_ktp = mangler % fw_ktp
         else:
             self.fw_ktp = fw_ktp
+
         if odecl:
-            self.odecl = odecl
+            self._odecl = odecl
         else:
-            self.odecl = None
+            self._odecl = None
+
+        self.length = length
+        self.kind = kind
+
         self.type = None
         self.lang = lang
+
+    def _get_odecl(self):
+        if self._odecl:
+            return self._odecl
+
+        if self.length and self.kind:
+            raise ValueError(
+                    "both length and kind given for datatype %s" % self.type)
+
+        if self.length:
+            return "%s*%s" % (self.type, self.length)
+        elif self.kind:
+            return "%s(kind=%s)" % (self.type, self.kind)
+        else:
+            return None
+    odecl = property(_get_odecl)
+
+    def __hash__(self):
+        return hash(self.fw_ktp + (self.odecl or '') + self.type)
+
+    def __eq__(self, other):
+        return self.fw_ktp == other.fw_ktp and \
+                self.odecl == other.odecl and \
+                self.type == other.type
 
     def type_spec(self):
         return '%s(kind=%s)' % (self.type, self.fw_ktp)
@@ -82,8 +113,8 @@ cdef extern from "string.h":
     void *memcpy(void *dest, void *src, size_t n)
 '''
 
-    def __init__(self, fw_ktp, len, odecl=None, **kwargs):
-        super(CharacterType, self).__init__(fw_ktp, odecl, **kwargs)
+    def __init__(self, fw_ktp, len, kind=None, odecl=None, **kwargs):
+        super(CharacterType, self).__init__(fw_ktp, odecl=odecl, length=len, kind=kind, **kwargs)
         self.len = str(len)
         self.type = 'character'
 
@@ -97,16 +128,31 @@ cdef extern from "string.h":
         else:
             return '%s(kind=%s)' % (self.type, self.fw_ktp)
 
+    def _get_odecl(self):
+        if self._odecl:
+            return self._odecl
+
+        sel = []
+        if self.length:
+            sel.append("len=%s" % self.length)
+        if self.kind:
+            sel.append("kind=%s" % self.kind)
+
+        if sel:
+            return "%s(%s)" % (self.type, ', '.join(sel))
+        else:
+            return self.type
+    odecl = property(_get_odecl)
+
 
 default_character = CharacterType(
-        fw_ktp="default_character",
-        len='1', odecl="character(kind=kind('a'))")
+        fw_ktp="default_character", len='1', kind="kind('a')")
 
 
 class IntegerType(Dtype):
 
-    def __init__(self, fw_ktp, odecl=None, lang='fortran', **kwargs):
-        super(IntegerType, self).__init__(fw_ktp, odecl, lang, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(IntegerType, self).__init__(*args, **kwargs)
         self.type = 'integer'
 
 
@@ -130,10 +176,9 @@ default_logical = LogicalType(
 
 class RealType(Dtype):
 
-    def __init__(self, fw_ktp, odecl=None, **kwargs):
-        super(RealType, self).__init__(fw_ktp, odecl, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(RealType, self).__init__(*args, **kwargs)
         self.type = 'real'
-
 
 default_real = RealType(fw_ktp='default_real', odecl="real(kind(0.0))")
 default_dbl  = RealType(fw_ktp='default_double', odecl="real(kind(0.0D0))")
@@ -141,8 +186,8 @@ default_dbl  = RealType(fw_ktp='default_double', odecl="real(kind(0.0D0))")
 
 class ComplexType(Dtype):
 
-    def __init__(self, fw_ktp, odecl=None):
-        super(ComplexType, self).__init__(fw_ktp, odecl)
+    def __init__(self, *args, **kwargs):
+        super(ComplexType, self).__init__(*args, **kwargs)
         self.type = 'complex'
 
 

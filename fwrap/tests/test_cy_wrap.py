@@ -108,13 +108,11 @@ class test_cy_char_array_arg_wrapper(object):
     def setup(self):
         arg1d = pyf.Argument('charr1',
                             dtype=pyf.CharacterType(
-                                fw_ktp='charr_x8',
-                                len='20', odecl='character(20)'),
+                                fw_ktp='charr_x8', len='20'),
                             dimension=[':'], intent='inout')
         arg2d = pyf.Argument('charr2',
                             dtype=pyf.CharacterType(
-                                fw_ktp='charr_x30',
-                                len='30', odecl='character(30)'),
+                                fw_ktp='charr_x30', len='30'),
                             dimension=[':']*2, intent='inout')
         fc_arg1d = fc_wrap.ArrayArgWrapper(arg1d)
         fc_arg2d = fc_wrap.ArrayArgWrapper(arg2d)
@@ -216,8 +214,7 @@ class test_char_assumed_size(object):
     def setup(self):
         self.intents = ('in', 'out', 'inout', None)
         self.dtypes = [pyf.CharacterType('ch_xX',
-                                        len='*',
-                                        odecl='character(len=*)')
+                                        len='*')
                                         for _ in range(4)]
         self.caws = make_caws(self.dtypes,
                               ['name']*len(self.dtypes),
@@ -245,8 +242,7 @@ class test_char_args(object):
     def setup(self):
         self.intents = ('in', 'out', 'inout', None)
         self.dtypes = [pyf.CharacterType('ch_%d'%d,
-                                        len=str(d),
-                                        odecl='character(len=%d)'%d) \
+                                        len=str(d)) \
                             for d in (10,20,30,40)]
         self.caws = make_caws(self.dtypes,
                                 ['name']*len(self.dtypes),

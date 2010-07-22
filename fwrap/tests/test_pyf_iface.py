@@ -1,5 +1,15 @@
 from fwrap import pyf_iface as pyf
-from nose.tools import ok_, eq_, set_trace, assert_raises
+from nose.tools import ok_, eq_, set_trace, assert_raises, raises
+
+class test_dtype_selector(object):
+
+    @raises(ValueError)
+    def test_not_both(self):
+        pyf.RealType("aoeu", odecl="real*8", length="4")
+
+    def test_create(self):
+        real_star = pyf.RealType("real_star", length="8")
+        eq_(real_star.odecl, "real*8")
 
 class test_program_units(object):
     def test_function(self):
