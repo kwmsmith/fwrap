@@ -166,8 +166,11 @@ def wrap(source=None,**kargs):
     logger.info("Wrapping was successful.")
 
     # generate setup.py file
-    file_name, buf = generate_setup(name, 'fwrap_setup.log',
-                            source_files, libraries, library_dirs, extra_objects)
+    log_name = 'fwrap_setup.log'
+    if verbose:
+        log_name = ""
+    file_name, buf = generate_setup(name, log_name, source_files,
+                                libraries, library_dirs, extra_objects)
     write_to_project_dir(project_path, file_name, buf)
 
     # Generate library module if requested
@@ -337,6 +340,7 @@ def main():
     parser.add_option('-L', dest='library_dirs',  action='append')
     parser.add_option('-r', '--recompile', action="store_true",
                         dest='recompile', help='')
+    parser.add_option('-v', '--verbose', action="store_true", dest="verbose", default=False)
     parser.add_option('--no-recompile', action="store_false", dest='recompile', help='')
     parser.add_option('--override', action="store_true", dest='override', help='')
     parser.add_option('--no-override', action="store_false", dest='override', help='')
