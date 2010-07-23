@@ -61,12 +61,9 @@ endif
 
 def _dim_test(dims1, dims2):
     ck = []
-    try:
-        for dim1, dim2 in zip(dims1, dims2):
-            if dim1.is_explicit_shape and dim2.is_explicit_shape:
-                ck += ['%s .ne. %s' % (dim1.sizeexpr, dim2.sizeexpr)]
-    except TypeError:
-        import pdb; pdb.set_trace()
+    for dim1, dim2 in zip(dims1, dims2):
+        if dim1.is_explicit_shape and dim2.is_explicit_shape:
+            ck += ['%s .ne. %s' % (dim1.sizeexpr, dim2.sizeexpr)]
     return ' .or. '.join(ck)
 
 

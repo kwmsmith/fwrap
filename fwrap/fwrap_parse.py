@@ -40,15 +40,6 @@ def _get_arg(p_arg):
     elif p_arg.is_array():
         p_dims = p_arg.get_array_spec()
         dimspec = pyf.Dimension(p_dims)
-        # dims = []
-        # for dim in p_dims:
-            # if dim == ('',''):
-                # dims.append(':')
-            # elif len(dim) == 1:
-                # dims.append(dim[0])
-            # else:
-                # raise RuntimeError(
-                        # "can't handle dimension(x:y) declarations yet...")
         return pyf.Argument(name=name,
                 dtype=dtype, intent=intent, dimension=dimspec)
     else:
@@ -121,7 +112,7 @@ def _get_dtype(typedecl):
     if length and not kind:
         return name2type[typedecl.name](fw_ktp="%s_x%s" %
                 (typedecl.name, length),
-                odecl=typedecl.tostr().lower())
+                length=length)
     try:
         int(kind)
     except ValueError:
@@ -131,4 +122,4 @@ def _get_dtype(typedecl):
     if typedecl.name == 'doubleprecision':
         return pyf.default_dbl
     return name2type[typedecl.name](fw_ktp="%s_%s" %
-            (typedecl.name, kind), odecl=typedecl.tostr().lower())
+            (typedecl.name, kind), kind=kind)

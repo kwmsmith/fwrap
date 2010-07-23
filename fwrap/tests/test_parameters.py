@@ -20,9 +20,9 @@ class test_proc_params(object):
         self.lit_int = pyf.Parameter("lit_int", dtype=pyf.default_integer, expr="30-10")
         self.sik = pyf.Parameter("sik_10", dtype=pyf.default_integer, expr="selected_int_kind(10)")
         self.srk = pyf.Parameter("srk_10_20", dtype=pyf.default_integer, expr="selected_real_kind(10, lit_int)")
-        srk_real = pyf.RealType("srk_10_20", odecl="real(srk_10_20)")
+        srk_real = pyf.RealType("srk_10_20", kind="srk_10_20")
         self.real_arg = pyf.Argument("real_arg", dtype=srk_real, intent='inout')
-        sik_int = pyf.IntegerType("sik_10", odecl="integer(sik_10)")
+        sik_int = pyf.IntegerType("sik_10", kind="sik_10")
         self.int_arg = pyf.Argument("int_arg", dtype=sik_int, dimension=[("lit_int",)])
         subr = pyf.Subroutine(name="subr", args=[self.real_arg, self.int_arg],
                                            params=[self.lit_int, self.sik, self.srk])

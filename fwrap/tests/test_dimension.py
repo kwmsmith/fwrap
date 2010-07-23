@@ -2,6 +2,10 @@ from fwrap import pyf_iface as pyf
 
 from nose.tools import raises, ok_, eq_
 
+def _test_scal_int_expr():
+    sie = pyf.ScalarIntExpr("kind('a')")
+    eq_(sie.find_names(), set(['kind']))
+
 def _setup(self):
     self.colon = pyf.Dim(':')
     self.colon_parsed = pyf.Dim(('',''))
