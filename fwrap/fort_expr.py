@@ -2,7 +2,7 @@
 # with pyparsing.
 #
 # Original fourFn.py is Copyright 2003-2009 by Paul McGuire
-#
+
 
 from pyparsing_py2 import (Literal, CaselessLiteral, Word, Group, Optional,
         ZeroOrMore, Forward, nums, alphas, Regex, Combine, TokenConverter,
@@ -41,41 +41,6 @@ class ExtractNames(TreeVisitor):
     funcnames = property(_get_funcnames)
 
 
-class exprprinter(object):
-
-    def __init__(self, expr):
-        self.expr = expr
-        self.seen = []
-        self.ident = '    '
-
-    def visit(self):
-        return self._visit(self.expr, indent=0)
-    def _visit(self, node, indent):
-        print self.ident*indent, node.__class__.__name__
-
-        try:
-            node.child_attrs
-        except AttributeError:
-            print self.ident*indent, node
-            return
-
-        for childname in node.child_attrs:
-            child = getattr(node, childname)
-            if isinstance(child, str):
-                print self.ident*indent, repr(child)
-                continue
-            elif child == None:
-                print self.ident*indent, "None"
-                continue
-            elif isinstance(child, list):
-                print self.ident*indent, "["
-                for n in child:
-                    self._visit(n, indent+1)
-                    print self.ident*indent, ','
-                print self.ident*indent, "]"
-            else:
-                self._visit(child, indent+1)
-
 class ExprNode(object):
 
     child_attrs = ["subexpr"]
@@ -88,6 +53,7 @@ class ExprNode(object):
         for attr in self.child_attrs:
             r.append(repr(getattr(self, attr)))
         return " ".join(r)
+
 
 class CharLiteralConst(ExprNode):
 
@@ -108,6 +74,7 @@ class CharLiteralConst(ExprNode):
         else:
             raise ValueError("wrong number of tokens %s" % toks)
 
+
 class RealLitConst(ExprNode):
 
     child_attrs = ["sign", "real", "kind"]
@@ -124,12 +91,14 @@ class RealLitConst(ExprNode):
         else:
             assert len(toks) < 4
 
+
 class FuncRefNode(ExprNode):
 
     child_attrs = ["name", "arg_spec_list"]
 
     def __init__(self, s, loc, toks):
         self.name, self.arg_spec_list = toks.asList()[0], toks.asList()[1:]
+
 
 class ArgSpecNode(ExprNode):
 
@@ -142,6 +111,7 @@ class ArgSpecNode(ExprNode):
         else:
             self.arg, = toks.asList()
 
+
 class KindParam(ExprNode):
 
     child_attrs = ["param"]
@@ -150,6 +120,7 @@ class KindParam(ExprNode):
         assert len(toks) == 1
         self.param = toks.asList()[0]
 
+
 class ComplexLitConst(ExprNode):
 
     child_attrs = ["realpart", "imagpart"]
@@ -157,6 +128,7 @@ class ComplexLitConst(ExprNode):
     def __init__(self, s, loc, toks):
         assert len(toks) == 3
         self.realpart, comma, self.imagpart = toks.asList()
+
 
 class LogicalLitConst(ExprNode):
 
@@ -170,12 +142,14 @@ class LogicalLitConst(ExprNode):
         else:
             raise ValueError("wrong number of tokens")
 
+
 class NameNode(ExprNode):
 
     child_attrs = []
 
     def __init__(self, s, loc, toks):
         self.name = toks.asList()[0]
+
 
 class SignNode(ExprNode):
 
@@ -319,116 +293,3 @@ def get_fort_expr_bnf():
 
 def parser(s):
     return get_fort_expr_bnf().parseString(s, parseAll=False).asList()[0]
-
-from nose.tools import eq_, ok_
-
-class test_fort_expr(object):
-
-    def test_signed_int_lit(self):
-        istr = str(310130813080138)
-        s = "+%s" % istr
-        skp = "%s_8 + 10_abc" % s
-
-    def test_func_ref(self):
-        ss = "foo(a, b-3+x(14), c=d+1)"
-        expr = parser(ss)
-
-    def test_extractnames(self):
-        ss = "-+12354.5678E-12_aoeu"
-        expr = parser(ss)
-
-        xtor = ExtractNames()
-        xtor.visit(expr)
-        eq_(xtor.names, ['aoeu'])
-
-        ss2 = ".02808_a123_45"
-        expr = parser(ss2)
-
-        xtor = ExtractNames()
-        xtor.visit(expr)
-        eq_(xtor.names, ['a123_45'])
-
-        funccall = parser("foo(a, b-3+x(14), c=d+1)")
-        xtor = ExtractNames()
-        xtor.visit(funccall)
-        eq_(xtor.names, ['a', 'b', 'd'])
-        eq_(xtor.funcnames, ['foo', 'x'])
-
-        power = parser("+1**2_a8")
-        xtor = ExtractNames()
-        xtor.visit(power)
-        eq_(xtor.names, ['a8'])
-        eq_(xtor.funcnames, [])
-
-    def test_char_lit_const(self):
-        clc2 = parser("aoeu_'1202\"04''028'").subexpr[0]
-        clc3 = parser('1_"as ""onthu\'sanetu"').subexpr[0]
-        eq_(clc2.kind.param.name, 'aoeu')
-        eq_(clc2.string, '1202"04\'028')
-        eq_(clc3.kind.param.digit_string, '1')
-        eq_(clc3.string, 'as "onthu\'sanetu')
-
-
-def test_gen():
-
-    def test(tstr, res, funcs=None):
-        expr = parser(tstr)
-        xtor = ExtractNames()
-        xtor.visit(expr)
-        eq_(xtor.names, res)
-        if funcs:
-            eq_(xtor.funcnames, funcs)
-
-    for args in _tests:
-        if len(args) == 2:
-            tstr, res = args
-            funcs = []
-        elif len(args) == 3:
-            tstr, res, funcs = args
-        yield test, tstr, res, funcs
-
-_tests = [
-    ("9", []),
-    ("-9", []),
-    ("3.1415926", []),
-    ("3.1415926E10", []),
-    ("3.1415926_8", []),
-    ("--9", []),
-    ("-E", ['E']),
-    ("9 + 3 + 6", []),
-    ("9 + 3 / 11", []),
-    ("(9 + 3)", []),
-    ("(9+3) / 11", []),
-    ("9 - 12 - 6", []),
-    ("9 - (12 - 6)", []),
-    ("2*3.14159", []),
-    ("3.1415926535*3.1415926535 / 10", []),
-    ("PI * PI / 10", ["PI", "PI"]),
-    ("PI*PI/10", ["PI", "PI"]),
-    ("PI**2", ["PI"]),
-    ("round(PI**2)", ["PI"], ["round"]),
-    ("6.02E23 * 8.048", []),
-    ("e / 3", ["e"]),
-    ("sin(PI/2)", ['PI'], ["sin"]),
-    ("trunc(E)", ['E'], ["trunc"]),
-    ("trunc(-E)", ['E'], ["trunc"]),
-    ("round(E)", ['E'], ["round"]),
-    ("round(-E)", ['E'], ["round"]),
-    ("E**PI", ['E', 'PI']),
-    ("2**3**2", [], []),
-    ("2**3+2", []),
-    ("2**3+5", []),
-    ("2**9", []),
-    ("sgn(-2)", [], ["sgn"]),
-    ("sgn(0)", [], ["sgn"]),
-    ("sgn(0.1)", [], ["sgn"]),
-    ("(0.0)", []),
-    ("(abc, def)", ['abc', 'def']),
-    ("(0.0, 0.0)", []),
-    ("3 -(-(+9))", []),
-    ("3 -(-(+(-(-(+9)))))", []),
-    ("kind('a')", [], ["kind"]),
-    ("(123456_'aosentuh' // aoeu_'aosnteh')", ['aoeu']),
-    ("(0.0_r8, 1.0_d12)", ["r8", "d12"]),
-    ("1234.567E12_g_1 + .35009_f13_ / (-.9D3_D__3 + 1._a1)", ['g_1', 'f13_', 'D__3', 'a1']),
-    ]
