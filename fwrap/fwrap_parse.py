@@ -9,15 +9,25 @@ def generate_ast(fsrcs):
         block = api.parse(src, analyze=True)
         tree = block.content
         for proc in tree:
-            if is_proc(proc):
-                fargs = _get_args(proc)
+
+            if not is_proc(proc):
+                raise RuntimeError(
+                        "unsupported Fortran construct %r." % proc)
+
+            args = _get_args(proc)
+            params = _get_params(proc)
+
             if proc.blocktype == 'subroutine':
-                ast.append(pyf.Subroutine(name=proc.name, args=fargs))
+                ast.append(pyf.Subroutine(
+                                name=proc.name,
+                                args=args,
+                                params=params))
             elif proc.blocktype == 'function':
-                ast.append(pyf.Function(name=proc.name, args=fargs,
-                    return_arg=_get_ret_arg(proc)))
-            else:
-                raise RuntimeError("unsupported Fortran construct %r." % proc)
+                ast.append(pyf.Function(
+                                name=proc.name,
+                                args=args,
+                                params=params,
+                                return_arg=_get_ret_arg(proc)))
     return ast
 
 
@@ -29,6 +39,21 @@ def _get_ret_arg(proc):
     ret_arg = _get_arg(ret_var)
     ret_arg.intent = None
     return ret_arg
+
+def _get_param(p_param):
+    if not p_param.is_parameter():
+        raise ValueError("argument %r is not a parameter" % p_param)
+    if not p_param.init:
+        raise ValueError("parameter %r does not have an initialization "
+                         "expression." % p_param)
+    p_typedecl = p_param.get_typedecl()
+    dtype = _get_dtype(p_typedecl)
+    name = p_param.name
+    intent = _get_intent(p_param)
+    if not p_param.is_scalar():
+        raise RuntimeError("do not support array or derived-type "
+                           "parameters at the moment...")
+    return pyf.Parameter(name=name, dtype=dtype, expr=p_param.init)
 
 def _get_arg(p_arg):
     p_typedecl = p_arg.get_typedecl()
@@ -47,13 +72,20 @@ def _get_arg(p_arg):
                 "argument %s is neither "
                     "a scalar or an array (derived type?)" % p_arg)
 
-
 def _get_args(proc):
     args = []
     for argname in proc.args:
         p_arg = proc.get_variable(argname)
         args.append(_get_arg(p_arg))
     return args
+
+def _get_params(proc):
+    params = []
+    for varname in proc.a.variables:
+        var = proc.a.variables[varname]
+        if var.is_parameter():
+            params.append(_get_param(var))
+    return params
 
 def _get_intent(arg):
     intents = []

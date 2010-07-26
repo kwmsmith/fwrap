@@ -250,7 +250,7 @@ class _NamedType(object):
         if not valid_fort_name(name):
             raise InvalidNameException(
                     "%s is not a valid fortran variable name.")
-        self.name = name
+        self.name = name.lower()
         self.dtype = dtype
         if dimension:
             self.dimension = Dimension(dimension)
@@ -294,6 +294,10 @@ class Parameter(_NamedType):
     def depends(self):
         deps = super(Parameter, self).depends()
         return deps.union(self.expr.names) - intrinsics
+
+    def declaration(self):
+        decl = super(Parameter, self).declaration()
+        return "%s = %s" % (decl, self.expr.expr_str)
 
 class Dim(object):
 
@@ -480,7 +484,32 @@ class ArgManager(object):
         self._args = list(args)
         self._return_arg = return_arg
         self._params = list(params)
-        self.check_namespace()
+        self._trim_params()
+        self._check_namespace()
+
+    def _trim_params(self):
+        # remove params that aren't necessary as part of an argument
+        # declaration.
+
+        pnames = set([p.name for p in self._params])
+        name2o = dict([(o.name, o) for o in (self._args + self._params)])
+        queue = set(self._args[:])
+        while queue:
+            o = queue.pop()
+            for depname in o.depends():
+                dep = name2o[depname]
+                if depname in name2o:
+                    # Make sure we get all dependencies in the tree.
+                    queue.add(dep)
+                if depname in pnames:
+                    # The parameter is required as part of an argument
+                    # declaration, so remove it from pnames.
+                    pnames.remove(depname)
+
+        # Whatever is left in pnames is not required for an argument
+        # declaration; remove it from self._params
+        for pname in pnames:
+            self._params.remove(name2o[pname])
 
     def extern_arg_list(self):
         ret = []
@@ -488,17 +517,21 @@ class ArgManager(object):
             ret.append(arg.name)
         return ret
 
-    def check_namespace(self):
+    def _provided_names(self):
         provided_names = set()
-        required_names = set()
-        for arg in self._args:
-            provided_names.add(arg.name)
-            required_names.update(arg.depends())
-        for par in self._params:
-            provided_names.add(par.name)
-            required_names.update(par.depends())
+        for o in (self._args + self._params):
+            provided_names.add(o.name)
+        return provided_names.union(intrinsics)
 
-        provided_names.update(intrinsics)
+    def _required_names(self):
+        req_names = set()
+        for o in (self._args + self._params):
+            req_names.update(o.depends())
+        return req_names
+
+    def _check_namespace(self):
+        provided_names = self._provided_names()
+        required_names = self._required_names()
 
         left_out = required_names - provided_names
 

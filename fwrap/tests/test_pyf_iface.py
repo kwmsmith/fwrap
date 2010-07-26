@@ -90,6 +90,12 @@ integer(kind=fwrap_default_integer), dimension(d1, d2), intent(in) :: arr
 def test_parameter():
     param = pyf.Parameter(name='FOO',
                 dtype=pyf.default_integer, expr='kind(1.0D0)')
+    arg = pyf.Argument(name="fooarg",
+                dtype=pyf.RealType("foo_real", kind="FOO"),
+                intent="inout")
+    subr = pyf.Subroutine(name="foosubr",
+                          args=[arg],
+                          params=[param])
 
 def test_dtype():
     assert_raises(pyf.InvalidNameException,

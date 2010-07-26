@@ -878,6 +878,30 @@ class test_c_proto_generation(object):
                                         "fwrap_default_integer *fw_iserr__, "
                                         "fwrap_default_character *fw_errstr__);")
 
+class test_param_declarations(object):
+    
+    def setup(self):
+        self.params = [
+              pyf.Parameter('p3', pyf.default_integer, 'p1+p2'),
+              pyf.Parameter('p2', pyf.default_integer, 'p1**2-1'),
+              pyf.Parameter("p1", pyf.default_integer, "1"),
+              ]
+
+    def test_pds_no_declare(self):
+        subr = pyf.Subroutine(name='subr', args=(), params=self.params)
+        subr_wrapper = fc_wrap.SubroutineWrapper(wrapped=subr)
+        eq_(subr_wrapper.param_declarations(), [])
+
+    def test_pds_declare(self):
+        args = [pyf.Argument('array', dtype=pyf.default_integer, dimension=['p3'])]
+        subr = pyf.Subroutine(name='subr', args=args, params=self.params)
+        subr_wrapper = fc_wrap.SubroutineWrapper(wrapped=subr)
+        pds = ['integer(kind=fwrap_default_integer), parameter :: p1 = 1',
+               'integer(kind=fwrap_default_integer), parameter :: p2 = p1**2-1',
+               'integer(kind=fwrap_default_integer), parameter :: p3 = p1+p2']
+        eq_(subr_wrapper.param_declarations(), pds)
+
+
 # many_arrays_text#{{{
 many_arrays_text = '''\
 subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assumed_shape_d1, assumed_shape_d2, assumed_shape, explicit_shape_d1, explicit_shape_d2, explicit_shape, c1, c2, fw_iserr__, fw_errstr__) bind(c, name="arr_args_c")

@@ -87,7 +87,8 @@ class ProcWrapper(object):
     def proc_preamble(self, ktp_mod, buf):
         buf.putln('use %s' % ktp_mod)
         buf.putln('implicit none')
-        for declaration in self.arg_declarations():
+        for declaration in (self.arg_declarations() +
+                            self.param_declarations()):
             buf.putln(declaration)
 
     def generate_wrapper(self, buf, gmn=constants.KTP_MOD_NAME):
@@ -116,6 +117,9 @@ class ProcWrapper(object):
 
     def arg_declarations(self):
         return self.arg_man.arg_declarations()
+
+    def param_declarations(self):
+        return self.arg_man.param_declarations()
 
     def pre_call_code(self, buf):
         for line in self.arg_man.pre_call_code():
@@ -215,6 +219,14 @@ class ArgWrapperManager(object):
 
     def c_proto_return_type(self):
         return 'void'
+
+    def param_declarations(self):
+        proc_arg_man = self.proc.arg_man
+        decls = []
+        for o in proc_arg_man.order_declarations():
+            if isinstance(o, pyf.Parameter):
+                decls.append(o.declaration())
+        return decls
 
     def arg_declarations(self):
         decls = []

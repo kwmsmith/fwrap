@@ -17,3 +17,22 @@
         a = 12
 
       end subroutine arg_expr
+
+      subroutine param_expr(a)
+        implicit none
+        integer, parameter :: d1=1
+        integer, parameter :: d2=d1+2+int(3.0)
+        integer, parameter :: d3=d1+d2
+        integer, dimension(d1:d2+d3, d2:d3+1, -d3:0) :: a
+
+        integer i,j,k
+
+        do k = lbound(a, 3), ubound(a, 3)
+            do j = lbound(a, 2), ubound(a, 2)
+                do i = lbound(a, 1), ubound(a, 1)
+                    a(i,j,k) = k + j + i
+                enddo
+            enddo
+        enddo
+
+      end subroutine param_expr
