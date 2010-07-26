@@ -1,4 +1,4 @@
-from fwrap.fort_expr import parser, ExtractNames
+from fwrap.fort_expr import parse, ExtractNames
 
 from nose.tools import eq_, ok_
 
@@ -11,38 +11,38 @@ class test_fort_expr(object):
 
     def test_func_ref(self):
         ss = "foo(a, b-3+x(14), c=d+1)"
-        expr = parser(ss)
+        expr = parse(ss)
 
     def test_extractnames(self):
         ss = "-+12354.5678E-12_aoeu"
-        expr = parser(ss)
+        expr = parse(ss)
 
         xtor = ExtractNames()
         xtor.visit(expr)
         eq_(xtor.names, ['aoeu'])
 
         ss2 = ".02808_a123_45"
-        expr = parser(ss2)
+        expr = parse(ss2)
 
         xtor = ExtractNames()
         xtor.visit(expr)
         eq_(xtor.names, ['a123_45'])
 
-        funccall = parser("foo(a, b-3+x(14), c=d+1)")
+        funccall = parse("foo(a, b-3+x(14), c=d+1)")
         xtor = ExtractNames()
         xtor.visit(funccall)
         eq_(xtor.names, ['a', 'b', 'd'])
         eq_(xtor.funcnames, ['foo', 'x'])
 
-        power = parser("+1**2_a8")
+        power = parse("+1**2_a8")
         xtor = ExtractNames()
         xtor.visit(power)
         eq_(xtor.names, ['a8'])
         eq_(xtor.funcnames, [])
 
     def test_char_lit_const(self):
-        clc2 = parser("aoeu_'1202\"04''028'").subexpr[0]
-        clc3 = parser('1_"as ""onthu\'sanetu"').subexpr[0]
+        clc2 = parse("aoeu_'1202\"04''028'").subexpr[0]
+        clc3 = parse('1_"as ""onthu\'sanetu"').subexpr[0]
         eq_(clc2.kind.param.name, 'aoeu')
         eq_(clc2.string, '1202"04\'028')
         eq_(clc3.kind.param.digit_string, '1')
@@ -52,7 +52,7 @@ class test_fort_expr(object):
 def test_gen():
 
     def test(tstr, res, funcs=None):
-        expr = parser(tstr)
+        expr = parse(tstr)
         xtor = ExtractNames()
         xtor.visit(expr)
         eq_(xtor.names, res)
@@ -111,4 +111,6 @@ _tests = [
     ("(123456_'aosentuh' // aoeu_'aosnteh')", ['aoeu']),
     ("(0.0_r8, 1.0_d12)", ["r8", "d12"]),
     ("1234.567E12_g_1 + .35009_f13_ / (-.9D3_D__3 + 1._a1)", ['g_1', 'f13_', 'D__3', 'a1']),
+    ("*", [], []),
+    ("", [], []),
     ]

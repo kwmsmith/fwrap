@@ -6,7 +6,7 @@
 
 from pyparsing_py2 import (Literal, CaselessLiteral, Word, Group, Optional,
         ZeroOrMore, Forward, nums, alphas, Regex, Combine, TokenConverter,
-        QuotedString, FollowedBy)
+        QuotedString, FollowedBy, Empty)
 
 from visitor import TreeVisitor
 
@@ -48,11 +48,14 @@ class ExprNode(object):
     def __init__(self, s, loc, toks):
         self.subexpr = toks.asList()[:]
 
-    def x__repr__(self):
-        r = []
-        for attr in self.child_attrs:
-            r.append(repr(getattr(self, attr)))
-        return " ".join(r)
+
+class AssumedShapeSpec(ExprNode):
+
+    child_attrs = []
+
+    def __init__(self, s, loc, toks):
+        self.star, = toks.asList()
+        assert self.star == '*'
 
 
 class CharLiteralConst(ExprNode):
@@ -286,10 +289,13 @@ def get_fort_expr_bnf():
     # We skip level 4 and level 5 expressions, since they aren't valid in a
     # dimension or ktp context.
 
-    expr << level3_expr.setParseAction(ExprNode)
+    # expr << (Literal('*').setParseAction(AssumedShapeSpec) | level3_expr.setParseAction(ExprNode))
+    expr << ( level3_expr.setParseAction(ExprNode)
+            | Literal('*').setParseAction(AssumedShapeSpec)
+            | Empty().setParseAction(ExprNode))
 
     fort_expr_bnf = expr
     return fort_expr_bnf
 
-def parser(s):
+def parse(s):
     return get_fort_expr_bnf().parseString(s, parseAll=False).asList()[0]

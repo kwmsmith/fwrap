@@ -1,3 +1,4 @@
+from fwrap import fort_expr
 from intrinsics import intrinsics
 import re
 
@@ -16,12 +17,17 @@ class ScalarIntExpr(object):
 
     _find_names = re.compile(r'(?<![_\d])[a-z][a-z0-9_%]*', re.IGNORECASE).findall
 
-    def __init__(self, expr):
-        self.expr = expr.lower()
+    def __init__(self, expr_str):
+        self.expr_str = expr_str.lower()
+        self._expr = fort_expr.parse(self.expr_str)
+        xtor = fort_expr.ExtractNames()
+        xtor.visit(self._expr)
+        self.funcnames = set(xtor.funcnames)
+        self.names = set(xtor.names).union(self.funcnames)
 
-    def find_names(self):
-        depnames = [s.split('%',1)[0] for s in self._find_names(self.expr)]
-        return set(depnames)
+    # def _find_names(self):
+        # depnames = [s.split('%',1)[0] for s in self._find_names(self.expr)]
+        # return set(depnames)
 
 class Dtype(object):
 
@@ -97,7 +103,8 @@ class Dtype(object):
         if not self.odecl:
             return set()
         else:
-            return ScalarIntExpr(self.odecl).find_names() - intrinsics
+            # return ScalarIntExpr(self.odecl).find_names() - intrinsics
+            return ScalarIntExpr(self.odecl).names - intrinsics
 
 
 class CharacterType(Dtype):
@@ -277,7 +284,7 @@ class Parameter(_NamedType):
     def __init__(self, name, dtype, expr, dimension=None):
         super(Parameter, self).__init__(name, dtype, dimension)
         self.expr = ScalarIntExpr(expr)
-        self.depnames = self.expr.find_names()
+        self.depnames = self.expr.names
 
     def var_specs(self, orig=False):
         specs = super(Parameter, self).var_specs(orig)
@@ -286,7 +293,7 @@ class Parameter(_NamedType):
 
     def depends(self):
         deps = super(Parameter, self).depends()
-        return deps.union(self.expr.find_names()) - intrinsics
+        return deps.union(self.expr.names) - intrinsics
 
 class Dim(object):
 
@@ -300,7 +307,7 @@ class Dim(object):
         self.is_explicit_shape = False
 
         if len(self.spec) == 2:
-            lbound, ubound = [sp.expr for sp in self.spec]
+            lbound, ubound = [sp.expr_str for sp in self.spec]
             if ubound and not lbound:
                 raise ValueError(
                         "%r is an invalid dimension spec" % self.dim_spec_str())
@@ -310,7 +317,7 @@ class Dim(object):
                 self.is_assumed_shape = True
 
         elif len(self.spec) == 1:
-            if self.spec[0].expr == '*':
+            if self.spec[0].expr_str == '*':
                 self.is_assumed_size = True
             else:
                 self.is_explicit_shape = True
@@ -328,20 +335,19 @@ class Dim(object):
             self.sizeexpr = None
         elif len(self.spec) == 2:
             self.sizeexpr = ("((%s) - (%s) + 1)" %
-                    tuple(reversed([sp.expr for sp in self.spec])))
+                    tuple(reversed([sp.expr_str for sp in self.spec])))
         elif len(self.spec) == 1:
-            self.sizeexpr = "(%s)" % self.spec[0].expr
+            self.sizeexpr = "(%s)" % self.spec[0].expr_str
 
         self._set_depnames()
 
     def _set_depnames(self):
         self.depnames = set()
         for sie in self.spec:
-            names = sie.find_names()
-            self.depnames.update(names)
+            self.depnames.update(sie.names)
 
     def dim_spec_str(self):
-        return ":".join([sp.expr for sp in self.spec])
+        return ":".join([sp.expr_str for sp in self.spec])
 
 class Dimension(object):
 
