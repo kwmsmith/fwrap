@@ -108,6 +108,19 @@ def write_header(fname, ctps):
     finally:
         h_out.close()
 
+def write_pxi(fname, ctps):
+    
+    pxi_out = open(fname, 'w')
+
+    try:
+        pxi_out.write("import numpy as np\n")
+
+        for ctp in ctps:
+            for line in ctp.gen_pyx_type_obj():
+                pxi_out.write(line+'\n')
+    finally:
+        pxi_out.close()
+
 def write_pxd(fname, h_name, ctps):
 
     def write_err_codes(pxd_out):
@@ -200,6 +213,15 @@ class _ConfigTypeParam(object):
     def gen_pxd_extern_typedef(self):
         self.check_init()
         return ['ctypedef %s %s' % (f2c[self.fc_type], self.fwrap_name)]
+
+    def gen_pyx_type_obj(self):
+        self.check_init()
+        def strip_type(name):
+            if name.endswith("_t"):
+                return name.rstrip("_t")
+            else:
+                return "%s_" % name
+        return ['%s = np.%s' % (strip_type(self.fwrap_name), f2npy_type[self.fc_type])]
 
     def gen_pxd_intern_typedef(self):
         return []
@@ -323,3 +345,34 @@ type_dict = {
                      'c_long_double_complex'),
         'character' : ('c_char',),
         }
+
+f2npy_type = {
+    'c_int'             : 'intc',
+    'c_short'           : 'short',
+    'c_long'            : 'int_',
+    'c_long_long'       : 'longlong',
+    'c_signed_char'     : 'byte',
+    # 'c_size_t'          : 'size_t',
+    'c_int8_t'          : 'int8',
+    'c_int16_t'         : 'int16',
+    'c_int32_t'         : 'int32',
+    'c_int64_t'         : 'int64',
+    # 'c_int_least8_t'    : 'int_least8_t',
+    # 'c_int_least16_t'   : 'int_least16_t',
+    # 'c_int_least32_t'   : 'int_least32_t',
+    # 'c_int_least64_t'   : 'int_least64_t',
+    # 'c_int_fast8_t'     : 'int_fast8_t',
+    # 'c_int_fast16_t'    : 'int_fast16_t',
+    # 'c_int_fast32_t'    : 'int_fast32_t',
+    # 'c_int_fast64_t'    : 'int_fast64_t',
+    # 'c_intmax_t'        : 'intmax_t',
+    'c_intptr_t'        : 'intp',
+    'c_float'           : 'single',
+    'c_double'          : 'double',
+    'c_long_double'     : 'longdouble',
+    'c_float_complex'   : 'csingle',
+    'c_double_complex'  : 'cdouble',
+    'c_long_double_complex' : 'clongdouble',
+    # 'c_bool'            : '_Bool',
+    'c_char'            : 'byte',
+    }

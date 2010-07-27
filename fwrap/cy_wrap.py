@@ -24,6 +24,7 @@ def gen_cdef_extern_decls(buf):
         buf.putlines(dtype.cdef_extern_decls)
 
 def generate_cy_pyx(ast, buf):
+    buf.putln("include 'fwrap_ktp.pxi'")
     gen_cimport_decls(buf)
     gen_cdef_extern_decls(buf)
     for proc in ast:

@@ -60,8 +60,8 @@ def configuration(projname, extra_sources=None, **kw):
 
         sources = [generate_type_config] + \
                    (extra_sources or []) + \
-                   ['%s_fc.f90' % projname,
-                    '%s.pyx' % projname]
+                   [ '%s_fc.f90' % projname,
+                     '%s.pyx' % projname,]
 
         config.add_extension(projname, sources=sources, **kw)
 
@@ -75,6 +75,7 @@ def gen_type_map_files(config_cmd):
     gc.write_f_mod('fwrap_ktp_mod.f90', ctps)
     gc.write_header('fwrap_ktp_header.h', ctps)
     gc.write_pxd('fwrap_ktp.pxd', 'fwrap_ktp_header.h', ctps)
+    gc.write_pxi('fwrap_ktp.pxi', ctps)
     return 'fwrap_ktp_mod.f90'
 
 def find_types(ctps, config_cmd):
