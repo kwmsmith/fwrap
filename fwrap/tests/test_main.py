@@ -110,7 +110,7 @@ end function empty_func
         cython_ast = cy_wrap.wrap_fc(c_ast)
         fname, buf = main.generate_cy_pyx(cython_ast, self.name)
         test_str = '''\
-import fwrap_ktp
+include 'fwrap_ktp.pxi'
 cdef extern from "string.h":
     void *memcpy(void *dest, void *src, size_t n)
 cpdef api object empty_func():
