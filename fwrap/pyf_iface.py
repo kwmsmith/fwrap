@@ -9,10 +9,6 @@ def valid_fort_name(name):
 class InvalidNameException(Exception):
     pass
 
-# TODO: this should be collected together with the KTP_MOD_NAME constant
-def ktp_namer(fw_ktp):
-    return "fwrap_%s" % fw_ktp
-
 class ScalarIntExpr(object):
 
     _find_names = re.compile(r'(?<![_\d])[a-z][a-z0-9_%]*', re.IGNORECASE).findall
@@ -35,8 +31,7 @@ class Dtype(object):
 
     cimport_decls = ''
 
-    def __init__(self, fw_ktp, lang='fortran',
-                 mangler="fwrap_%s",
+    def __init__(self, fw_ktp, mangler, lang='fortran',
                  length=None, kind=None,
                  cname=None):
 
@@ -45,8 +40,8 @@ class Dtype(object):
                     "%s is not a valid fortran parameter name." % fw_ktp)
 
         self.fw_ktp = fw_ktp
-        if mangler:
-            self.fw_ktp = mangler % self.fw_ktp
+        if mangler is None:
+            self.fw_ktp = self.mangler % self.fw_ktp
 
         self.length = length
         self.kind = kind
@@ -114,8 +109,13 @@ cdef extern from "string.h":
     void *memcpy(void *dest, void *src, size_t n)
 '''
 
-    def __init__(self, fw_ktp, len, kind=None, **kwargs):
-        super(CharacterType, self).__init__(fw_ktp, length=len, kind=kind, **kwargs)
+    mangler = "fw_%s_t"
+
+    def __init__(self, fw_ktp, len, mangler=None, kind=None, **kwargs):
+        super(CharacterType, self).__init__(fw_ktp,
+                                    mangler=mangler,
+                                    length=len, kind=kind,
+                                    **kwargs)
         self.len = str(len)
         self.type = 'character'
 
@@ -146,26 +146,30 @@ cdef extern from "string.h":
 
 
 default_character = CharacterType(
-        fw_ktp="default_character", len='1', kind="kind('a')")
+        fw_ktp="character", len='1', kind="kind('a')")
 
 
 class IntegerType(Dtype):
 
-    def __init__(self, *args, **kwargs):
-        super(IntegerType, self).__init__(*args, **kwargs)
+    mangler = "fwi_%s_t"
+
+    def __init__(self, fw_ktp, mangler=None, **kwargs):
+        super(IntegerType, self).__init__(fw_ktp, mangler=mangler, **kwargs)
         self.type = 'integer'
 
 
 default_integer = IntegerType(
-        fw_ktp='default_integer', kind="kind(0)")
+        fw_ktp='integer', kind="kind(0)")
 
 dim_dtype = IntegerType(fw_ktp="npy_intp", cname="npy_intp", lang='c')
 
 
 class LogicalType(Dtype):
 
-    def __init__(self, *args, **kwargs):
-        super(LogicalType, self).__init__(*args, **kwargs)
+    mangler = "fwl_%s_t"
+
+    def __init__(self, fw_ktp, mangler=None, **kwargs):
+        super(LogicalType, self).__init__(fw_ktp, mangler=mangler, **kwargs)
         self.type = 'logical'
 
     def _get_odecl(self):
@@ -187,30 +191,34 @@ class LogicalType(Dtype):
     odecl = property(_get_odecl)
 
 default_logical = LogicalType(
-        fw_ktp='default_logical', kind="kind(0)")
+        fw_ktp='logical', kind="kind(0)")
 
 
 class RealType(Dtype):
 
-    def __init__(self, *args, **kwargs):
-        super(RealType, self).__init__(*args, **kwargs)
+    mangler = "fwr_%s_t"
+
+    def __init__(self, fw_ktp, mangler=None, **kwargs):
+        super(RealType, self).__init__(fw_ktp, mangler=mangler, **kwargs)
         self.type = 'real'
 
-default_real = RealType(fw_ktp='default_real', kind="kind(0.0)")
-default_dbl  = RealType(fw_ktp='default_double', kind="kind(0.0D0)")
+default_real = RealType(fw_ktp='real', kind="kind(0.0)")
+default_dbl  = RealType(fw_ktp='dbl', kind="kind(0.0D0)")
 
 
 class ComplexType(Dtype):
 
-    def __init__(self, *args, **kwargs):
-        super(ComplexType, self).__init__(*args, **kwargs)
+    mangler = "fwc_%s_t"
+
+    def __init__(self, fw_ktp, mangler=None, **kwargs):
+        super(ComplexType, self).__init__(fw_ktp, mangler=mangler, **kwargs)
         self.type = 'complex'
 
 
 default_complex = ComplexType(
-        fw_ktp='default_complex', kind="kind((0.0,0.0))")
+        fw_ktp='complex', kind="kind((0.0,0.0))")
 default_double_complex = ComplexType(
-        fw_ktp='default_double_complex', kind="kind((0.0D0,0.0D0))")
+        fw_ktp='dbl_complex', kind="kind((0.0D0,0.0D0))")
 
 intrinsic_types = [RealType,
                    IntegerType,

@@ -471,7 +471,7 @@ class CharArgWrapper(ScalarPtrWrapper):
         if self.is_assumed_len:
             self.intern_dtype = pyf.CharacterType(self.ktp,
                                  len=self.len_arg.name,
-                                 mangler=None)
+                                 mangler="%s")
         else:
             self.intern_dtype = self.dtype
         self._set_intern_var()
@@ -542,7 +542,7 @@ class CharArrayArgWrapper(ArrayPtrArg):
         if self.is_assumed_len:
             self.intern_dtype = pyf.CharacterType(self.ktp,
                                  len=self.len_arg.name,
-                                 mangler=None)
+                                 mangler="%s")
         else:
             self.intern_dtype = self.dtype
 

@@ -50,16 +50,16 @@ class test_cy_arg_intents(object):
 
     def test_extern_declarations(self):
         eq_(self.intent_in.extern_declarations(),
-                ['fwrap_default_integer name'])
+                ['fwi_integer_t name'])
         eq_(self.intent_inout.extern_declarations(),
-                ['fwrap_default_logical name'])
+                ['fwl_logical_t name'])
         eq_(self.intent_out.extern_declarations(), [])
 
     def test_intern_declarations(self):
         eq_(self.intent_in.intern_declarations(), [])
         eq_(self.intent_inout.intern_declarations(), [])
         eq_(self.intent_out.intern_declarations(),
-                ['cdef fwrap_default_real name'])
+                ['cdef fwr_real_t name'])
 
     def test_return_tuple_list(self):
         eq_(self.intent_in.return_tuple_list(), [])
@@ -76,11 +76,11 @@ class test_cy_mgr_intents(object):
         self.mgr = cy_wrap.CyArgWrapperManager(args=self.caws)
 
     def test_arg_declarations(self):
-        eq_(self.mgr.arg_declarations(), ['fwrap_default_integer name0',
-                                          'fwrap_default_logical name2'])
+        eq_(self.mgr.arg_declarations(), ['fwi_integer_t name0',
+                                          'fwl_logical_t name2'])
 
     def test_intern_declarations(self):
-        eq_(self.mgr.intern_declarations(), ['cdef fwrap_default_real name1'])
+        eq_(self.mgr.intern_declarations(), ['cdef fwr_real_t name1'])
 
     def test_return_tuple_list(self):
         eq_(self.mgr.return_tuple_list(), ['name1', 'name2'])
@@ -92,8 +92,9 @@ class test_cy_arg_wrapper(object):
         self.caws = make_caws(self.dts, ['foo']*len(self.dts))
 
     def test_extern_declarations(self):
-        for dt, caw in zip(self.dts, self.caws):
-            eq_(caw.extern_declarations(), ["fwrap_%s foo" % dt])
+        extern_decls = ["fwi_integer_t foo", "fwr_real_t foo"]
+        for ed, caw in zip(extern_decls, self.caws):
+            eq_(caw.extern_declarations(), [ed])
 
     def test_intern_declarations(self):
         for dt, caw in zip(self.dts, self.caws):
@@ -121,27 +122,27 @@ class test_cy_char_array_arg_wrapper(object):
 
     def test_intern_declarations(self):
         eq_(self.cy_arg1d.intern_declarations(),
-                ["cdef np.ndarray[fwrap_charr_x8, "
+                ["cdef np.ndarray[fw_charr_x8, "
                  "ndim=1, mode='fortran'] charr1_",
-                 "cdef fwrap_npy_intp charr1_shape[2]"])
+                 "cdef fwi_npy_intp charr1_shape[2]"])
         eq_(self.cy_arg2d.intern_declarations(),
-                ["cdef np.ndarray[fwrap_charr_x30, "
+                ["cdef np.ndarray[fw_charr_x30, "
                  "ndim=2, mode='fortran'] charr2_",
-                 "cdef fwrap_npy_intp charr2_shape[3]"])
+                 "cdef fwi_npy_intp charr2_shape[3]"])
 
     def test_pre_call_code(self):
         cmp1 = ["charr1_odtype = charr1.dtype",
                  "for i in range(1): charr1_shape[i+1] = charr1.shape[i]",
                  "charr1.dtype = 'b'",
                  "charr1_ = charr1",
-                 "charr1_shape[0] = <fwrap_npy_intp>"
+                 "charr1_shape[0] = <fwi_npy_intp>"
                      "(charr1.shape[0]/charr1_shape[1])",]
         eq_(self.cy_arg1d.pre_call_code(), cmp1)
         cmp2 = ["charr2_odtype = charr2.dtype",
                  "for i in range(2): charr2_shape[i+1] = charr2.shape[i]",
                  "charr2.dtype = 'b'",
                  "charr2_ = charr2",
-                 "charr2_shape[0] = <fwrap_npy_intp>"
+                 "charr2_shape[0] = <fwi_npy_intp>"
                      "(charr2.shape[0]/charr2_shape[1])"]
         eq_(self.cy_arg2d.pre_call_code(), cmp2)
 
@@ -155,12 +156,12 @@ class test_cy_char_array_arg_wrapper(object):
         eq_(self.cy_arg1d.call_arg_list(),
             ["&charr1_shape[0]",
              "&charr1_shape[1]",
-             "<fwrap_charr_x8*>charr1_.data"])
+             "<fw_charr_x8*>charr1_.data"])
         eq_(self.cy_arg2d.call_arg_list(),
             ["&charr2_shape[0]",
              "&charr2_shape[1]",
              "&charr2_shape[2]",
-             "<fwrap_charr_x30*>charr2_.data"])
+             "<fw_charr_x30*>charr2_.data"])
 
 class test_cy_array_arg_wrapper(object):
 
@@ -180,21 +181,21 @@ class test_cy_array_arg_wrapper(object):
 
     def test_intern_declarations(self):
         eq_(self.cy_arg.intern_declarations(),
-                ["cdef np.ndarray[fwrap_default_real, "
+                ["cdef np.ndarray[fwr_real_t, "
                  "ndim=3, mode='fortran'] array_",])
         eq_(self.cy_int_arg.intern_declarations(),
-                ["cdef np.ndarray[fwrap_default_integer, "
+                ["cdef np.ndarray[fwi_integer_t, "
                  "ndim=1, mode='fortran'] int_array_",])
 
     def test_call_arg_list(self):
         eq_(self.cy_arg.call_arg_list(),
-                ['<fwrap_npy_intp*>&array_.shape[0]',
-                 '<fwrap_npy_intp*>&array_.shape[1]',
-                 '<fwrap_npy_intp*>&array_.shape[2]',
-                 '<fwrap_default_real*>array_.data'])
+                ['<fwi_npy_intp*>&array_.shape[0]',
+                 '<fwi_npy_intp*>&array_.shape[1]',
+                 '<fwi_npy_intp*>&array_.shape[2]',
+                 '<fwr_real_t*>array_.data'])
         eq_(self.cy_int_arg.call_arg_list(),
-                 ['<fwrap_npy_intp*>&int_array_.shape[0]',
-                 '<fwrap_default_integer*>int_array_.data'])
+                 ['<fwi_npy_intp*>&int_array_.shape[0]',
+                 '<fwi_integer_t*>int_array_.data'])
 
     def test_pre_call_code(self):
         eq_(self.cy_arg.pre_call_code(), ["array_ = array",])
@@ -261,18 +262,18 @@ class test_char_args(object):
     def test_intern_declarations(self):
         eq_(self.intent_out.intern_declarations(),
                 ['cdef fw_bytes fw_name',
-                 'cdef fwrap_npy_intp fw_name_len',
+                 'cdef fwi_npy_intp fw_name_len',
                  'cdef char *fw_name_buf'])
         eq_(self.intent_in.intern_declarations(),
                 ['cdef fw_bytes fw_name',
-                 'cdef fwrap_npy_intp fw_name_len'])
+                 'cdef fwi_npy_intp fw_name_len'])
         eq_(self.intent_inout.intern_declarations(),
                 ['cdef fw_bytes fw_name',
-                 'cdef fwrap_npy_intp fw_name_len',
+                 'cdef fwi_npy_intp fw_name_len',
                  'cdef char *fw_name_buf'])
         eq_(self.no_intent.intern_declarations(),
                 ['cdef fw_bytes fw_name',
-                 'cdef fwrap_npy_intp fw_name_len',
+                 'cdef fwi_npy_intp fw_name_len',
                  'cdef char *fw_name_buf'])
 
     def test_pre_call_code(self):
@@ -319,15 +320,15 @@ class test_cmplx_args(object):
 
     def test_extern_declarations(self):
         eq_(self.intent_in.extern_declarations(),
-                ['fwrap_default_complex name'])
+                ['fwc_complex name'])
         eq_(self.intent_inout.extern_declarations(),
-                ['fwrap_default_complex name'])
+                ['fwc_complex name'])
         eq_(self.intent_none.extern_declarations(),
-                ['fwrap_default_complex name'])
+                ['fwc_complex name'])
 
     def test_intern_declarations(self):
         eq_(self.intent_out.intern_declarations(),
-                ['cdef fwrap_default_complex name'])
+                ['cdef fwc_complex name'])
         eq_(self.intent_in.intern_declarations(), [])
         eq_(self.intent_inout.intern_declarations(), [])
         eq_(self.intent_none.intern_declarations(), [])
@@ -413,16 +414,16 @@ class test_cy_proc_wrapper(object):
     def test_func_proc_declaration(self):
         eq_(self.cy_func_wrapper.proc_declaration(),
             'cpdef api object'
-            ' fort_func(fwrap_default_integer int_arg_in,'
-            ' fwrap_default_integer int_arg_inout,'
-            ' fwrap_default_real real_arg):')
+            ' fort_func(fwi_integer_t int_arg_in,'
+            ' fwi_integer_t int_arg_inout,'
+            ' fwr_real_t real_arg):')
 
     def test_subr_proc_declaration(self):
         eq_(self.cy_subr_wrapper.proc_declaration(),
             'cpdef api object'
-            ' fort_subr(fwrap_default_integer int_arg_in,'
-            ' fwrap_default_integer int_arg_inout,'
-            ' fwrap_default_real real_arg):')
+            ' fort_subr(fwi_integer_t int_arg_in,'
+            ' fwi_integer_t int_arg_inout,'
+            ' fwr_real_t real_arg):')
 
     def test_subr_call(self):
         eq_(self.cy_subr_wrapper.proc_call(),
@@ -443,18 +444,18 @@ class test_cy_proc_wrapper(object):
     def test_subr_declarations(self):
         buf = CodeBuffer()
         self.cy_subr_wrapper.temp_declarations(buf)
-        compare(buf.getvalue(), 'cdef fwrap_default_integer int_arg_out\n'
-                                'cdef fwrap_default_integer fw_iserr__\n'
-                                'cdef fwrap_default_character fw_errstr__[fw_errstr_len]')
+        compare(buf.getvalue(), 'cdef fwi_integer_t int_arg_out\n'
+                                'cdef fwi_integer_t fw_iserr__\n'
+                                'cdef fw_character fw_errstr__[fw_errstr_len]')
 
     def test_func_declarations(self):
         buf = CodeBuffer()
         self.cy_func_wrapper.temp_declarations(buf)
         decls = '''\
-        cdef fwrap_default_integer fw_ret_arg
-        cdef fwrap_default_integer int_arg_out
-        cdef fwrap_default_integer fw_iserr__
-        cdef fwrap_default_character fw_errstr__[fw_errstr_len]
+        cdef fwi_integer_t fw_ret_arg
+        cdef fwi_integer_t int_arg_out
+        cdef fwi_integer_t fw_iserr__
+        cdef fw_character fw_errstr__[fw_errstr_len]
                 '''
         compare(buf.getvalue(), decls)
 
@@ -462,10 +463,10 @@ class test_cy_proc_wrapper(object):
         buf = CodeBuffer()
         self.cy_subr_wrapper.generate_wrapper(buf)
         cy_wrapper = '''\
-        cpdef api object fort_subr(fwrap_default_integer int_arg_in, fwrap_default_integer int_arg_inout, fwrap_default_real real_arg):
-            cdef fwrap_default_integer int_arg_out
-            cdef fwrap_default_integer fw_iserr__
-            cdef fwrap_default_character fw_errstr__[fw_errstr_len]
+        cpdef api object fort_subr(fwi_integer_t int_arg_in, fwi_integer_t int_arg_inout, fwr_real_t real_arg):
+            cdef fwi_integer_t int_arg_out
+            cdef fwi_integer_t fw_iserr__
+            cdef fw_character fw_errstr__[fw_errstr_len]
             fort_subr_c(&int_arg_in, &int_arg_inout, &int_arg_out, &real_arg, &fw_iserr__, fw_errstr__)
             if fw_iserr__ != FW_NO_ERR__:
                 raise RuntimeError("an error was encountered when calling the 'fort_subr' wrapper.")
@@ -477,11 +478,11 @@ class test_cy_proc_wrapper(object):
         buf = CodeBuffer()
         self.cy_func_wrapper.generate_wrapper(buf)
         cy_wrapper = '''\
-        cpdef api object fort_func(fwrap_default_integer int_arg_in, fwrap_default_integer int_arg_inout, fwrap_default_real real_arg):
-            cdef fwrap_default_integer fw_ret_arg
-            cdef fwrap_default_integer int_arg_out
-            cdef fwrap_default_integer fw_iserr__
-            cdef fwrap_default_character fw_errstr__[fw_errstr_len]
+        cpdef api object fort_func(fwi_integer_t int_arg_in, fwi_integer_t int_arg_inout, fwr_real_t real_arg):
+            cdef fwi_integer_t fw_ret_arg
+            cdef fwi_integer_t int_arg_out
+            cdef fwi_integer_t fw_iserr__
+            cdef fw_character fw_errstr__[fw_errstr_len]
             fort_func_c(&fw_ret_arg, &int_arg_in, &int_arg_inout, &int_arg_out, &real_arg, &fw_iserr__, fw_errstr__)
             if fw_iserr__ != FW_NO_ERR__:
                 raise RuntimeError("an error was encountered when calling the 'fort_func' wrapper.")

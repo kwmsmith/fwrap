@@ -28,7 +28,7 @@ def test_generate_fc_h():
     code = '''\
     #include "foobar"
 
-    void two_arg_c(fwrap_default_real *fw_ret_arg, fwrap_default_integer *a, fwrap_default_integer *b, fwrap_default_integer *c, fwrap_default_integer *d, fwrap_default_integer *fw_iserr__, fwrap_default_character *fw_errstr__);
+    void two_arg_c(fwr_real *fw_ret_arg, fwi_integer *a, fwi_integer *b, fwi_integer *c, fwi_integer *d, fwi_integer *fw_iserr__, fw_character *fw_errstr__);
     '''
     compare(buf.getvalue(), code)
 
@@ -50,7 +50,7 @@ def test_generate_fc_pxd():
     from fwrap_ktp cimport *
 
     cdef extern from "foobar":
-        void two_arg_c(fwrap_default_real *fw_ret_arg, fwrap_default_integer *a, fwrap_default_integer *b, fwrap_default_integer *fw_iserr__, fwrap_default_character *fw_errstr__)
+        void two_arg_c(fwr_real *fw_ret_arg, fwi_integer *a, fwi_integer *b, fwi_integer *fw_iserr__, fw_character *fw_errstr__)
     '''
     compare(buf.getvalue(), code)
 
@@ -68,14 +68,14 @@ def test_gen_fortran_one_arg_func():
     subroutine one_arg_c(a, fw_iserr__, fw_errstr__) bind(c, name="one_arg_c")
         use fwrap_ktp_mod
         implicit none
-        integer(kind=fwrap_default_integer), intent(in) :: a
-        integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-        character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
+        integer(kind=fwi_integer), intent(in) :: a
+        integer(kind=fwi_integer), intent(out) :: fw_iserr__
+        character(kind=fw_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
         interface
             subroutine one_arg(a)
                 use fwrap_ktp_mod
                 implicit none
-                integer(kind=fwrap_default_integer), intent(in) :: a
+                integer(kind=fwi_integer), intent(in) :: a
             end subroutine one_arg
         end interface
         fw_iserr__ = FW_INIT_ERR__
@@ -96,14 +96,14 @@ def test_gen_empty_func_wrapper():
     subroutine empty_func_c(fw_ret_arg, fw_iserr__, fw_errstr__) bind(c, name="empty_func_c")
         use fwrap_ktp_mod
         implicit none
-        integer(kind=fwrap_default_integer), intent(out) :: fw_ret_arg
-        integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-        character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
+        integer(kind=fwi_integer), intent(out) :: fw_ret_arg
+        integer(kind=fwi_integer), intent(out) :: fw_iserr__
+        character(kind=fw_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
         interface
             function empty_func()
                 use fwrap_ktp_mod
                 implicit none
-                integer(kind=fwrap_default_integer) :: empty_func
+                integer(kind=fwi_integer) :: empty_func
             end function empty_func
         end interface
         fw_iserr__ = FW_INIT_ERR__
@@ -141,9 +141,9 @@ def test_gen_iface():
         subroutine many_arg_subr(arg1, arg2, arg3)
             use fwrap_ktp_mod
             implicit none
-            complex(kind=fwrap_sik_10_20), intent(in) :: arg1
-            real(kind=fwrap_double_precision), intent(inout) :: arg2
-            integer(kind=fwrap_int_x_8), intent(out) :: arg3
+            complex(kind=fwc_sik_10_20), intent(in) :: arg1
+            real(kind=fwr_double_precision), intent(inout) :: arg2
+            integer(kind=fwi_int_x_8), intent(out) :: arg3
         end subroutine many_arg_subr
     end interface
 '''
@@ -159,8 +159,8 @@ def test_gen_iface():
         function one_arg_func(arg1)
             use fwrap_ktp_mod
             implicit none
-            real(kind=fwrap_default_real), intent(inout) :: arg1
-            integer(kind=fwrap_default_integer) :: one_arg_func
+            real(kind=fwr_real), intent(inout) :: arg1
+            integer(kind=fwi_integer) :: one_arg_func
         end function one_arg_func
     end interface
 '''
@@ -174,7 +174,7 @@ def test_gen_iface():
         function empty_func()
             use fwrap_ktp_mod
             implicit none
-            integer(kind=fwrap_default_integer) :: empty_func
+            integer(kind=fwi_integer) :: empty_func
         end function empty_func
     end interface
 '''
@@ -198,16 +198,16 @@ def test_intent_hide():
     subroutine hide_subr_c(fw_iserr__, fw_errstr__) bind(c, name="hide_subr_c")
         use fwrap_ktp_mod
         implicit none
-        integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-        character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
+        integer(kind=fwi_integer), intent(out) :: fw_iserr__
+        character(kind=fw_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
         interface
             subroutine hide_subr(hide_arg)
                 use fwrap_ktp_mod
                 implicit none
-                integer(kind=fwrap_default_integer) :: hide_arg
+                integer(kind=fwi_integer) :: hide_arg
             end subroutine hide_subr
         end interface
-        integer(kind=fwrap_default_integer) :: hide_arg
+        integer(kind=fwi_integer) :: hide_arg
         fw_iserr__ = FW_INIT_ERR__
         hide_arg = (10)
         call hide_subr(hide_arg)
@@ -229,16 +229,16 @@ def test_logical_function():
         use fwrap_ktp_mod
         implicit none
         type(c_ptr), value :: fw_ret_arg
-        integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-        character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
+        integer(kind=fwi_integer), intent(out) :: fw_iserr__
+        character(kind=fw_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
         interface
             function lgcl_fun()
                 use fwrap_ktp_mod
                 implicit none
-                logical(kind=fwrap_lgcl) :: lgcl_fun
+                logical(kind=fwl_lgcl) :: lgcl_fun
             end function lgcl_fun
         end interface
-        logical(kind=fwrap_lgcl), pointer :: fw_ret_arg
+        logical(kind=fwl_lgcl), pointer :: fw_ret_arg
         fw_iserr__ = FW_INIT_ERR__
         call c_f_pointer(fw_ret_arg, fw_ret_arg)
         fw_ret_arg = lgcl_fun()
@@ -260,16 +260,16 @@ def test_logical_wrapper():
         use fwrap_ktp_mod
         implicit none
         type(c_ptr), value :: lgcl
-        integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-        character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
+        integer(kind=fwi_integer), intent(out) :: fw_iserr__
+        character(kind=fw_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
         interface
             subroutine lgcl_arg(lgcl)
                 use fwrap_ktp_mod
                 implicit none
-                logical(kind=fwrap_lgcl_ktp), intent(inout) :: lgcl
+                logical(kind=fwl_lgcl_ktp), intent(inout) :: lgcl
             end subroutine lgcl_arg
         end interface
-        logical(kind=fwrap_lgcl_ktp), pointer :: fw_lgcl
+        logical(kind=fwl_lgcl_ktp), pointer :: fw_lgcl
         fw_iserr__ = FW_INIT_ERR__
         call c_f_pointer(lgcl, fw_lgcl)
         call lgcl_arg(fw_lgcl)
@@ -292,16 +292,16 @@ def test_assumed_shape_int_array():
     subroutine arr_arg_c(arr_d1, arr_d2, arr, fw_iserr__, fw_errstr__) bind(c, name="arr_arg_c")
         use fwrap_ktp_mod
         implicit none
-        integer(kind=fwrap_npy_intp), intent(in) :: arr_d1
-        integer(kind=fwrap_npy_intp), intent(in) :: arr_d2
-        integer(kind=fwrap_default_integer), dimension(arr_d1, arr_d2), intent(inout) :: arr
-        integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-        character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
+        integer(kind=fwi_npy_intp), intent(in) :: arr_d1
+        integer(kind=fwi_npy_intp), intent(in) :: arr_d2
+        integer(kind=fwi_integer), dimension(arr_d1, arr_d2), intent(inout) :: arr
+        integer(kind=fwi_integer), intent(out) :: fw_iserr__
+        character(kind=fw_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
         interface
             subroutine arr_arg(arr)
                 use fwrap_ktp_mod
                 implicit none
-                integer(kind=fwrap_default_integer), dimension(:, :), intent(inout) :: arr
+                integer(kind=fwi_integer), dimension(:, :), intent(inout) :: arr
             end subroutine arr_arg
         end interface
         fw_iserr__ = FW_INIT_ERR__
@@ -331,20 +331,20 @@ def test_explicit_shape_int_array():
 subroutine arr_arg_c(arr_d1, arr_d2, arr, d1, d2, fw_iserr__, fw_errstr__) bind(c, name="arr_arg_c")
     use fwrap_ktp_mod
     implicit none
-    integer(kind=fwrap_npy_intp), intent(in) :: arr_d1
-    integer(kind=fwrap_npy_intp), intent(in) :: arr_d2
-    integer(kind=fwrap_default_integer), dimension(arr_d1, arr_d2), intent(inout) :: arr
-    integer(kind=fwrap_default_integer), intent(in) :: d1
-    integer(kind=fwrap_default_integer), intent(in) :: d2
-    integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-    character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
+    integer(kind=fwi_npy_intp), intent(in) :: arr_d1
+    integer(kind=fwi_npy_intp), intent(in) :: arr_d2
+    integer(kind=fwi_integer), dimension(arr_d1, arr_d2), intent(inout) :: arr
+    integer(kind=fwi_integer), intent(in) :: d1
+    integer(kind=fwi_integer), intent(in) :: d2
+    integer(kind=fwi_integer), intent(out) :: fw_iserr__
+    character(kind=fw_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
     interface
         subroutine arr_arg(arr, d1, d2)
             use fwrap_ktp_mod
             implicit none
-            integer(kind=fwrap_default_integer), intent(in) :: d1
-            integer(kind=fwrap_default_integer), intent(in) :: d2
-            integer(kind=fwrap_default_integer), dimension(d1, d2), intent(inout) :: arr
+            integer(kind=fwi_integer), intent(in) :: d1
+            integer(kind=fwi_integer), intent(in) :: d2
+            integer(kind=fwi_integer), dimension(d1, d2), intent(inout) :: arr
         end subroutine arr_arg
     end interface
     fw_iserr__ = FW_INIT_ERR__
@@ -390,9 +390,9 @@ def test_declaration_order():
         subroutine arr_arg(explicit_shape, d2, d1)
             use fwrap_ktp_mod
             implicit none
-            integer(kind=fwrap_default_integer), intent(in) :: d2
-            integer(kind=fwrap_default_integer), intent(in) :: d1
-            complex(kind=fwrap_default_complex), dimension(d1, d2), intent(out) :: explicit_shape
+            integer(kind=fwi_integer), intent(in) :: d2
+            integer(kind=fwi_integer), intent(in) :: d1
+            complex(kind=fwc_complex), dimension(d1, d2), intent(out) :: explicit_shape
         end subroutine arr_arg
     end interface
 '''
@@ -427,37 +427,37 @@ class test_char_array_arg_wrapper(object):
 
     def test_extern_decls(self):
         decls1 = '''\
-integer(kind=fwrap_npy_intp), intent(in) :: fw_charr1_len
-integer(kind=fwrap_npy_intp), intent(in) :: charr1_d1
+integer(kind=fwi_npy_intp), intent(in) :: fw_charr1_len
+integer(kind=fwi_npy_intp), intent(in) :: charr1_d1
 type(c_ptr), value :: charr1
 '''
         eq_(self.fc_charr1.extern_declarations(), decls1.splitlines())
 
         decls3 = '''\
-integer(kind=fwrap_npy_intp), intent(in) :: fw_charr3_len
-integer(kind=fwrap_npy_intp), intent(in) :: charr3_d1
-integer(kind=fwrap_npy_intp), intent(in) :: charr3_d2
-integer(kind=fwrap_npy_intp), intent(in) :: charr3_d3
+integer(kind=fwi_npy_intp), intent(in) :: fw_charr3_len
+integer(kind=fwi_npy_intp), intent(in) :: charr3_d1
+integer(kind=fwi_npy_intp), intent(in) :: charr3_d2
+integer(kind=fwi_npy_intp), intent(in) :: charr3_d3
 type(c_ptr), value :: charr3
 '''
         eq_(self.fc_charr3.extern_declarations(), decls3.splitlines())
 
         decls_star = '''\
-integer(kind=fwrap_npy_intp), intent(in) :: fw_cs_len
-integer(kind=fwrap_npy_intp), intent(in) :: cs_d1
+integer(kind=fwi_npy_intp), intent(in) :: fw_cs_len
+integer(kind=fwi_npy_intp), intent(in) :: cs_d1
 type(c_ptr), value :: cs
 '''
         eq_(self.fc_charr_star.extern_declarations(), decls_star.splitlines())
 
     def test_intern_decls(self):
         eq_(self.fc_charr1.intern_declarations(),
-                ["character(kind=fwrap_char_x20, len=20), "
+                ["character(kind=fw_char_x20, len=20), "
                     "dimension(:), pointer :: fw_charr1"])
         eq_(self.fc_charr3.intern_declarations(),
-                ["character(kind=fwrap_char_x30, len=30), "
+                ["character(kind=fw_char_x30, len=30), "
                     "dimension(:, :, :), pointer :: fw_charr3"])
         eq_(self.fc_charr_star.intern_declarations(),
-                ['character(kind=fwrap_char_xX, len=fw_cs_len), '
+                ['character(kind=fw_char_xX, len=fw_cs_len), '
                     'dimension(:), pointer :: fw_cs'])
 
     def test_extern_arg_list(self):
@@ -506,15 +506,15 @@ type(c_ptr), value :: cs
 
     def test_c_declarations(self):
         eq_(self.fc_charr1.c_declarations(),
-            ['fwrap_npy_intp *fw_charr1_len',
-             'fwrap_npy_intp *charr1_d1',
+            ['fwi_npy_intp *fw_charr1_len',
+             'fwi_npy_intp *charr1_d1',
              'void *charr1']
             )
         eq_(self.fc_charr3.c_declarations(),
-            ['fwrap_npy_intp *fw_charr3_len',
-             'fwrap_npy_intp *charr3_d1',
-             'fwrap_npy_intp *charr3_d2',
-             'fwrap_npy_intp *charr3_d3',
+            ['fwi_npy_intp *fw_charr3_len',
+             'fwi_npy_intp *charr3_d1',
+             'fwi_npy_intp *charr3_d2',
+             'fwi_npy_intp *charr3_d3',
              'void *charr3']
             )
 
@@ -537,15 +537,15 @@ class test_array_arg_wrapper(object):
 
     def test_extern_decls(self):
         int_decls = '''\
-integer(kind=fwrap_npy_intp), intent(in) :: arr_arg_d1
-integer(kind=fwrap_npy_intp), intent(in) :: arr_arg_d2
-integer(kind=fwrap_default_integer), dimension(arr_arg_d1, arr_arg_d2), intent(inout) :: arr_arg
+integer(kind=fwi_npy_intp), intent(in) :: arr_arg_d1
+integer(kind=fwi_npy_intp), intent(in) :: arr_arg_d2
+integer(kind=fwi_integer), dimension(arr_arg_d1, arr_arg_d2), intent(inout) :: arr_arg
 '''
         real_decls = '''\
-integer(kind=fwrap_npy_intp), intent(in) :: real_arr_arg_d1
-integer(kind=fwrap_npy_intp), intent(in) :: real_arr_arg_d2
-integer(kind=fwrap_npy_intp), intent(in) :: real_arr_arg_d3
-real(kind=fwrap_default_real), dimension(real_arr_arg_d1, real_arr_arg_d2, real_arr_arg_d3), intent(out) :: real_arr_arg
+integer(kind=fwi_npy_intp), intent(in) :: real_arr_arg_d1
+integer(kind=fwi_npy_intp), intent(in) :: real_arr_arg_d2
+integer(kind=fwi_npy_intp), intent(in) :: real_arr_arg_d3
+real(kind=fwr_real), dimension(real_arr_arg_d1, real_arr_arg_d2, real_arr_arg_d3), intent(out) :: real_arr_arg
 '''
         eq_(self.int_arr_wrapper.extern_declarations(),
                 int_decls.splitlines())
@@ -594,7 +594,7 @@ class test_logical_arg(object):
             eq_(arg.extern_declarations(), result)
 
     def test_intern_declarations(self):
-        result = ['logical(kind=fwrap_default_logical), pointer :: fw_larg']
+        result = ['logical(kind=fwl_logical), pointer :: fw_larg']
         for arg in self.arg_dict.values():
             eq_(arg.intern_declarations(), result)
 
@@ -623,11 +623,11 @@ class test_char_arg(object):
 
     def test_c_declarations(self):
         results = [
-                ['fwrap_npy_intp *fw_ch1_len',
+                ['fwi_npy_intp *fw_ch1_len',
                  'void *ch1'],
-                ['fwrap_npy_intp *fw_ch2_len',
+                ['fwi_npy_intp *fw_ch2_len',
                  'void *ch2'],
-                ['fwrap_npy_intp *fw_ch3_len',
+                ['fwi_npy_intp *fw_ch3_len',
                  'void *ch3'],
                 ]
         for wrap, result in zip(self.inout_wraps, results):
@@ -635,13 +635,13 @@ class test_char_arg(object):
 
     def test_extern_decl(self):
         results = [
-            ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch1_len',
+            ['integer(kind=fwi_npy_intp), intent(in) :: fw_ch1_len',
              'type(c_ptr), value :: ch1'],
 
-            ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch2_len',
+            ['integer(kind=fwi_npy_intp), intent(in) :: fw_ch2_len',
              'type(c_ptr), value :: ch2'],
 
-            ['integer(kind=fwrap_npy_intp), intent(in) :: fw_ch3_len',
+            ['integer(kind=fwi_npy_intp), intent(in) :: fw_ch3_len',
              'type(c_ptr), value :: ch3'],
             ]
         for wrap, result in zip(self.inout_wraps, results):
@@ -649,9 +649,9 @@ class test_char_arg(object):
 
     def test_intern_decl(self):
         results = [
-            ['character(kind=fwrap_char_20, len=20), pointer :: fw_ch1'],
-            ['character(kind=fwrap_char_10, len=10), pointer :: fw_ch2'],
-            ['character(kind=fwrap_char_x, len=fw_ch3_len), '
+            ['character(kind=fw_char_20, len=20), pointer :: fw_ch1'],
+            ['character(kind=fw_char_10, len=10), pointer :: fw_ch2'],
+            ['character(kind=fw_char_x, len=fw_ch3_len), '
                 'pointer :: fw_ch3'],
            ]
 
@@ -691,7 +691,7 @@ call c_f_pointer(ch2, fw_ch2)
 class test_arg_wrapper(object):
 
     def setup(self):
-        dint = pyf.IntegerType('fwrap_int')
+        dint = pyf.IntegerType('fwi_int')
         dlgcl = pyf.default_logical
 
         self.int_arg = pyf.Argument(name='int', dtype=dint, intent='inout')
@@ -725,9 +725,9 @@ class test_arg_wrapper(object):
 
     def test_intern_lgcl_var(self):
         eq_(self.lgcl_arg_wrap.intern_declarations(),
-                ['logical(kind=fwrap_default_logical), pointer :: fw_lgcl'])
+                ['logical(kind=fwl_logical), pointer :: fw_lgcl'])
         eq_(self.lgcl_arg_in_wrap.intern_declarations(),
-                ['logical(kind=fwrap_default_logical), pointer :: fw_lgcl_in'])
+                ['logical(kind=fwl_logical), pointer :: fw_lgcl_in'])
 
     def test_post_call_code(self):
         for argw in (self.lgcl_arg_wrap, self.lgcl_arg_in_wrap):
@@ -751,9 +751,9 @@ class test_arg_wrapper_manager(object):
         decls = '''\
 type(c_ptr), value :: lgcl1
 type(c_ptr), value :: lgcl2
-integer(kind=fwrap_int), intent(inout) :: int
-integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
+integer(kind=fwi_int), intent(inout) :: int
+integer(kind=fwi_integer), intent(out) :: fw_iserr__
+character(kind=fw_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
 '''.splitlines()
         eq_(self.am.arg_declarations(), decls)
 
@@ -790,14 +790,14 @@ class test_arg_manager_return(object):
     def test_declarations(self):
         declaration = '''\
 type(c_ptr), value :: ll
-integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
+integer(kind=fwi_integer), intent(out) :: fw_iserr__
+character(kind=fw_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
 '''.splitlines()
         eq_(self.am_lgcl.arg_declarations(), declaration)
 
     def test_temp_declarations(self):
         eq_(self.am_lgcl.temp_declarations(),
-                ['logical(kind=fwrap_default_logical), pointer :: fw_ll'])
+                ['logical(kind=fwl_logical), pointer :: fw_ll'])
 
 class test_c_proto_generation(object):
 
@@ -810,11 +810,11 @@ class test_c_proto_generation(object):
         func = pyf.Function('foo', args=args, return_arg=return_arg)
         arg_man = fc_wrap.ArgWrapperManager(func)
         eq_(arg_man.c_proto_args(),
-                ['fwrap_default_real *fw_ret_arg',
-                 'fwrap_default_integer *int_arg',
-                 'fwrap_default_real *real_arg',
-                 'fwrap_default_integer *fw_iserr__',
-                 'fwrap_default_character *fw_errstr__'])
+                ['fwr_real *fw_ret_arg',
+                 'fwi_integer *int_arg',
+                 'fwr_real *real_arg',
+                 'fwi_integer *fw_iserr__',
+                 'fw_character *fw_errstr__'])
 
     def test_c_proto_array_args(self):
         args = [pyf.Argument(name='array',
@@ -822,12 +822,12 @@ class test_c_proto_generation(object):
                         dimension=(':',)*3, intent='out')]
         subr = pyf.Subroutine('foo', args=args)
         arg_man = fc_wrap.ArgWrapperManager(subr)
-        eq_(arg_man.c_proto_args(), ['fwrap_npy_intp *array_d1',
-                                     'fwrap_npy_intp *array_d2',
-                                     'fwrap_npy_intp *array_d3',
-                                     'fwrap_default_real *array',
-                                     'fwrap_default_integer *fw_iserr__',
-                                     'fwrap_default_character *fw_errstr__'])
+        eq_(arg_man.c_proto_args(), ['fwi_npy_intp *array_d1',
+                                     'fwi_npy_intp *array_d2',
+                                     'fwi_npy_intp *array_d3',
+                                     'fwr_real *array',
+                                     'fwi_integer *fw_iserr__',
+                                     'fw_character *fw_errstr__'])
 
     def test_c_proto_return_type(self):
         for dtype in (pyf.default_real, pyf.default_integer):
@@ -851,13 +851,13 @@ class test_c_proto_generation(object):
                           return_arg=return_arg)
         empty_func_wrapper = fc_wrap.FunctionWrapper(wrapped=empty_func)
         eq_(empty_func_wrapper.c_prototype(),
-                ('void empty_func_c(fwrap_default_integer *fw_ret_arg, '
-                    'fwrap_default_integer *fw_iserr__, fwrap_default_character *fw_errstr__);'))
+                ('void empty_func_c(fwi_integer *fw_ret_arg, '
+                    'fwi_integer *fw_iserr__, fw_character *fw_errstr__);'))
         empty_subr = pyf.Subroutine(name='empty_subr',
                             args=())
         empty_subr_wrapper = fc_wrap.SubroutineWrapper(wrapped=empty_subr)
         eq_(empty_subr_wrapper.c_prototype(),
-                'void empty_subr_c(fwrap_default_integer *fw_iserr__, fwrap_default_character *fw_errstr__);')
+                'void empty_subr_c(fwi_integer *fw_iserr__, fw_character *fw_errstr__);')
 
     def test_c_prototype_args(self):
         args = [pyf.Argument(name='int_arg',
@@ -869,14 +869,14 @@ class test_c_proto_generation(object):
         func = pyf.Function(name='func', args=args, return_arg=return_arg)
         func_wrapper = fc_wrap.FunctionWrapper(wrapped=func)
         eq_(func_wrapper.c_prototype(), "void func_c"
-                                        "(fwrap_default_integer *fw_ret_arg, "
-                                        "fwrap_default_integer *int_arg, "
-                                        "fwrap_npy_intp *array_d1, "
-                                        "fwrap_npy_intp *array_d2, "
-                                        "fwrap_npy_intp *array_d3, "
-                                        "fwrap_default_real *array, "
-                                        "fwrap_default_integer *fw_iserr__, "
-                                        "fwrap_default_character *fw_errstr__);")
+                                        "(fwi_integer *fw_ret_arg, "
+                                        "fwi_integer *int_arg, "
+                                        "fwi_npy_intp *array_d1, "
+                                        "fwi_npy_intp *array_d2, "
+                                        "fwi_npy_intp *array_d3, "
+                                        "fwr_real *array, "
+                                        "fwi_integer *fw_iserr__, "
+                                        "fw_character *fw_errstr__);")
 
 class test_param_declarations(object):
     
@@ -896,9 +896,9 @@ class test_param_declarations(object):
         args = [pyf.Argument('array', dtype=pyf.default_integer, dimension=['p3'])]
         subr = pyf.Subroutine(name='subr', args=args, params=self.params)
         subr_wrapper = fc_wrap.SubroutineWrapper(wrapped=subr)
-        pds = ['integer(kind=fwrap_default_integer), parameter :: p1 = 1',
-               'integer(kind=fwrap_default_integer), parameter :: p2 = p1**2-1',
-               'integer(kind=fwrap_default_integer), parameter :: p3 = p1+p2']
+        pds = ['integer(kind=fwi_integer), parameter :: p1 = 1',
+               'integer(kind=fwi_integer), parameter :: p2 = p1**2-1',
+               'integer(kind=fwi_integer), parameter :: p3 = p1+p2']
         eq_(subr_wrapper.param_declarations(), pds)
 
 
@@ -907,30 +907,30 @@ many_arrays_text = '''\
 subroutine arr_args_c(assumed_size_d1, assumed_size_d2, assumed_size, d1, assumed_shape_d1, assumed_shape_d2, assumed_shape, explicit_shape_d1, explicit_shape_d2, explicit_shape, c1, c2, fw_iserr__, fw_errstr__) bind(c, name="arr_args_c")
     use fwrap_ktp_mod
     implicit none
-    integer(kind=fwrap_npy_intp), intent(in) :: assumed_size_d1
-    integer(kind=fwrap_npy_intp), intent(in) :: assumed_size_d2
-    integer(kind=fwrap_default_integer), dimension(assumed_size_d1, assumed_size_d2), intent(inout) :: assumed_size
-    integer(kind=fwrap_default_integer), intent(in) :: d1
-    integer(kind=fwrap_npy_intp), intent(in) :: assumed_shape_d1
-    integer(kind=fwrap_npy_intp), intent(in) :: assumed_shape_d2
-    logical(kind=fwrap_default_logical), dimension(assumed_shape_d1, assumed_shape_d2), intent(out) :: assumed_shape
-    integer(kind=fwrap_npy_intp), intent(in) :: explicit_shape_d1
-    integer(kind=fwrap_npy_intp), intent(in) :: explicit_shape_d2
-    complex(kind=fwrap_default_complex), dimension(explicit_shape_d1, explicit_shape_d2), intent(inout) :: explicit_shape
-    integer(kind=fwrap_default_integer), intent(inout) :: c1
-    integer(kind=fwrap_default_integer) :: c2
-    integer(kind=fwrap_default_integer), intent(out) :: fw_iserr__
-    character(kind=fwrap_default_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
+    integer(kind=fwi_npy_intp), intent(in) :: assumed_size_d1
+    integer(kind=fwi_npy_intp), intent(in) :: assumed_size_d2
+    integer(kind=fwi_integer), dimension(assumed_size_d1, assumed_size_d2), intent(inout) :: assumed_size
+    integer(kind=fwi_integer), intent(in) :: d1
+    integer(kind=fwi_npy_intp), intent(in) :: assumed_shape_d1
+    integer(kind=fwi_npy_intp), intent(in) :: assumed_shape_d2
+    logical(kind=fwl_logical), dimension(assumed_shape_d1, assumed_shape_d2), intent(out) :: assumed_shape
+    integer(kind=fwi_npy_intp), intent(in) :: explicit_shape_d1
+    integer(kind=fwi_npy_intp), intent(in) :: explicit_shape_d2
+    complex(kind=fwc_complex), dimension(explicit_shape_d1, explicit_shape_d2), intent(inout) :: explicit_shape
+    integer(kind=fwi_integer), intent(inout) :: c1
+    integer(kind=fwi_integer) :: c2
+    integer(kind=fwi_integer), intent(out) :: fw_iserr__
+    character(kind=fw_character, len=1), dimension(fw_errstr_len) :: fw_errstr__
     interface
         subroutine arr_args(assumed_size, d1, assumed_shape, explicit_shape, c1, c2)
             use fwrap_ktp_mod
             implicit none
-            integer(kind=fwrap_default_integer), intent(in) :: d1
-            logical(kind=fwrap_default_logical), dimension(:, :), intent(out) :: assumed_shape
-            integer(kind=fwrap_default_integer), intent(inout) :: c1
-            integer(kind=fwrap_default_integer) :: c2
-            integer(kind=fwrap_default_integer), dimension(d1, *), intent(inout) :: assumed_size
-            complex(kind=fwrap_default_complex), dimension(c1, c2), intent(inout) :: explicit_shape
+            integer(kind=fwi_integer), intent(in) :: d1
+            logical(kind=fwl_logical), dimension(:, :), intent(out) :: assumed_shape
+            integer(kind=fwi_integer), intent(inout) :: c1
+            integer(kind=fwi_integer) :: c2
+            integer(kind=fwi_integer), dimension(d1, *), intent(inout) :: assumed_size
+            complex(kind=fwc_complex), dimension(c1, c2), intent(inout) :: explicit_shape
         end subroutine arr_args
     end interface
     fw_iserr__ = FW_INIT_ERR__

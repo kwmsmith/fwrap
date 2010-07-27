@@ -52,30 +52,30 @@ class test_proc_params(object):
         func_am = pyf.ArgManager(args=self.args,
                         return_arg=self.ret_arg, params=self.params)
         eq_(sub_am.arg_declarations(),
-                ['integer(kind=fwrap_default_integer), '
+                ['integer(kind=fwi_integer), '
                         'parameter :: lit_int = 30-10',
-                 'integer(kind=fwrap_default_integer), '
+                 'integer(kind=fwi_integer), '
                          'parameter :: sik_10 = selected_int_kind(10)',
-                 'integer(kind=fwrap_default_integer), '
+                 'integer(kind=fwi_integer), '
                          'parameter :: srk_10_20 = '
                          'selected_real_kind(10, lit_int)',
-                 'real(kind=fwrap_srk_10_20), '
+                 'real(kind=fwr_srk_10_20), '
                          'intent(inout) :: real_arg',
-                 'integer(kind=fwrap_sik_10), '
+                 'integer(kind=fwi_sik_10), '
                          'dimension(lit_int) :: int_arg'])
 
     def test_unneeded_param(self):
         unp = pyf.Parameter("unneeded", dtype=pyf.default_integer, expr="srk_10_20 + lit_int")
         sub_am = pyf.ArgManager(args=self.args, params=self.params+[unp])
         eq_(sub_am.arg_declarations(),
-                ['integer(kind=fwrap_default_integer), '
+                ['integer(kind=fwi_integer), '
                         'parameter :: lit_int = 30-10',
-                 'integer(kind=fwrap_default_integer), '
+                 'integer(kind=fwi_integer), '
                          'parameter :: sik_10 = selected_int_kind(10)',
-                 'integer(kind=fwrap_default_integer), '
+                 'integer(kind=fwi_integer), '
                          'parameter :: srk_10_20 = '
                          'selected_real_kind(10, lit_int)',
-                 'real(kind=fwrap_srk_10_20), '
+                 'real(kind=fwr_srk_10_20), '
                          'intent(inout) :: real_arg',
-                 'integer(kind=fwrap_sik_10), '
+                 'integer(kind=fwi_sik_10), '
                          'dimension(lit_int) :: int_arg'])
