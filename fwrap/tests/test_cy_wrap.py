@@ -463,14 +463,30 @@ class test_cy_proc_wrapper(object):
         buf = CodeBuffer()
         self.cy_subr_wrapper.generate_wrapper(buf)
         cy_wrapper = '''\
-        cpdef api object fort_subr(fwi_integer_t int_arg_in, fwi_integer_t int_arg_inout, fwr_real_t real_arg):
-            cdef fwi_integer_t int_arg_out
-            cdef fwi_integer_t fw_iserr__
-            cdef fw_character_t fw_errstr__[fw_errstr_len]
-            fort_subr_c(&int_arg_in, &int_arg_inout, &int_arg_out, &real_arg, &fw_iserr__, fw_errstr__)
-            if fw_iserr__ != FW_NO_ERR__:
-                raise RuntimeError("an error was encountered when calling the 'fort_subr' wrapper.")
-            return (int_arg_inout, int_arg_out, real_arg,)
+cpdef api object fort_subr(fwi_integer_t int_arg_in, fwi_integer_t int_arg_inout, fwr_real_t real_arg):
+    """
+    fort_subr(int_arg_in, int_arg_inout, real_arg) -> (int_arg_inout, int_arg_out, real_arg,)
+    
+    Parameters
+    ----------
+    int_arg_in : fwi_integer, intent in
+    int_arg_inout : fwi_integer, intent inout
+    real_arg : fwr_real
+    
+    Returns
+    -------
+    int_arg_inout : fwi_integer, intent inout
+    int_arg_out : fwi_integer, intent out
+    real_arg : fwr_real
+    
+    """
+    cdef fwi_integer_t int_arg_out
+    cdef fwi_integer_t fw_iserr__
+    cdef fw_character_t fw_errstr__[fw_errstr_len]
+    fort_subr_c(&int_arg_in, &int_arg_inout, &int_arg_out, &real_arg, &fw_iserr__, fw_errstr__)
+    if fw_iserr__ != FW_NO_ERR__:
+        raise RuntimeError("an error was encountered when calling the 'fort_subr' wrapper.")
+    return (int_arg_inout, int_arg_out, real_arg,)
 '''
         compare(cy_wrapper, buf.getvalue())
 
@@ -478,14 +494,123 @@ class test_cy_proc_wrapper(object):
         buf = CodeBuffer()
         self.cy_func_wrapper.generate_wrapper(buf)
         cy_wrapper = '''\
-        cpdef api object fort_func(fwi_integer_t int_arg_in, fwi_integer_t int_arg_inout, fwr_real_t real_arg):
-            cdef fwi_integer_t fw_ret_arg
-            cdef fwi_integer_t int_arg_out
-            cdef fwi_integer_t fw_iserr__
-            cdef fw_character_t fw_errstr__[fw_errstr_len]
-            fort_func_c(&fw_ret_arg, &int_arg_in, &int_arg_inout, &int_arg_out, &real_arg, &fw_iserr__, fw_errstr__)
-            if fw_iserr__ != FW_NO_ERR__:
-                raise RuntimeError("an error was encountered when calling the 'fort_func' wrapper.")
-            return (fw_ret_arg, int_arg_inout, int_arg_out, real_arg,)
-        '''
+cpdef api object fort_func(fwi_integer_t int_arg_in, fwi_integer_t int_arg_inout, fwr_real_t real_arg):
+    """
+    fort_func(int_arg_in, int_arg_inout, real_arg) -> (fw_ret_arg, int_arg_inout, int_arg_out, real_arg,)
+    
+    Parameters
+    ----------
+    int_arg_in : fwi_integer, intent in
+    int_arg_inout : fwi_integer, intent inout
+    real_arg : fwr_real
+    
+    Returns
+    -------
+    fw_ret_arg : fwi_integer, intent out
+    int_arg_inout : fwi_integer, intent inout
+    int_arg_out : fwi_integer, intent out
+    real_arg : fwr_real
+    
+    """
+    cdef fwi_integer_t fw_ret_arg
+    cdef fwi_integer_t int_arg_out
+    cdef fwi_integer_t fw_iserr__
+    cdef fw_character_t fw_errstr__[fw_errstr_len]
+    fort_func_c(&fw_ret_arg, &int_arg_in, &int_arg_inout, &int_arg_out, &real_arg, &fw_iserr__, fw_errstr__)
+    if fw_iserr__ != FW_NO_ERR__:
+        raise RuntimeError("an error was encountered when calling the 'fort_func' wrapper.")
+    return (fw_ret_arg, int_arg_inout, int_arg_out, real_arg,)
+    '''
         compare(cy_wrapper, buf.getvalue())
+
+class test_docstring_gen(object):
+    
+    def setup(self):
+        int_arg_inout = pyf.Argument("int_arg_inout", pyf.default_integer, 'inout')
+        int_arg = pyf.Argument("int_arg", pyf.default_integer)
+        int_array = pyf.Argument("int_array", pyf.default_integer, intent="out", dimension=[':',':'])
+        return_arg = pyf.Argument(name="dstring_func", dtype=pyf.default_integer)
+        func = pyf.Function(name="dstring_func",
+                            args=[int_arg_inout, int_arg, int_array],
+                            return_arg=return_arg)
+        fcw = fc_wrap.FunctionWrapper(wrapped=func)
+        self.cyw = cy_wrap.ProcWrapper(wrapped=fcw)
+
+
+    def test_func_dstring(self):
+        dstring = """\
+        dstring_func(int_arg_inout, int_arg, int_array) -> (fw_ret_arg, int_arg_inout, int_arg, int_array,)
+
+        Parameters
+        ----------
+        int_arg_inout : fwi_integer, intent inout
+        int_arg : fwi_integer
+        int_array : fwi_integer, 2D array, dimension(:, :), intent out
+
+        Returns
+        -------
+        fw_ret_arg : fwi_integer, intent out
+        int_arg_inout : fwi_integer, intent inout
+        int_arg : fwi_integer
+        int_array : fwi_integer, 2D array, dimension(:, :), intent out
+
+        """
+        compare('\n'.join(self.cyw.docstring()), dstring)
+
+    def test_arg_dstring(self):
+        real_arg_in = pyf.Argument("real_in", pyf.default_real, "in")
+        complex_arg_out = pyf.Argument("cpx_out", pyf.default_complex, 'out')
+        logical_arg_inout = pyf.Argument("lgcl_inout", pyf.default_logical, 'inout')
+        int_arg = pyf.Argument('int_arg', pyf.default_integer)
+
+        args = [real_arg_in, complex_arg_out, logical_arg_inout, int_arg]
+        fcargs = [fc_wrap.ArgWrapperFactory(arg) for arg in args]
+        cyargs = [cy_wrap.CyArgWrapper(arg) for arg in fcargs]
+        cy_real, cy_cpx, cy_log, cy_int = cyargs
+
+        eq_(cy_cpx.in_dstring(), [])
+        eq_(cy_cpx.out_dstring(), ["cpx_out : fwc_complex, intent out"])
+
+        eq_(cy_real.out_dstring(), [])
+        eq_(cy_real.in_dstring(), ["real_in : fwr_real, intent in"])
+
+        eq_(cy_log.in_dstring(), ["lgcl_inout : fwl_logical, intent inout"])
+        eq_(cy_log.out_dstring(), ["lgcl_inout : fwl_logical, intent inout"])
+
+        eq_(cy_int.in_dstring(), ["int_arg : fwi_integer"])
+        eq_(cy_int.out_dstring(), ["int_arg : fwi_integer"])
+
+    def test_array_dstring(self):
+        real_in = pyf.Argument("real_in",
+                               pyf.default_real, "in",
+                               dimension=[":",":"])
+        complex_out = pyf.Argument("cpx_out",
+                                   pyf.default_complex, 'out',
+                                   dimension=["n1:n2+n3"])
+        logical_inout = pyf.Argument("lgcl_inout",
+                                     pyf.default_logical, 'inout',
+                                     dimension=["n1:n2","*"])
+        int_ = pyf.Argument('int_arg', pyf.default_integer, dimension=[":"]*7)
+
+        args = [real_in, complex_out, logical_inout, int_]
+        fcargs = [fc_wrap.ArgWrapperFactory(arg) for arg in args]
+        cyargs = [cy_wrap.CyArrayArgWrapper(arg) for arg in fcargs]
+        cy_real, cy_cpx, cy_log, cy_int = cyargs
+
+        real_str = ["real_in : fwr_real, 2D array, dimension(:, :), intent in"]
+        eq_(cy_real.in_dstring(), real_str)
+        eq_(cy_real.out_dstring(), [])
+
+        cpx_str = ["cpx_out : fwc_complex, 1D array, dimension(n1:n2+n3), intent out"]
+        eq_(cy_cpx.in_dstring(), cpx_str)
+        eq_(cy_cpx.out_dstring(), cpx_str)
+
+        log_str = ["lgcl_inout : fwl_logical, "
+                   "2D array, dimension(n1:n2, *), intent inout"]
+        eq_(cy_log.in_dstring(), log_str)
+        eq_(cy_log.out_dstring(), log_str)
+
+        int_str = ["int_arg : fwi_integer, "
+                   "7D array, dimension(:, :, :, :, :, :, :)"]
+        eq_(cy_int.in_dstring(), int_str)
+        eq_(cy_int.out_dstring(), int_str)

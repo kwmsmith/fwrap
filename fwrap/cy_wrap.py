@@ -43,6 +43,8 @@ def CyArgWrapper(arg):
 
 class _CyArgWrapper(object):
 
+    is_array = False
+
     def __init__(self, arg):
         self.arg = arg
         self.intern_name = self.arg.name
@@ -52,9 +54,17 @@ class _CyArgWrapper(object):
     def _get_cy_dtype_name(self):
         return self.arg.ktp
 
+    def _get_py_dtype_name(self):
+        return _get_py_dtype_name(self.cy_dtype_name)
+
     def extern_declarations(self):
         if self.arg.intent in ('in', 'inout', None):
             return ["%s %s" % (self.cy_dtype_name, self.arg.name)]
+        return []
+
+    def docstring_extern_arg_list(self):
+        if self.arg.intent in ("in", "inout", None):
+            return [self.arg.name]
         return []
 
     def intern_declarations(self):
@@ -77,6 +87,27 @@ class _CyArgWrapper(object):
         elif self.arg.intent in ('out', 'inout', None):
             return [self.arg.name]
         return []
+
+    docstring_return_tuple_list = return_tuple_list
+
+    def _gen_dstring(self):
+        dstring = ("%s : %s" %
+                    (self.name, self._get_py_dtype_name()))
+        if self.arg.intent is not None:
+            dstring += ", intent %s" % (self.arg.intent)
+        return [dstring]
+
+    def in_dstring(self):
+        if self.arg.intent not in ('in', 'inout', None):
+            return []
+        return self._gen_dstring()
+
+    def out_dstring(self):
+        if self.arg.name == constants.ERR_NAME:
+            return []
+        if self.arg.intent not in ('out', 'inout', None):
+            return []
+        return self._gen_dstring()
 
 
 class _CyCharArg(_CyArgWrapper):
@@ -187,6 +218,18 @@ class _CyErrStrArg(object):
     def post_call_code(self):
         return []
 
+    def docstring_extern_arg_list(self):
+        return []
+
+    def docstring_return_tuple_list(self):
+        return []
+
+    def in_dstring(self):
+        return []
+
+    def out_dstring(self):
+        return []
+
 
 class _CyCmplxArg(_CyArgWrapper):
 
@@ -208,7 +251,15 @@ def CyArrayArgWrapper(arg):
     return _CyArrayArgWrapper(arg)
 
 
+def _get_py_dtype_name(name):
+        if name.endswith("_t"):
+            return name.rstrip("_t")
+        else:
+            return "%s_" % name
+
 class _CyArrayArgWrapper(object):
+
+    is_array = True
 
     def __init__(self, arg):
         self.arg = arg
@@ -223,6 +274,9 @@ class _CyArrayArgWrapper(object):
                  self.arg.ndims,
                  self.intern_name,)
                 ]
+
+    def _get_py_dtype_name(self):
+        return _get_py_dtype_name(self.arg.ktp)
 
     def call_arg_list(self):
         shapes = ['<fwi_npy_intp_t*>&%s.shape[%d]' % (self.intern_name, i) \
@@ -239,6 +293,34 @@ class _CyArrayArgWrapper(object):
     def return_tuple_list(self):
         if self.arg.intent in ('out', 'inout', None):
             return [self.intern_name]
+        return []
+
+    def _gen_dstring(self):
+        dims = self.arg.orig_arg.dimension
+        ndims = len(dims)
+        dstring = ("%s : %s, %dD array, %s" %
+                        (self.arg.name,
+                         self._get_py_dtype_name(),
+                         ndims,
+                         dims.attrspec))
+        if self.arg.intent is not None:
+            dstring += ", intent %s" % (self.arg.intent)
+        return [dstring]
+
+    def in_dstring(self):
+        return self._gen_dstring()
+
+    def out_dstring(self):
+        if self.arg.intent not in ("out", "inout", None):
+            return []
+        return self._gen_dstring()
+
+    def docstring_extern_arg_list(self):
+        return [self.arg.name]
+
+    def docstring_return_tuple_list(self):
+        if self.arg.intent in ('out', 'inout', None):
+            return [self.arg.name]
         return []
 
 
@@ -281,7 +363,6 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
         return shapes + data
 
 
-FW_RETURN_VAR_NAME = 'fwrap_return_var'
 class CyArgWrapperManager(object):
 
     def __init__(self, args):
@@ -333,6 +414,30 @@ class CyArgWrapperManager(object):
         for arg in self.args:
             pcc.extend(arg.post_call_code())
         return pcc
+
+    def docstring_extern_arg_list(self):
+        decls = []
+        for arg in self.args:
+            decls.extend(arg.docstring_extern_arg_list())
+        return decls
+
+    def docstring_return_tuple_list(self):
+        decls = []
+        for arg in self.args:
+            decls.extend(arg.docstring_return_tuple_list())
+        return decls
+
+    def docstring_in_descrs(self):
+        descrs = []
+        for arg in self.args:
+            descrs.extend(arg.in_dstring())
+        return descrs
+
+    def docstring_out_descrs(self):
+        descrs = []
+        for arg in self.args:
+            descrs.extend(arg.out_dstring())
+        return descrs
 
 
 class ProcWrapper(object):
@@ -413,6 +518,7 @@ class ProcWrapper(object):
     def generate_wrapper(self, buf):
         buf.putln(self.proc_declaration())
         buf.indent()
+        self.put_docstring(buf)
         self.temp_declarations(buf)
         self.pre_call_code(buf)
         buf.putln(self.proc_call())
@@ -420,3 +526,30 @@ class ProcWrapper(object):
         rt = self.return_tuple()
         if rt: buf.putln(rt)
         buf.dedent()
+
+    def put_docstring(self, buf):
+        dstring = self.docstring()
+        buf.putln('"""')
+        buf.putlines(dstring)
+        buf.putln('"""')
+
+    def docstring(self):
+        dstring = []
+        in_args = ", ".join(self.arg_mgr.docstring_extern_arg_list())
+        out_args = ", ".join(self.arg_mgr.docstring_return_tuple_list())
+        dstring += ["%s(%s) -> (%s,)" % (self.name, in_args, out_args)]
+        descrs = self.arg_mgr.docstring_in_descrs()
+        if descrs:
+            dstring += [""]
+            dstring += ["Parameters",
+                        "----------"]
+            dstring.extend(descrs)
+        descrs = self.arg_mgr.docstring_out_descrs()
+        if descrs:
+            dstring += [""]
+            dstring += ["Returns",
+                        "-------"]
+            dstring.extend(descrs)
+        dstring += [""]
+
+        return dstring
