@@ -98,7 +98,7 @@ class _CyCharArg(_CyArgWrapper):
 
     def intern_declarations(self):
         ret = ['cdef %s %s' % (self.cy_dtype_name, self.intern_name),
-                'cdef fwi_npy_intp %s' % self.intern_len_name]
+                'cdef fwi_npy_intp_t %s' % self.intern_len_name]
         if self.arg.intent in ('out', 'inout', None):
             ret.append('cdef char *%s' % self.intern_buf_name)
         return ret
@@ -171,7 +171,7 @@ class _CyErrStrArg(object):
         return []
 
     def intern_declarations(self):
-        return ['cdef fw_character %s[%s]' %
+        return ['cdef fw_character_t %s[%s]' %
                     (self.name, constants.ERRSTR_LEN)]
 
     def call_arg_list(self):
@@ -224,7 +224,7 @@ class _CyArrayArgWrapper(object):
                 ]
 
     def call_arg_list(self):
-        shapes = ['<fwi_npy_intp*>&%s.shape[%d]' % (self.intern_name, i) \
+        shapes = ['<fwi_npy_intp_t*>&%s.shape[%d]' % (self.intern_name, i) \
                                 for i in range(self.arg.ndims)]
         data = ['<%s*>%s.data' % (self.arg.ktp, self.intern_name)]
         return shapes + data
@@ -251,7 +251,7 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
 
     def intern_declarations(self):
         ret = super(CyCharArrayArgWrapper, self).intern_declarations()
-        return ret + ["cdef fwi_npy_intp %s[%d]" %
+        return ret + ["cdef fwi_npy_intp_t %s[%d]" %
                 (self.shape_name, self.arg.ndims+1)]
 
     def pre_call_code(self):
@@ -260,7 +260,7 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
                     "%(shape)s[i+1] = %(name)s.shape[i]\n"
                 "%(name)s.dtype = 'b'\n"
                 "%(intern)s = %(name)s\n"
-                "%(shape)s[0] = <fwi_npy_intp>"
+                "%(shape)s[0] = <fwi_npy_intp_t>"
                     "(%(name)s.shape[0]/%(shape)s[1])")
         D = {"odtype" : self.odtype_name,
              "ndim" : self.arg.ndims,
