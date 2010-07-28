@@ -562,11 +562,16 @@ class test_docstring_gen(object):
         complex_arg_out = pyf.Argument("cpx_out", pyf.default_complex, 'out')
         logical_arg_inout = pyf.Argument("lgcl_inout", pyf.default_logical, 'inout')
         int_arg = pyf.Argument('int_arg', pyf.default_integer)
+        char_arg_out = pyf.Argument("char_arg", pyf.CharacterType("S20", len=20), 'out')
+        char_arg_in = pyf.Argument("char_arg_in", pyf.CharacterType("S20", len=20), 'in')
+        char_star = pyf.Argument("char_star", pyf.CharacterType("star", len="*"), 'out')
 
-        args = [real_arg_in, complex_arg_out, logical_arg_inout, int_arg]
+        args = [real_arg_in, complex_arg_out,
+                logical_arg_inout, int_arg,
+                char_arg_out, char_arg_in, char_star]
         fcargs = [fc_wrap.ArgWrapperFactory(arg) for arg in args]
         cyargs = [cy_wrap.CyArgWrapper(arg) for arg in fcargs]
-        cy_real, cy_cpx, cy_log, cy_int = cyargs
+        cy_real, cy_cpx, cy_log, cy_int, cy_char_out, cy_char_in, cy_star = cyargs
 
         eq_(cy_cpx.in_dstring(), [])
         eq_(cy_cpx.out_dstring(), ["cpx_out : fwc_complex, intent out"])
@@ -580,6 +585,18 @@ class test_docstring_gen(object):
         eq_(cy_int.in_dstring(), ["int_arg : fwi_integer"])
         eq_(cy_int.out_dstring(), ["int_arg : fwi_integer"])
 
+        char_in_str = ["char_arg_in : fw_S20, len 20, intent in"]
+        eq_(cy_char_in.in_dstring(), char_in_str)
+        eq_(cy_char_in.out_dstring(), [])
+
+        char_out_str = ["char_arg : fw_S20, len 20, intent out"]
+        eq_(cy_char_out.in_dstring(), [])
+        eq_(cy_char_out.out_dstring(), char_out_str)
+
+        star_str = ["char_star : fw_star, len *, intent out"]
+        eq_(cy_star.in_dstring(), star_str)
+        eq_(cy_star.out_dstring(), star_str)
+
     def test_array_dstring(self):
         real_in = pyf.Argument("real_in",
                                pyf.default_real, "in",
@@ -590,12 +607,16 @@ class test_docstring_gen(object):
         logical_inout = pyf.Argument("lgcl_inout",
                                      pyf.default_logical, 'inout',
                                      dimension=["n1:n2","*"])
+        character_inout = pyf.Argument("char_inout",
+                                    pyf.CharacterType("char", len='*'),
+                                    'inout',
+                                    dimension=[":", ":"])
         int_ = pyf.Argument('int_arg', pyf.default_integer, dimension=[":"]*7)
 
-        args = [real_in, complex_out, logical_inout, int_]
+        args = [real_in, complex_out, logical_inout, int_, character_inout]
         fcargs = [fc_wrap.ArgWrapperFactory(arg) for arg in args]
         cyargs = [cy_wrap.CyArrayArgWrapper(arg) for arg in fcargs]
-        cy_real, cy_cpx, cy_log, cy_int = cyargs
+        cy_real, cy_cpx, cy_log, cy_int, cy_char = cyargs
 
         real_str = ["real_in : fwr_real, 2D array, dimension(:, :), intent in"]
         eq_(cy_real.in_dstring(), real_str)
@@ -614,3 +635,7 @@ class test_docstring_gen(object):
                    "7D array, dimension(:, :, :, :, :, :, :)"]
         eq_(cy_int.in_dstring(), int_str)
         eq_(cy_int.out_dstring(), int_str)
+
+        char_str = ["char_inout : fw_char, len *, 2D array, dimension(:, :), intent inout"]
+        eq_(cy_char.in_dstring(), char_str)
+        eq_(cy_char.out_dstring(), char_str)

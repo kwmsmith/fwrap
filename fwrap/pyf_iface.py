@@ -44,7 +44,12 @@ class Dtype(object):
             self.fw_ktp = self.mangler % self.fw_ktp
 
         self.length = length
+        if self.length is not None:
+            self.length = str(self.length)
+
         self.kind = kind
+        if self.kind is not None:
+            self.kind = str(self.kind)
 
         self.type = None
         self.lang = lang

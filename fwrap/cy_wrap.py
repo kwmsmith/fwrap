@@ -121,6 +121,9 @@ class _CyCharArg(_CyArgWrapper):
     def _get_cy_dtype_name(self):
         return "fw_bytes"
 
+    def _get_py_dtype_name(self):
+        return _get_py_dtype_name(self.arg.ktp)
+
     def extern_declarations(self):
         if self.arg.intent in ('in', 'inout', None):
             return ["%s %s" % (self.cy_dtype_name, self.arg.name)]
@@ -187,6 +190,20 @@ class _CyCharArg(_CyArgWrapper):
         if self.arg.intent in ('out', 'inout', None):
             return [self.intern_name]
         return []
+
+    def _gen_dstring(self):
+        dstring = ["%s : %s" %
+                    (self.name, self._get_py_dtype_name())]
+        dstring.append("len %s" % self.get_len())
+        if self.arg.intent is not None:
+            dstring.append("intent %s" % (self.arg.intent))
+        return [", ".join(dstring)]
+
+    def in_dstring(self):
+        if self.is_assumed_size():
+            return self._gen_dstring()
+        else:
+            return super(_CyCharArg, self).in_dstring()
 
 
 class _CyErrStrArg(object):
@@ -361,6 +378,19 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
                     for i in range(self.arg.ndims+1)]
         data = ["<%s*>%s.data" % (self.arg.ktp, self.intern_name)]
         return shapes + data
+
+    def _gen_dstring(self):
+        dims = self.arg.orig_arg.dimension
+        ndims = len(dims)
+        dtype_len = self.arg.dtype.len
+        dstring = ["%s : %s" %
+                    (self.arg.name, self._get_py_dtype_name())]
+        dstring.append("len %s" % dtype_len)
+        dstring.append("%dD array" % ndims)
+        dstring.append(dims.attrspec)
+        if self.arg.intent is not None:
+            dstring.append("intent %s" % self.arg.intent)
+        return [", ".join(dstring)]
 
 
 class CyArgWrapperManager(object):
