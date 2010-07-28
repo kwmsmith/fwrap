@@ -43,4 +43,4 @@ def compare(s1, s2):
     ss2 = remove_common_indent(s2.rstrip())
     for idx, lines in enumerate(zip(ss1.splitlines(), ss2.splitlines())):
         L1, L2 = lines
-        assert L1 == L2, "\n%s\n != \n%s%\nat line %d: '%s' != '%s'" % (ss1, ss2, idx, L1, L2)
+        assert L1 == L2, "\n%s\n != \n%s\nat line %d: '%s' != '%s'" % (ss1, ss2, idx, L1, L2)
