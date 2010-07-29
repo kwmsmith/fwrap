@@ -35,6 +35,7 @@ def put_cymod_docstring(ast, modname, buf):
     dstring = get_cymod_docstring(ast, modname)
     buf.putln('"""')
     buf.putlines(dstring)
+    buf.putempty()
     buf.putln('"""')
 
 # XXX:  Put this in a cymodule class?
@@ -62,8 +63,6 @@ For usage information see the function docstrings.
     dts = all_dtypes(ast)
     for dt in dts:
         dstring += [dt.py_type_name()]
-
-    dstring += [""]
 
     return dstring
 
@@ -623,6 +622,5 @@ class ProcWrapper(object):
             dstring += ["Returns",
                         "-------"]
             dstring.extend(descrs)
-        dstring += [""]
 
         return dstring

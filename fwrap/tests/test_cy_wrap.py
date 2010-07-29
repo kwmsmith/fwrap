@@ -466,19 +466,19 @@ class test_cy_proc_wrapper(object):
 cpdef api object fort_subr(fwi_integer_t int_arg_in, fwi_integer_t int_arg_inout, fwr_real_t real_arg):
     """
     fort_subr(int_arg_in, int_arg_inout, real_arg) -> (int_arg_inout, int_arg_out, real_arg,)
-    
+
     Parameters
     ----------
     int_arg_in : fwi_integer, intent in
     int_arg_inout : fwi_integer, intent inout
     real_arg : fwr_real
-    
+
     Returns
     -------
     int_arg_inout : fwi_integer, intent inout
     int_arg_out : fwi_integer, intent out
     real_arg : fwr_real
-    
+
     """
     cdef fwi_integer_t int_arg_out
     cdef fwi_integer_t fw_iserr__
@@ -497,20 +497,20 @@ cpdef api object fort_subr(fwi_integer_t int_arg_in, fwi_integer_t int_arg_inout
 cpdef api object fort_func(fwi_integer_t int_arg_in, fwi_integer_t int_arg_inout, fwr_real_t real_arg):
     """
     fort_func(int_arg_in, int_arg_inout, real_arg) -> (fw_ret_arg, int_arg_inout, int_arg_out, real_arg,)
-    
+
     Parameters
     ----------
     int_arg_in : fwi_integer, intent in
     int_arg_inout : fwi_integer, intent inout
     real_arg : fwr_real
-    
+
     Returns
     -------
     fw_ret_arg : fwi_integer, intent out
     int_arg_inout : fwi_integer, intent inout
     int_arg_out : fwi_integer, intent out
     real_arg : fwr_real
-    
+
     """
     cdef fwi_integer_t fw_ret_arg
     cdef fwi_integer_t int_arg_out
@@ -645,4 +645,4 @@ class test_docstring_gen(object):
         fs = fc_wrap.SubroutineWrapper(subr)
         cs = cy_wrap.ProcWrapper(fs)
         eq_(cs.dstring_signature(), ["empty()"])
-        eq_(cs.docstring(), ["empty()", ""])
+        eq_(cs.docstring(), ["empty()"])

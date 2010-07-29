@@ -81,7 +81,11 @@ class CodeBuffer(object):
         self.putln(line)
 
     def putln(self, line):
-        self.sio.write(self.indent_tok * self._level + line + '\n')
+        line = line.rstrip()
+        if line:
+            self.sio.write(self.indent_tok * self._level + line + '\n')
+        else:
+            self.putempty()
 
     def indent(self):
         self._level += 1

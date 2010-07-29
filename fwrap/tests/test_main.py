@@ -133,11 +133,11 @@ cdef extern from "string.h":
 cpdef api object empty_func():
     """
     empty_func() -> (fw_ret_arg,)
-    
+
     Returns
     -------
     fw_ret_arg : fwi_integer, intent out
-    
+
     """
     cdef fwi_integer_t fw_ret_arg
     cdef fwi_integer_t fw_iserr__
