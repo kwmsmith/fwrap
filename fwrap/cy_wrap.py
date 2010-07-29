@@ -52,8 +52,8 @@ For usage information see the function docstrings.
     dstring += ["Functions",
                 "---------"]
     # Functions
-    for proc in ast:
-        dstring += ["%s(...)" % proc.name]
+    names = sorted(["%s(...)" % proc.name for proc in ast])
+    dstring += names
 
     dstring += [""]
 
@@ -61,8 +61,8 @@ For usage information see the function docstrings.
                 "----------"]
     # Datatypes
     dts = all_dtypes(ast)
-    for dt in dts:
-        dstring += [dt.py_type_name()]
+    names = sorted([dt.py_type_name() for dt in dts])
+    dstring += names
 
     return dstring
 

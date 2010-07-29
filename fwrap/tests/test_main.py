@@ -123,8 +123,8 @@ empty_func(...)
 
 Data Types
 ----------
-fwi_integer
 fw_character
+fwi_integer
 
 """
 include 'fwrap_ktp.pxi'
