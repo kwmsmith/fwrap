@@ -645,4 +645,11 @@ class test_docstring_gen(object):
         fs = fc_wrap.SubroutineWrapper(subr)
         cs = cy_wrap.ProcWrapper(fs)
         eq_(cs.dstring_signature(), ["empty()"])
-        eq_(cs.docstring(), ["empty()"])
+        dstring = '''\
+        empty()
+
+        Parameters
+        ----------
+        None
+        '''
+        compare("\n".join(cs.docstring()), dstring)

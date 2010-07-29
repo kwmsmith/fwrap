@@ -134,6 +134,10 @@ cpdef api object empty_func():
     """
     empty_func() -> (fw_ret_arg,)
 
+    Parameters
+    ----------
+    None
+
     Returns
     -------
     fw_ret_arg : fwi_integer, intent out

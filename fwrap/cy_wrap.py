@@ -611,11 +611,13 @@ class ProcWrapper(object):
         dstring = []
         dstring += self.dstring_signature()
         descrs = self.arg_mgr.docstring_in_descrs()
+        dstring += [""]
+        dstring += ["Parameters",
+                    "----------"]
         if descrs:
-            dstring += [""]
-            dstring += ["Parameters",
-                        "----------"]
             dstring.extend(descrs)
+        else:
+            dstring += ["None"]
         descrs = self.arg_mgr.docstring_out_descrs()
         if descrs:
             dstring += [""]
