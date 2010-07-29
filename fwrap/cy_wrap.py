@@ -595,13 +595,22 @@ class ProcWrapper(object):
         dstring = self.docstring()
         buf.putln('"""')
         buf.putlines(dstring)
+        buf.putempty()
         buf.putln('"""')
+
+    def dstring_signature(self):
+        in_args = ", ".join(self.arg_mgr.docstring_extern_arg_list())
+        dstring = "%s(%s)" % (self.name, in_args)
+
+        out_args = ", ".join(self.arg_mgr.docstring_return_tuple_list())
+        if out_args:
+            dstring = "%s -> (%s,)" % (dstring, out_args)
+
+        return [dstring]
 
     def docstring(self):
         dstring = []
-        in_args = ", ".join(self.arg_mgr.docstring_extern_arg_list())
-        out_args = ", ".join(self.arg_mgr.docstring_return_tuple_list())
-        dstring += ["%s(%s) -> (%s,)" % (self.name, in_args, out_args)]
+        dstring += self.dstring_signature()
         descrs = self.arg_mgr.docstring_in_descrs()
         if descrs:
             dstring += [""]

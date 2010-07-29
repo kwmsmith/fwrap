@@ -639,3 +639,10 @@ class test_docstring_gen(object):
         char_str = ["char_inout : fw_char, len *, 2D array, dimension(:, :), intent inout"]
         eq_(cy_char.in_dstring(), char_str)
         eq_(cy_char.out_dstring(), char_str)
+
+    def test_empty_subr_dstring(self):
+        subr = pyf.Subroutine("empty", args=())
+        fs = fc_wrap.SubroutineWrapper(subr)
+        cs = cy_wrap.ProcWrapper(fs)
+        eq_(cs.dstring_signature(), ["empty()"])
+        eq_(cs.docstring(), ["empty()", ""])
