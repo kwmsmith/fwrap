@@ -23,12 +23,49 @@ def gen_cdef_extern_decls(buf):
     for dtype in pyf_iface.intrinsic_types:
         buf.putlines(dtype.cdef_extern_decls)
 
-def generate_cy_pyx(ast, buf):
+def generate_cy_pyx(ast, name, buf):
+    put_cymod_docstring(ast, name, buf)
     buf.putln("include 'fwrap_ktp.pxi'")
     gen_cimport_decls(buf)
     gen_cdef_extern_decls(buf)
     for proc in ast:
         proc.generate_wrapper(buf)
+
+def put_cymod_docstring(ast, modname, buf):
+    dstring = get_cymod_docstring(ast, modname)
+    buf.putln('"""')
+    buf.putlines(dstring)
+    buf.putln('"""')
+
+# XXX:  Put this in a cymodule class?
+def get_cymod_docstring(ast, modname):
+    from fwrap.version import version
+    from fwrap.gen_config import all_dtypes
+    dstring = ("""\
+The %s module was generated with Fwrap v%s.
+
+Below is a listing of functions and data types.
+For usage information see the function docstrings.
+
+""" % (modname, version)).splitlines()
+    dstring += ["Functions",
+                "---------"]
+    # Functions
+    for proc in ast:
+        dstring += ["%s(...)" % proc.name]
+
+    dstring += [""]
+
+    dstring += ["Data Types",
+                "----------"]
+    # Datatypes
+    dts = all_dtypes(ast)
+    for dt in dts:
+        dstring += [dt.py_type_name()]
+
+    dstring += [""]
+
+    return dstring
 
 def CyArgWrapper(arg):
     import fc_wrap
@@ -55,7 +92,8 @@ class _CyArgWrapper(object):
         return self.arg.ktp
 
     def _get_py_dtype_name(self):
-        return _get_py_dtype_name(self.cy_dtype_name)
+        from fwrap.gen_config import py_type_name_from_type
+        return py_type_name_from_type(self.cy_dtype_name)
 
     def extern_declarations(self):
         if self.arg.intent in ('in', 'inout', None):
@@ -122,7 +160,8 @@ class _CyCharArg(_CyArgWrapper):
         return "fw_bytes"
 
     def _get_py_dtype_name(self):
-        return _get_py_dtype_name(self.arg.ktp)
+        from fwrap.gen_config import py_type_name_from_type
+        return py_type_name_from_type(self.arg.ktp)
 
     def extern_declarations(self):
         if self.arg.intent in ('in', 'inout', None):
@@ -268,12 +307,6 @@ def CyArrayArgWrapper(arg):
     return _CyArrayArgWrapper(arg)
 
 
-def _get_py_dtype_name(name):
-        if name.endswith("_t"):
-            return name.rstrip("_t")
-        else:
-            return "%s_" % name
-
 class _CyArrayArgWrapper(object):
 
     is_array = True
@@ -293,7 +326,8 @@ class _CyArrayArgWrapper(object):
                 ]
 
     def _get_py_dtype_name(self):
-        return _get_py_dtype_name(self.arg.ktp)
+        from fwrap.gen_config import py_type_name_from_type
+        return py_type_name_from_type(self.arg.ktp)
 
     def call_arg_list(self):
         shapes = ['<fwi_npy_intp_t*>&%s.shape[%d]' % (self.intern_name, i) \

@@ -105,11 +105,28 @@ end function empty_func
         compare(pxd, buf.getvalue())
 
     def test_generate_cy_pyx(self):
+        from fwrap.version import version
         fort_ast = main.parse(self.source_file_lst)
         c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
         cython_ast = cy_wrap.wrap_fc(c_ast)
         fname, buf = main.generate_cy_pyx(cython_ast, self.name)
         test_str = '''\
+"""
+The test module was generated with Fwrap v%s.
+
+Below is a listing of functions and data types.
+For usage information see the function docstrings.
+
+Functions
+---------
+empty_func(...)
+
+Data Types
+----------
+fwi_integer
+fw_character
+
+"""
 include 'fwrap_ktp.pxi'
 cdef extern from "string.h":
     void *memcpy(void *dest, void *src, size_t n)
@@ -129,7 +146,7 @@ cpdef api object empty_func():
     if fw_iserr__ != FW_NO_ERR__:
         raise RuntimeError("an error was encountered when calling the 'empty_func' wrapper.")
     return (fw_ret_arg,)
-'''
+''' % version
         compare(test_str, buf.getvalue())
 
     def test_generate_type_specs(self):

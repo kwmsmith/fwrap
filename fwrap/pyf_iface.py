@@ -21,9 +21,6 @@ class ScalarIntExpr(object):
         self.funcnames = set(xtor.funcnames)
         self.names = set(xtor.names).union(self.funcnames)
 
-    # def _find_names(self):
-        # depnames = [s.split('%',1)[0] for s in self._find_names(self.expr)]
-        # return set(depnames)
 
 class Dtype(object):
 
@@ -40,6 +37,8 @@ class Dtype(object):
                     "%s is not a valid fortran parameter name." % fw_ktp)
 
         self.fw_ktp = fw_ktp
+        if not fw_ktp.endswith("_t"):
+            self.fw_ktp = "%s_t" % self.fw_ktp
         if mangler is None:
             self.fw_ktp = self.mangler % self.fw_ktp
 
@@ -106,6 +105,10 @@ class Dtype(object):
             # return ScalarIntExpr(self.odecl).find_names() - intrinsics
             return ScalarIntExpr(self.odecl).names - intrinsics
 
+    def py_type_name(self):
+        from fwrap.gen_config import py_type_name_from_type
+        return py_type_name_from_type(self.fw_ktp)
+
 
 class CharacterType(Dtype):
 
@@ -114,7 +117,7 @@ cdef extern from "string.h":
     void *memcpy(void *dest, void *src, size_t n)
 '''
 
-    mangler = "fw_%s_t"
+    mangler = "fw_%s"
 
     def __init__(self, fw_ktp, len, mangler=None, kind=None, **kwargs):
         super(CharacterType, self).__init__(fw_ktp,
@@ -156,7 +159,7 @@ default_character = CharacterType(
 
 class IntegerType(Dtype):
 
-    mangler = "fwi_%s_t"
+    mangler = "fwi_%s"
 
     def __init__(self, fw_ktp, mangler=None, **kwargs):
         super(IntegerType, self).__init__(fw_ktp, mangler=mangler, **kwargs)
@@ -171,7 +174,7 @@ dim_dtype = IntegerType(fw_ktp="npy_intp", cname="npy_intp", lang='c')
 
 class LogicalType(Dtype):
 
-    mangler = "fwl_%s_t"
+    mangler = "fwl_%s"
 
     def __init__(self, fw_ktp, mangler=None, **kwargs):
         super(LogicalType, self).__init__(fw_ktp, mangler=mangler, **kwargs)
@@ -201,7 +204,7 @@ default_logical = LogicalType(
 
 class RealType(Dtype):
 
-    mangler = "fwr_%s_t"
+    mangler = "fwr_%s"
 
     def __init__(self, fw_ktp, mangler=None, **kwargs):
         super(RealType, self).__init__(fw_ktp, mangler=mangler, **kwargs)
@@ -213,7 +216,7 @@ default_dbl  = RealType(fw_ktp='dbl', kind="kind(0.0D0)")
 
 class ComplexType(Dtype):
 
-    mangler = "fwc_%s_t"
+    mangler = "fwc_%s"
 
     def __init__(self, fw_ktp, mangler=None, **kwargs):
         super(ComplexType, self).__init__(fw_ktp, mangler=mangler, **kwargs)

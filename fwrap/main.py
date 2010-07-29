@@ -7,8 +7,6 @@ r"""This module contains the interface for fwrap and the command line routine
 :Authors:
 """
 
-__version__ = "0.1.0"
-
 import os
 import sys
 import logging
@@ -287,7 +285,7 @@ def generate_cy_pxd(cy_ast, name):
 
 def generate_cy_pyx(cy_ast, name):
     buf = CodeBuffer()
-    cy_wrap.generate_cy_pyx(cy_ast, buf)
+    cy_wrap.generate_cy_pyx(cy_ast, name, buf)
     return constants.CY_PYX_TMPL % name, buf
 
 def generate_fc_pxd(fc_ast, name):
@@ -323,8 +321,9 @@ def varargs_cb(option, opt_str, value, parser):
 
 def main():
     # Parse command line options
+    from fwrap.version import version
     parser = OptionParser("usage: %prog [options] SOURCE_FILES",
-                            version=__version__)
+                            version=version)
 
     parser.add_option('-m', dest='name', help='')
     parser.add_option('-C', '--config', dest='config', help='')

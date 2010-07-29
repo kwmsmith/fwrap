@@ -6,12 +6,14 @@ INDENT = "    "
 #------------------------------------------------------------------------------
 # -- Collect, store and load type specifications to / from a file ---
 
-def extract_ctps(ast):
+def all_dtypes(ast):
     dtypes = set()
     for proc in ast:
         dtypes.update(proc.all_dtypes())
-    dtypes = list(dtypes)
-    return ctps_from_dtypes(dtypes)
+    return list(dtypes)
+
+def extract_ctps(ast):
+    return ctps_from_dtypes(all_dtypes(ast))
 
 def ctps_from_dtypes(dtypes):
     ret = []
@@ -171,6 +173,14 @@ def ConfigTypeParam(basetype, odecl, fwrap_name, lang='fortran'):
         raise ValueError(
                 "unknown language '%s' not one of 'c' or 'fortran'" % lang)
 
+
+def py_type_name_from_type(name):
+    suffix = "_t"
+    if name.endswith(suffix):
+        return name[:-len(suffix)]
+    else:
+        return "%s_" % name
+
 class _ConfigTypeParam(object):
 
     lang = 'fortran'
@@ -216,12 +226,9 @@ class _ConfigTypeParam(object):
 
     def gen_pyx_type_obj(self):
         self.check_init()
-        def strip_type(name):
-            if name.endswith("_t"):
-                return name.rstrip("_t")
-            else:
-                return "%s_" % name
-        return ['%s = np.%s' % (strip_type(self.fwrap_name), f2npy_type[self.fc_type])]
+        return ['%s = np.%s' %
+                (py_type_name_from_type(self.fwrap_name),
+                 f2npy_type[self.fc_type])]
 
     def gen_pxd_intern_typedef(self):
         return []
