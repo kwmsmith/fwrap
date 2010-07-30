@@ -8,7 +8,5 @@ __doc__ = u'''\
 >>> np.all(array_types(real64)[0] == np.array([[ 1.,  1.], [ 1.,  1.]]))
 True
 >>> np.all(array_types(real32)[0] == np.array([[ 1.,  1.], [ 1.,  1.]]))
-Traceback (most recent call last):
-  ...
-ValueError: Buffer dtype mismatch, expected 'fwrap_ktp.fwr_real_8_t' but got 'float'
+True
 '''

@@ -55,6 +55,7 @@ class Dtype(object):
 
         #XXX: refactor this with lang
         self.cname = cname
+        self.npy_enum = "%s_enum" % self.fw_ktp
 
     def _get_odecl(self):
 

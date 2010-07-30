@@ -25,6 +25,7 @@ def gen_cdef_extern_decls(buf):
 
 def generate_cy_pyx(ast, name, buf):
     put_cymod_docstring(ast, name, buf)
+    buf.putln("np.import_array()")
     buf.putln("include 'fwrap_ktp.pxi'")
     gen_cimport_decls(buf)
     gen_cdef_extern_decls(buf)
@@ -335,7 +336,11 @@ class _CyArrayArgWrapper(object):
         return shapes + data
 
     def pre_call_code(self):
-        return ["%s = %s" % (self.intern_name, self.arg.intern_name)]
+        # NOTE: we can support a STRICT macro that would disable the
+        # PyArray_ANYARRAY() call, forcing all incoming arrays to be already F
+        # contiguous.
+        return ["%s = np.PyArray_FROMANY(%s, %s, 0, 0, np.NPY_F_CONTIGUOUS)" %
+                (self.intern_name, self.arg.intern_name, self.arg.dtype.npy_enum)]
 
     def post_call_code(self):
         return []

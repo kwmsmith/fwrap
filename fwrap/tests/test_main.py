@@ -127,6 +127,7 @@ fw_character
 fwi_integer
 
 """
+np.import_array()
 include 'fwrap_ktp.pxi'
 cdef extern from "string.h":
     void *memcpy(void *dest, void *src, size_t n)
@@ -163,4 +164,4 @@ cpdef api object empty_func():
         for ctp in ctps:
             ok_(isinstance(ctp, dict))
             eq_(sorted(ctp.keys()),
-                    ['basetype', 'fwrap_name', 'lang', 'odecl'])
+                    ['basetype', 'fwrap_name', 'lang', 'npy_enum', 'odecl'])

@@ -23,6 +23,7 @@ def ctps_from_dtypes(dtypes):
         ret.append(ConfigTypeParam(basetype=dtype.type,
                        fwrap_name=dtype.fw_ktp,
                        odecl=dtype.odecl,
+                       npy_enum=dtype.npy_enum,
                        lang=dtype.lang))
     return ret
 
@@ -36,6 +37,7 @@ def _generate_type_specs(ctps, buf):
         out_lst.append(dict(basetype=ctp.basetype,
                             odecl=ctp.odecl,
                             fwrap_name=ctp.fwrap_name,
+                            npy_enum=ctp.npy_enum,
                             lang=ctp.lang))
     buf.write(dumps(out_lst))
 
@@ -157,18 +159,18 @@ def write_pxd(fname, h_name, ctps):
 #------------------------------------------------------------------------------
 # -- Factory function; creates _ConfigTypeParam instances. --
 
-def ConfigTypeParam(basetype, odecl, fwrap_name, lang='fortran'):
+def ConfigTypeParam(basetype, odecl, fwrap_name, npy_enum, lang='fortran'):
     if lang == 'c':
-        return _CConfigTypeParam(basetype, odecl, fwrap_name)
+        return _CConfigTypeParam(basetype, odecl, fwrap_name, npy_enum)
     elif lang == 'fortran':
         if basetype == 'complex':
-            return _CmplxTypeParam(basetype, odecl, fwrap_name)
+            return _CmplxTypeParam(basetype, odecl, fwrap_name, npy_enum)
         if basetype == 'character':
-            return _CharTypeParam(basetype, odecl, fwrap_name)
+            return _CharTypeParam(basetype, odecl, fwrap_name, npy_enum)
         if basetype == 'logical':
-            return _LogicalTypeParam(basetype, odecl, fwrap_name)
+            return _LogicalTypeParam(basetype, odecl, fwrap_name, npy_enum)
         else:
-            return _ConfigTypeParam(basetype, odecl, fwrap_name)
+            return _ConfigTypeParam(basetype, odecl, fwrap_name, npy_enum)
     else:
         raise ValueError(
                 "unknown language '%s' not one of 'c' or 'fortran'" % lang)
@@ -189,10 +191,11 @@ class _ConfigTypeParam(object):
 
     pxd_cimports = ''
 
-    def __init__(self, basetype, odecl, fwrap_name):
+    def __init__(self, basetype, odecl, fwrap_name, npy_enum):
         self.basetype = basetype
         self.odecl = odecl
         self.fwrap_name = fwrap_name
+        self.npy_enum = npy_enum
         self.fc_type = None
 
     def __eq__(self, other):
@@ -226,9 +229,11 @@ class _ConfigTypeParam(object):
 
     def gen_pyx_type_obj(self):
         self.check_init()
-        return ['%s = np.%s' %
+        enum_code = ['%s = np.%s' % (self.npy_enum, type2enum[self.fc_type])]
+        type_obj_code = ['%s = np.%s' %
                 (py_type_name_from_type(self.fwrap_name),
                  f2npy_type[self.fc_type])]
+        return enum_code + type_obj_code
 
     def gen_pxd_intern_typedef(self):
         return []
@@ -382,4 +387,35 @@ f2npy_type = {
     'c_long_double_complex' : 'clongdouble',
     # 'c_bool'            : '_Bool',
     'c_char'            : 'byte',
+    }
+
+type2enum = {
+    'c_int'             : 'NPY_INT',
+    'c_short'           : 'NPY_SHORT',
+    'c_long'            : 'NPY_LONG',
+    'c_long_long'       : 'NPY_LONGLONG',
+    'c_signed_char'     : 'NPY_BYTE',
+    'c_int8_t'          : 'NPY_INT8',
+    'c_int16_t'         : 'NPY_INT16',
+    'c_int32_t'         : 'NPY_INT32',
+    'c_int64_t'         : 'NPY_INT64',
+    'c_float'           : 'NPY_FLOAT',
+    'c_double'          : 'NPY_DOUBLE',
+    'c_long_double'     : 'NPY_LONGDOUBLE',
+    'c_float_complex'   : 'NPY_CFLOAT',
+    'c_double_complex'  : 'NPY_CDOUBLE',
+    'c_long_double_complex' : 'NPY_CLONGDOUBLE',
+    'c_char'            : 'NPY_BYTE',
+    # 'c_bool'            : '_Bool',
+    # 'c_size_t'          : 'size_t',
+    # 'c_int_least8_t'    : 'int_least8_t',
+    # 'c_int_least16_t'   : 'int_least16_t',
+    # 'c_int_least32_t'   : 'int_least32_t',
+    # 'c_int_least64_t'   : 'int_least64_t',
+    # 'c_int_fast8_t'     : 'int_fast8_t',
+    # 'c_int_fast16_t'    : 'int_fast16_t',
+    # 'c_int_fast32_t'    : 'int_fast32_t',
+    # 'c_int_fast64_t'    : 'int_fast64_t',
+    # 'c_intmax_t'        : 'intmax_t',
+    # 'c_intptr_t'        : 'intp',
     }

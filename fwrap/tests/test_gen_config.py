@@ -22,19 +22,24 @@ class test_genconfig(object):
         self.ctps = [
             gc.ConfigTypeParam(basetype="integer",
                     odecl="integer(kind=kind(0))",
-                    fwrap_name="fwrap_default_integer"),
+                    fwrap_name="fwrap_default_integer",
+                    npy_enum="fwrap_default_integer_enum"),
             gc.ConfigTypeParam(basetype="real",
                     odecl="real(kind=kind(0.0))",
-                    fwrap_name="fwrap_default_real"),
+                    fwrap_name="fwrap_default_real",
+                    npy_enum="fwrap_default_real_enum"),
             gc.ConfigTypeParam(basetype="logical",
                     odecl="logical(kind=kind(.true.))",
-                    fwrap_name="fwrap_default_logical"),
+                    fwrap_name="fwrap_default_logical",
+                    npy_enum="fwrap_default_logical_enum"),
             gc.ConfigTypeParam(basetype="complex",
                     odecl="complex(kind=kind((0.0,0.0)))",
-                    fwrap_name="fwrap_default_complex"),
+                    fwrap_name="fwrap_default_complex",
+                    npy_enum="fwrap_default_complex_enum"),
             gc.ConfigTypeParam(basetype="character",
                     odecl="character(kind=kind('a'))",
-                    fwrap_name="fwrap_default_character")
+                    fwrap_name="fwrap_default_character",
+                    npy_enum="fwrap_default_character_enum")
         ]
         self.int, self.real, self.log, self.cmplx, self.char = self.ctps
         mock_f2c_types(self.ctps)
@@ -67,7 +72,7 @@ class test_genconfig(object):
         def _compare(ctp_dict, ctp):
             cd = ctp_dict
             x_ = gc.ConfigTypeParam(cd['basetype'],
-                            cd['odecl'], cd['fwrap_name'])
+                            cd['odecl'], cd['fwrap_name'], cd['npy_enum'])
             eq_(x_,y)
 
         from cPickle import loads
