@@ -721,6 +721,10 @@ if __name__ == '__main__':
 
     options, cmd_args = parser.parse_args()
 
+    verboseopts = ('DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL')
+    if options.verbosity.upper() not in verboseopts:
+        parser.error("verbosity must be one of %r" % (verboseopts,))
+
     if 0:
         if sys.version_info[0] >= 3:
             # make sure we do not import (or run) Cython itself
