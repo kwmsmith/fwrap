@@ -176,6 +176,13 @@ def wrap(source=None,**kargs):
     # Parse fortran using fparser
     logger.info("Parsing source files.")
     f_ast = parse(source_files)
+
+    # XXX: total hack: turns out that when fparser sets up its logging with
+    # logger.configFile(...), **the logging module disables all existing
+    # loggers**, which includes fwrap's logger.  This completely breaks our
+    # logging functionality; thankfully it's simple turn it back on again.
+    logger.disabled = 0
+
     logger.info("Parsing was successful.")
 
     # Generate wrapper files
@@ -229,12 +236,6 @@ def parse(source_files):
     """
     from fwrap import fwrap_parse
     ast = fwrap_parse.generate_ast(source_files)
-
-    # XXX: total hack: turns out that when fparser sets up its logging with
-    # logger.configFile(...), **the logging module disables all existing
-    # loggers**, which includes fwrap's logger.  This completely breaks our
-    # logging functionality; thankfully it's simple turn it back on again.
-    logger.disabled = 0
 
     return ast
 
