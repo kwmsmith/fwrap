@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import sys
 from fwrap.main import main
 
-main()
+sys.exit(main(use_cmdline=True))

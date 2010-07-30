@@ -1,44 +1,62 @@
-#!/usr/bin/env python
 # encoding: utf-8
-r"""This module contains the interface for fwrap and the command line routine
-
-
-
-:Authors:
-"""
 
 import os
 import sys
+import shutil
 import logging
-import traceback
-import ConfigParser
 import tempfile
 from optparse import OptionParser
-from cStringIO import StringIO
 from fwrap.code import CodeBuffer, reflow_fort
+from numpy.distutils.fcompiler import CompilerNotFound
 
 from fwrap import constants
-from fwrap import pyf_iface as pyf
 from fwrap import gen_config as gc
 from fwrap import fc_wrap
 from fwrap import cy_wrap
 
-# Logging utility, see log.config for default configuration
-logger = logging.getLogger('fwrap')
+import logging, logging.config
 
-# Available options parsed from default config files
-_config_parser = ConfigParser.SafeConfigParser()
-fp = open(os.path.join(os.path.dirname(__file__), 'default.config'),'r')
-_config_parser.readfp(fp)
-fp.close()
-_available_options = {}
-for section in _config_parser.sections():
-    for opt in _config_parser.options(section):
-        _available_options[opt] = section
-# Remove source option
-_available_options.pop('source')
-# Add config option
-_available_options['config'] = None
+
+def _setup_config():
+    pass
+    # Available options parsed from default config files
+    # _config_parser = ConfigParser.SafeConfigParser()
+    # fp = open(os.path.join(os.path.dirname(__file__), 'default.config'),'r')
+    # _config_parser.readfp(fp)
+    # fp.close()
+    # _available_options = {}
+    # for section in _config_parser.sections():
+        # for opt in _config_parser.options(section):
+            # _available_options[opt] = section
+    # Remove source option
+    # _available_options.pop('source')
+    # Add config option
+    # _available_options['config'] = None
+
+
+def get_projectpath(out_dir, name):
+    return os.path.abspath(os.path.join(out_dir, name))
+
+def setup_logging():
+    global logger
+    # Default logging configuration file
+    _DEFAULT_LOG_CONFIG_PATH = os.path.join(os.path.dirname(__file__),'log.config')
+
+    # Setup loggers
+    logging.config.fileConfig(_DEFAULT_LOG_CONFIG_PATH)
+
+    # Logging utility, see log.config for default configuration
+    logger = logging.getLogger('fwrap')
+
+def shutdown_logging(projectpath):
+
+    logging.shutdown()
+
+    for fname in os.listdir(os.path.curdir):
+        if fname.endswith('.log'):
+            abspath = os.path.abspath(os.path.join(os.path.curdir, fname))
+            shutil.move(abspath, projectpath)
+
 
 
 def wrap(source=None,**kargs):
@@ -74,38 +92,40 @@ def wrap(source=None,**kargs):
        distutils compilation run
      - *libraries* - (list)
      - *library_dirs* - (list)
-     - *recompile* - (bool) Recompile all object files before creating shared
-       library, default is True
      - *override* - (bool) If a project directory already exists in the
        out_dir specified, remove it and create a fresh project.
     """
-    # Read in config file if present and parse input options
-    if kargs.has_key('config'):
-        file_list = _config_parser.read(kargs['config'])
-        if kargs['config'] not in file_list:
-            logger.warning("Could not open configuration file %s" % kargs['config'])
-    for opt in _available_options.iterkeys():
-        if not opt == 'config':
-            if kargs.has_key(opt):
-                exec("%s = kargs[opt]" % opt)
-            else:
-                exec("%s = _config_parser.get(_available_options[opt],opt)" % opt)
+    # # Read in config file if present and parse input options
+    # if kargs.has_key('config'):
+        # file_list = _config_parser.read(kargs['config'])
+        # if kargs['config'] not in file_list:
+            # logger.warning("Could not open configuration file %s" % kargs['config'])
+    # for opt in _available_options.iterkeys():
+        # if not opt == 'config':
+            # if kargs.has_key(opt):
+                # exec("%s = kargs[opt]" % opt)
+            # else:
+                # exec("%s = _config_parser.get(_available_options[opt],opt)" % opt)
 
     # Do some option parsing
+    out_dir = kargs.get('out_dir')
     out_dir = out_dir.strip()
+    name = kargs.get('name')
     name.strip()
     logger.debug("Running with following options:")
-    for opt in _available_options:
-        if not (opt == 'source' or opt == 'config'):
-            logger.debug("  %s = %s" % (opt,locals()[opt]))
+    # for opt in _available_options:
+        # if not (opt == 'source' or opt == 'config'):
+            # logger.debug("  %s = %s" % (opt,locals()[opt]))
 
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
-    project_path = os.path.join(out_dir,name)
+    project_path = get_projectpath(out_dir, name)
+
     if os.path.exists(project_path):
+        override = kargs.get('override')
         if override:
             logger.debug("Removing %s" % project_path)
-            os.removedirs(project_path)
+            shutil.rmtree(project_path)
             os.mkdir(project_path)
         else:
             raise ValueError("Project directory %s already exists" \
@@ -119,10 +139,10 @@ def wrap(source=None,**kargs):
     raw_source = False
     source_files = []
     # Parse config file source list
-    config_source = _config_parser.get('general','source')
-    if len(config_source) > 0:
-        for src in config_source.split(','):
-            source_files.append(src)
+    # config_source = _config_parser.get('general','source')
+    # if len(config_source) > 0:
+        # for src in config_source.split(','):
+            # source_files.append(src)
     # Parse function call source list
     if source is not None:
         if isinstance(source,basestring):
@@ -142,7 +162,7 @@ def wrap(source=None,**kargs):
             raise ValueError("Must provide either a string or list of source")
 
     # Validate and parse source list
-    if len(source_files) < 1:
+    if not source_files:
         raise ValueError("Must provide at least one source to wrap.")
     for (i,src) in enumerate(source_files):
         # Expand variables and path
@@ -160,39 +180,45 @@ def wrap(source=None,**kargs):
 
     # Generate wrapper files
     logger.info("Wrapping fortran...")
-    generate(f_ast,name,project_path)
+    generate(f_ast, name, project_path)
     logger.info("Wrapping was successful.")
 
     # generate setup.py file
+    libraries = kargs.get('libraries')
+    library_dirs = kargs.get('library_dirs')
+    extra_objects = kargs.get('extra_objects')
     log_name = 'fwrap_setup.log'
-    if verbose:
+    if logging.DEBUG >= logger.level:
         log_name = ""
     file_name, buf = generate_setup(name, log_name, source_files,
                                 libraries, library_dirs, extra_objects)
     write_to_project_dir(project_path, file_name, buf)
 
     # Generate library module if requested
-    if build:
-        logger.info("Compiling sources and generating extension module...")
-        odir = os.path.abspath(os.curdir)
-        try:
-            os.chdir(project_path)
-            logger.info("Changing to project directory %s" % project_path)
-            fcomp_option = '--fcompiler=%s' % fcompiler
-            from distutils.core import run_setup
-            run_setup(file_name,
-                    script_args=['config', fcomp_option,
-                                 'build_ext', fcomp_option,
-                                 '--inplace'])
-        finally:
-            if os.path.abspath(os.curdir) != odir:
-                logger.info("Returning to %s" % odir)
-                os.chdir(odir)
-        logger.info("Compiling was successful.")
+    logger.info("Compiling sources and generating extension module...")
+    odir = os.path.abspath(os.curdir)
+    try:
+        os.chdir(project_path)
+        logger.info("Changing to project directory %s" % project_path)
+        from distutils.core import run_setup
+        run_setup(file_name, script_args=make_scriptargs(kargs))
+    finally:
+        if os.path.abspath(os.curdir) != odir:
+            logger.info("Returning to %s" % odir)
+            os.chdir(odir)
+    logger.info("Compiling was successful.")
 
     # If raw source was passed in, we need to delete the temp file we created
     if raw_source:
         os.remove(source_files[0])
+
+def check_fcompiler(fcompiler):
+    return fcompiler in allowed_fcompilers()
+
+def allowed_fcompilers():
+    from numpy.distutils import fcompiler
+    fcompiler.load_all_fcompiler_classes()
+    return fcompiler.fcompiler_class.keys()
 
 
 def parse(source_files):
@@ -201,8 +227,16 @@ def parse(source_files):
     :Input:
      - *source_files* - (list) List of valid source files
     """
-    import fwrap_parse
-    return fwrap_parse.generate_ast(source_files)
+    from fwrap import fwrap_parse
+    ast = fwrap_parse.generate_ast(source_files)
+
+    # XXX: total hack: turns out that when fparser sets up its logging with
+    # logger.configFile(...), **the logging module disables all existing
+    # loggers**, which includes fwrap's logger.  This completely breaks our
+    # logging functionality; thankfully it's simple turn it back on again.
+    logger.disabled = 0
+
+    return ast
 
 def generate(fort_ast,name,project_path):
     r"""Given a fortran abstract syntax tree ast, generate wrapper files
@@ -242,10 +276,10 @@ def write_to_project_dir(project_path, file_name, buf):
         fh.close()
 
 def generate_setup(name, log_file,
-                    sources,
-                    libraries=None,
-                    library_dirs=None,
-                    extra_objects=None):
+                   sources,
+                   libraries=None,
+                   library_dirs=None,
+                   extra_objects=None):
     tmpl = '''\
 from fwrap.fwrap_setup import setup, fwrap_cmdclass, configuration
 
@@ -319,47 +353,128 @@ def varargs_cb(option, opt_str, value, parser):
 
     setattr(parser.values, option.dest, value)
 
-def main():
+def make_scriptargs(kargs):
+
+    for name in ('fcompiler', 'f90flags',
+                 'f90exec', 'debug', 'noopt',
+                 'noarch', 'opt', 'arch', 'build_ext'):
+        exec("%s = kargs.get(name)" % name)
+
+    check_fcompiler(fcompiler)
+
+    fcopt = '--fcompiler=%s' % fcompiler
+    scargs = []
+    scargs += ['config', fcopt]
+    scargs += ['config_fc']
+    if debug:
+        scargs += ['--debug']
+    if noopt:
+        scargs += ['--noopt']
+    if noarch:
+        scargs += ['--noarch']
+    if opt:
+        scargs += ['--opt=%s' % opt]
+    if arch:
+        scargs += ['--arch=%s' % arch]
+    if f90exec:
+        scargs += ['--f90exec=%s' % f90exec]
+    if f90flags:
+        scargs += ['--f90flags=%s' % f90flags]
+        scargs += ['--f77flags=%s' % f90flags]
+
+    scargs += ['build_src']
+
+    if build_ext:
+        scargs += ['build_ext', fcopt, '--inplace']
+
+    return scargs
+
+
+def main(use_cmdline, sources=None, **options):
+
+    setup_logging()
+
+    if sources is None:
+        sources = []
+
+    defaults = dict(name='fwproj',
+                    build_ext=False,
+                    out_dir=os.path.curdir,
+                    f90flags='',
+                    f90exec='',
+                    extra_objects=[],
+                    verbose='WARNING',
+                    override=False,
+                    help_fcompiler=False,
+                    debug=False,
+                    noopt=False,
+                    noarch=False,
+                    opt='',
+                    arch='')
+
+    if options:
+        defaults.update(options)
+
     # Parse command line options
     from fwrap.version import version
     parser = OptionParser("usage: %prog [options] SOURCE_FILES",
                             version=version)
+    parser.set_defaults(**defaults)
 
-    parser.add_option('-m', dest='name', help='')
-    parser.add_option('-C', '--config', dest='config', help='')
-    parser.add_option('-c',  '-b',  '--build',  dest='build',
-                        action='store_true', default=False,  help='')
-    parser.add_option('-o', '--out_dir', dest='out_dir', help='')
-    parser.add_option('-F', '--fcompiler', dest='fcompiler', help='')
-    parser.add_option('-f', '--fflags',  dest='fflags',  action='callback',
-                        callback=varargs_cb,  help='')
-    parser.add_option('--objects', dest='extra_objects', action='callback',
-                        callback=varargs_cb, help='')
-    parser.add_option('-l', dest='libraries',  action='append')
-    parser.add_option('-L', dest='library_dirs',  action='append')
-    parser.add_option('-r', '--recompile', action="store_true",
-                        dest='recompile', help='')
-    parser.add_option('-v', '--verbose', action="store_true", dest="verbose", default=False)
-    parser.add_option('--no-recompile', action="store_false", dest='recompile', help='')
-    parser.add_option('--override', action="store_true", dest='override', help='')
-    parser.add_option('--no-override', action="store_false", dest='override', help='')
+    if use_cmdline:
 
-    parsed_options, source_files = parser.parse_args()
+        parser.add_option('-n', '--name', dest='name')
+        parser.add_option('-b',  '--build_ext',  dest='build_ext', action='store_true')
+        parser.add_option('-o', '--out_dir', dest='out_dir')
+        parser.add_option('--fcompiler', dest='fcompiler')
+        parser.add_option('--f90flags', dest='f90flags')
+        parser.add_option('--f90exec', dest='f90exec')
+        parser.add_option('--objects', dest='extra_objects', action='callback',
+                            callback=varargs_cb)
+        parser.add_option('-l', dest='libraries',  action='append')
+        parser.add_option('-L', dest='library_dirs',  action='append')
+        parser.add_option('-v', '--verbose', dest="verbose")
+        parser.add_option('--override', action="store_true", dest='override')
+        parser.add_option('--help-fcompiler', action='store_true', dest='help_fcompiler')
+
+        parser.add_option('--debug', dest='debug', action='store_true')
+        parser.add_option('--noopt', dest='noopt', action='store_true')
+        parser.add_option('--noarch', dest='noarch', action='store_true')
+        parser.add_option('--opt', dest='opt')
+        parser.add_option('--arch', dest='arch')
+
+        args = None
+
+    else:
+        args = sources
+
+    parsed_options, source_files = parser.parse_args(args=args)
+
+    out_dir, name = parsed_options.out_dir, parsed_options.name
+
+    lvl = getattr(logging, parsed_options.verbose, logging.INFO)
+    logger.setLevel(lvl)
 
     # Loop over options and put in a dictionary for passing into wrap
-    kargs = {}
     logger.debug("Command line arguments: ")
-    for opt in _available_options.iterkeys():
-        try:
-            if getattr(parsed_options,opt) is not None:
-                kargs[opt] = getattr(parsed_options,opt)
-                logger.debug("  %s = %s" % (opt,kargs[opt]))
-        except:
-            pass
+    # for opt in _available_options.iterkeys():
+        # try:
+            # if getattr(parsed_options,opt) is not None:
+                # kargs[opt] = getattr(parsed_options,opt)
+                # logger.debug("  %s = %s" % (opt,kargs[opt]))
+        # except:
+            # pass
 
     if not source_files:
         parser.error("no source files")
 
+    retval = 0
     # Call main routine
-    wrap(source_files,**kargs)
-    sys.exit(0)
+    try:
+        wrap(source_files, **parsed_options.__dict__)
+    except CompilerNotFound, m:
+        print >>sys.stdout, m
+        retval = 1
+    finally:
+        shutdown_logging(get_projectpath(out_dir, name))
+    return retval

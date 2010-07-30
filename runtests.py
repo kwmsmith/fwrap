@@ -198,10 +198,13 @@ class FwrapCompileTestCase(unittest.TestCase):
         self.projname = os.path.splitext(self.filename)[0] + '_fwrap'
         self.projdir = os.path.join(self.workdir, self.projname)
         fq_fname = os.path.join(os.path.abspath(self.directory), self.filename)
-        verbose = False
-        if self.verbosity == 3:
-            verbose = True
-        wrap([fq_fname],name=self.projname,out_dir=self.workdir, fcompiler=(self.fcompiler or 'gnu95'), verbose=verbose)
+        main(use_cmdline=False,
+             sources=[fq_fname],
+             name=self.projname,
+             out_dir=self.workdir,
+             fcompiler=(self.fcompiler or 'gnu95'),
+             verbose=self.verbosity,
+             build_ext=True)
         self.runCompileTest_distutils()
 
     def runCompileTest_distutils(self):
@@ -707,8 +710,8 @@ if __name__ == '__main__':
                       # action="store_false",
                       # help="do not generate annotated HTML versions of the test source files")
     parser.add_option("-v", "--verbose", dest="verbosity",
-                      action="count", default=0,
-                      help="display test progress, pass twice to print test names")
+                      default='WARN',
+                      help="display test progress, can be DEBUG, INFO, WARN, ERROR")
     parser.add_option("-T", "--ticket", dest="tickets",
                       action="append",
                       help="a bug ticket number to run the respective test in 'tests/bugs'")
@@ -764,7 +767,8 @@ if __name__ == '__main__':
             sys.stderr.write("Running tests without Cython.\n")
     #if 0
 
-    from fwrap.main import wrap
+    # from fwrap.main import wrap
+    from fwrap.main import main
 
     sys.stderr.write("Python %s\n" % sys.version)
     sys.stderr.write("\n")
