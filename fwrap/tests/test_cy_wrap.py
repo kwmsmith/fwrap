@@ -200,10 +200,10 @@ class test_cy_array_arg_wrapper(object):
     def test_pre_call_code(self):
         eq_(self.cy_arg.pre_call_code(),
                 ['array_ = np.PyArray_FROMANY(array, '
-                 'fwr_real_t_enum, 0, 0, np.NPY_F_CONTIGUOUS)'])
+                 'fwr_real_t_enum, 3, 3, np.NPY_F_CONTIGUOUS)'])
         eq_(self.cy_int_arg.pre_call_code(),
                 ['int_array_ = np.PyArray_FROMANY(int_array, '
-                 'fwi_integer_t_enum, 0, 0, np.NPY_F_CONTIGUOUS)'])
+                 'fwi_integer_t_enum, 1, 1, np.NPY_F_CONTIGUOUS)'])
 
     def test_post_call_code(self):
         eq_(self.cy_arg.post_call_code(), [])

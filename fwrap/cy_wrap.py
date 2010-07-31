@@ -314,9 +314,10 @@ class _CyArrayArgWrapper(object):
     def __init__(self, arg):
         self.arg = arg
         self.intern_name = '%s_' % self.arg.intern_name
+        self.extern_name = self.arg.intern_name
 
     def extern_declarations(self):
-        return ['object %s' % self.arg.intern_name]
+        return ['object %s' % self.extern_name]
 
     def intern_declarations(self):
         return ["cdef np.ndarray[%s, ndim=%d, mode='fortran'] %s" % \
@@ -339,8 +340,15 @@ class _CyArrayArgWrapper(object):
         # NOTE: we can support a STRICT macro that would disable the
         # PyArray_ANYARRAY() call, forcing all incoming arrays to be already F
         # contiguous.
-        return ["%s = np.PyArray_FROMANY(%s, %s, 0, 0, np.NPY_F_CONTIGUOUS)" %
-                (self.intern_name, self.arg.intern_name, self.arg.dtype.npy_enum)]
+        tmpl = ("%(intern)s = np.PyArray_FROMANY("
+                                    "%(extern)s, %(dtenum)s, "
+                                    "%(ndim)d, %(ndim)d, "
+                                    "np.NPY_F_CONTIGUOUS)")
+        d = {'intern' : self.intern_name,
+             'extern' : self.extern_name,
+             'dtenum' : self.arg.dtype.npy_enum,
+             'ndim' : self.arg.ndims}
+        return [tmpl % d]
 
     def post_call_code(self):
         return []
