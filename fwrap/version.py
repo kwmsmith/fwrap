@@ -1,16 +1,16 @@
 # Set isrelease = True for release version.
 isrelease = False
-version = "0.1.0"
+base_version = "0.1.0"
 
-def set_rev():
-    if isrelease: return
-    global version
+def get_version():
+
+    if isrelease: return base_version
+
     from subprocess import Popen, PIPE
     try:
-        stdout = Popen("hg identify --id".split(), stdout=PIPE).stdout
-        global_id = stdout.read().strip()
+        pp = Popen("hg identify --id --rev tip".split(), stdout=PIPE)
+        pp.wait()
+        global_id = pp.stdout.read()
     except OSError:
         global_id = "unknown"
-    version = "%sdev_%s" % (version, global_id)
-
-set_rev()
+    return "%sdev_%s" % (base_version, global_id)
