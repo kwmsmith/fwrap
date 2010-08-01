@@ -41,7 +41,7 @@ def put_cymod_docstring(ast, modname, buf):
 
 # XXX:  Put this in a cymodule class?
 def get_cymod_docstring(ast, modname):
-    from fwrap.version import version
+    from fwrap.version import get_version
     from fwrap.gen_config import all_dtypes
     dstring = ("""\
 The %s module was generated with Fwrap v%s.
@@ -49,7 +49,7 @@ The %s module was generated with Fwrap v%s.
 Below is a listing of functions and data types.
 For usage information see the function docstrings.
 
-""" % (modname, version)).splitlines()
+""" % (modname, get_version())).splitlines()
     dstring += ["Functions",
                 "---------"]
     # Functions
