@@ -105,7 +105,7 @@ end function empty_func
         compare(pxd, buf.getvalue())
 
     def test_generate_cy_pyx(self):
-        from fwrap.version import version
+        from fwrap.version import get_version
         fort_ast = main.parse(self.source_file_lst)
         c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
         cython_ast = cy_wrap.wrap_fc(c_ast)
@@ -151,7 +151,7 @@ cpdef api object empty_func():
     if fw_iserr__ != FW_NO_ERR__:
         raise RuntimeError("an error was encountered when calling the 'empty_func' wrapper.")
     return (fw_ret_arg,)
-''' % version
+''' % get_version()
         compare(test_str, buf.getvalue())
 
     def test_generate_type_specs(self):

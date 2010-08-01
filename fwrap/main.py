@@ -37,16 +37,6 @@ def _setup_config():
 def get_projectpath(out_dir, name):
     return os.path.abspath(os.path.join(out_dir, name))
 
-def setup_logging():
-    global logger
-    # Default logging configuration file
-    _DEFAULT_LOG_CONFIG_PATH = os.path.join(os.path.dirname(__file__),'log.config')
-
-    # Setup loggers
-    logging.config.fileConfig(_DEFAULT_LOG_CONFIG_PATH)
-
-    # Logging utility, see log.config for default configuration
-    logger = logging.getLogger('fwrap')
 
 def shutdown_logging(projectpath):
 
@@ -195,7 +185,7 @@ def wrap(source=None,**kargs):
     library_dirs = kargs.get('library_dirs')
     extra_objects = kargs.get('extra_objects')
     log_name = 'fwrap_setup.log'
-    if logging.DEBUG >= logger.level:
+    if logging.DEBUG >= fwlogging.console_handler.level:
         log_name = ""
     file_name, buf = generate_setup(name, log_name, source_files,
                                 libraries, library_dirs, extra_objects)
@@ -390,21 +380,67 @@ def make_scriptargs(kargs):
 
     return scargs
 
+class fwlogging(object):
 
-def main(use_cmdline, sources=None, **options):
+    ERROR, WARN, INFO, DEBUG = range(4)
 
-    setup_logging()
+    log_levels = {ERROR : 'ERROR',
+                  WARN : 'WARN',
+                  INFO : 'INFO',
+                  DEBUG : 'DEBUG'}
+
+    console_handler = None
+
+    @staticmethod
+    def set_console_level(verbose):
+        verbose = min(verbose, fwlogging.DEBUG)
+        lvl = getattr(logging, fwlogging.log_levels[verbose])
+        for handler in logger.handlers:
+            if handler.stream == sys.stdout:
+                if fwlogging.console_handler is None:
+                    fwlogging.console_handler = handler
+                handler.setLevel(lvl)
+
+    @staticmethod
+    def setup_logging():
+        global logger
+        # Default logging configuration file
+        _DEFAULT_LOG_CONFIG_PATH = os.path.join(os.path.dirname(__file__),'log.config')
+
+        # Setup loggers
+        logging.config.fileConfig(_DEFAULT_LOG_CONFIG_PATH)
+
+        # Logging utility, see log.config for default configuration
+        logger = logging.getLogger('fwrap')
+
+def print_version():
+    from fwrap.version import get_version
+    vandl = """\
+fwrap v%s
+Copyright (C) 2010 Kurt W. Smith
+Fwrap is distributed under an open-source license.   See the source for
+licensing information.  There is NO warranty, not even for MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.
+""" % get_version()
+    print vandl
+
+
+def main(use_cmdline, sources=None, logging=True, **options):
+
+    fwlogging.setup_logging()
 
     if sources is None:
         sources = []
 
+
     defaults = dict(name='fwproj',
+                    version=False,
                     build_ext=False,
                     out_dir=os.path.curdir,
                     f90flags='',
                     f90exec='',
                     extra_objects=[],
-                    verbose='WARNING',
+                    verbose=fwlogging.ERROR,
                     override=False,
                     help_fcompiler=False,
                     debug=False,
@@ -416,33 +452,63 @@ def main(use_cmdline, sources=None, **options):
     if options:
         defaults.update(options)
 
-    # Parse command line options
-    from fwrap.version import version
-    parser = OptionParser("usage: %prog [options] SOURCE_FILES",
-                            version=version)
+    parser = OptionParser("usage: %prog [options] <fortran source files>")
     parser.set_defaults(**defaults)
 
     if use_cmdline:
 
-        parser.add_option('-n', '--name', dest='name')
-        parser.add_option('-b',  '--build_ext',  dest='build_ext', action='store_true')
-        parser.add_option('-o', '--out_dir', dest='out_dir')
-        parser.add_option('--fcompiler', dest='fcompiler')
-        parser.add_option('--f90flags', dest='f90flags')
-        parser.add_option('--f90exec', dest='f90exec')
-        parser.add_option('--objects', dest='extra_objects', action='callback',
-                            callback=varargs_cb)
-        parser.add_option('-l', dest='libraries',  action='append')
-        parser.add_option('-L', dest='library_dirs',  action='append')
-        parser.add_option('-v', '--verbose', dest="verbose")
-        parser.add_option('--override', action="store_true", dest='override')
-        parser.add_option('--help-fcompiler', action='store_true', dest='help_fcompiler')
+        parser.add_option('-V', '--version', dest="version",
+                          action="store_true",
+                          help="get version and license info and exit")
 
-        parser.add_option('--debug', dest='debug', action='store_true')
-        parser.add_option('--noopt', dest='noopt', action='store_true')
-        parser.add_option('--noarch', dest='noarch', action='store_true')
-        parser.add_option('--opt', dest='opt')
-        parser.add_option('--arch', dest='arch')
+        parser.add_option('-v', '--verbose', dest="verbose",
+                          action='count',
+                          help='the more v\'s (up to 3), the more talky it gets')
+
+        parser.add_option('-n', '--name', dest='name',
+                          help='name for the project directory and extension module '
+                          '[default: %default]')
+        parser.add_option('-b',  '--build',  dest='build_ext', action='store_true',
+                          help='create the extension module after generating wrappers [default: off]')
+        parser.add_option('-o', '--out_dir', dest='out_dir',
+                help='specify where the project directory is to be placed, '
+                '[default: current directory]')
+
+        parser.add_option('--override', action="store_true", dest='override',
+                          help='clobber an existing project with the same name [default: off]')
+
+        parser.add_option('--help-fcompiler', action='store_true', dest='help_fcompiler',
+                          help='output information about fortran compilers and exit')
+
+        parser.add_option('--fcompiler', dest='fcompiler',
+                          help='specify the fortran compiler to use, see \'--help-fcompiler\'')
+        parser.add_option('--f90exec', dest='f90exec',
+                          help=('Full path of the specified Fortran 90 compiler, '
+                          'not necessary if numpy distutils can discover it (see --help-fcompiler)'))
+        parser.add_option('--f90flags', dest='f90flags',
+                          help='extra fortran compilation flags')
+        parser.add_option('--objects', dest='extra_objects', action='callback',
+                            callback=varargs_cb,
+                            metavar='<object list>',
+                          help='extra object files, archives, etc. to include in the extension module')
+        parser.add_option('-L', dest='library_dirs',  action='append',
+                          metavar='libdir',
+                          help='add directory libdir to ld search path')
+        parser.add_option('-l', dest='libraries',  action='append',
+                          metavar='libname',
+                          help='runtime library name to include during linking,'
+                          ' e.g. -lgfortran or -lg95')
+
+        parser.add_option('--debug', dest='debug', action='store_true',
+                          help='include debug flags during compilation')
+        parser.add_option('--noopt', dest='noopt', action='store_true',
+                          help='remove all optimization flags during compilation')
+        parser.add_option('--noarch', dest='noarch', action='store_true',
+                          help='do not include architecture-specific flags during compilation')
+        parser.add_option('--opt', dest='opt',
+                          help='extra optimization flags to include during compilation')
+        parser.add_option('--arch', dest='arch',
+                          help='include target architecture during compilation')
 
         args = None
 
@@ -451,10 +517,13 @@ def main(use_cmdline, sources=None, **options):
 
     parsed_options, source_files = parser.parse_args(args=args)
 
-    out_dir, name = parsed_options.out_dir, parsed_options.name
+    if parsed_options.version:
+        print_version()
+        return 0
 
-    lvl = getattr(logging, parsed_options.verbose, logging.INFO)
-    logger.setLevel(lvl)
+    fwlogging.set_console_level(parsed_options.verbose)
+
+    out_dir, name = parsed_options.out_dir, parsed_options.name
 
     # Loop over options and put in a dictionary for passing into wrap
     logger.debug("Command line arguments: ")
@@ -466,11 +535,12 @@ def main(use_cmdline, sources=None, **options):
         # except:
             # pass
 
+    retval = 0
+    # Call main routine
+
     if not source_files:
         parser.error("no source files")
 
-    retval = 0
-    # Call main routine
     try:
         wrap(source_files, **parsed_options.__dict__)
     except CompilerNotFound, m:

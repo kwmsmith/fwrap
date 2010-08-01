@@ -203,7 +203,7 @@ class FwrapCompileTestCase(unittest.TestCase):
              name=self.projname,
              out_dir=self.workdir,
              fcompiler=(self.fcompiler or 'gnu95'),
-             verbose=self.verbosity,
+             verbose=self.verbosity-1, # bit of a hack here.
              build_ext=True)
         self.runCompileTest_distutils()
 
@@ -506,8 +506,9 @@ if __name__ == '__main__':
                       # action="store_false",
                       # help="do not generate annotated HTML versions of the test source files")
     parser.add_option("-v", "--verbose", dest="verbosity",
-                      default='WARN',
-                      help="display test progress, can be DEBUG, INFO, WARN, ERROR")
+                      action="count",
+                      default=0,
+                      help="display test progress, more v's for more output")
     parser.add_option("-T", "--ticket", dest="tickets",
                       action="append",
                       help="a bug ticket number to run the respective test in 'tests/bugs'")
@@ -516,10 +517,6 @@ if __name__ == '__main__':
                       help="specify the fortran compiler to use in tests")
 
     options, cmd_args = parser.parse_args()
-
-    verboseopts = ('DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL')
-    if options.verbosity.upper() not in verboseopts:
-        parser.error("verbosity must be one of %r" % (verboseopts,))
 
     if 0:
         if sys.version_info[0] >= 3:
