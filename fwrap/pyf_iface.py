@@ -103,7 +103,6 @@ class Dtype(object):
         if not self.odecl:
             return set()
         else:
-            # return ScalarIntExpr(self.odecl).find_names() - intrinsics
             return ScalarIntExpr(self.odecl).names - intrinsics
 
     def py_type_name(self):
@@ -181,6 +180,9 @@ class LogicalType(Dtype):
         super(LogicalType, self).__init__(fw_ktp, mangler=mangler, **kwargs)
         self.type = 'logical'
 
+    # FIXME: get rid of this when logical arrays use c_f_pointer.
+    # FIXME: currently this is a workaround for 4.3.3 <= gfortran version <
+    # 4.4.
     def _get_odecl(self):
 
         #XXX: refactor this; new attribute?

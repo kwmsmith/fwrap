@@ -282,6 +282,14 @@ def ArgWrapperFactory(arg):
     if getattr(arg, 'dimension', None):
         if arg.dtype.type == 'character':
             return CharArrayArgWrapper(arg)
+
+        # FIXME: uncomment when logical arrays use c_f_pointer
+        # FIXME: currently this is a workaround for 4.3.3 <= gfortran version <
+        # 4.4.
+
+        # elif arg.dtype.type == 'logical':
+            # return LogicalArrayArgWrapper(arg)
+
         return ArrayArgWrapper(arg)
     elif arg.dtype.type == 'logical':
         return LogicalWrapper(arg)
@@ -521,14 +529,20 @@ class ArrayPtrArg(ArrayArgWrapper):
         self.extern_args = self._arr_dims + [self.extern_arg]
 
     def _pointer_call(self):
-        return ['call c_f_pointer(%s, %s)' %
-                (self.extern_arg.name, self.intern_var.name)]
+        dim_names = [dim.name for dim in self._arr_dims]
+        return ['call c_f_pointer(%s, %s, (/ %s /))' %
+                (self.extern_arg.name, self.intern_var.name, ', '.join(dim_names))]
 
     def _check_code(self):
         return super(ArrayPtrArg, self).pre_call_code()
 
     def pre_call_code(self):
         return self._check_code() + self._pointer_call()
+
+# FIXME: uncomment when logical arrays use c_f_pointer
+# FIXME: currently this is a workaround for 4.3.3 <= gfortran version < 4.4.
+# class LogicalArrayArgWrapper(ArrayPtrArg):
+    # pass
 
 
 class CharArrayArgWrapper(ArrayPtrArg):
