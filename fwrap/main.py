@@ -404,6 +404,7 @@ class fwlogging(object):
     @staticmethod
     def set_console_level(verbose):
         verbose = min(verbose, fwlogging.DEBUG)
+        verbose = max(verbose, fwlogging.ERROR)
         lvl = getattr(logging, fwlogging.log_levels[verbose])
         for handler in logger.handlers:
             if handler.stream == sys.stdout:
