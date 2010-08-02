@@ -8,9 +8,10 @@ def get_version():
 
     from subprocess import Popen, PIPE
     try:
-        pp = Popen("hg identify --id --rev tip".split(), stdout=PIPE)
+        pp = Popen("hg identify --id --rev tip".split(), stdout=PIPE, stderr=PIPE)
         pp.wait()
         global_id = pp.stdout.read()
+        err_txt = pp.stderr.read()
     except OSError:
         global_id = "unknown"
     return "%sdev_%s" % (base_version, global_id)

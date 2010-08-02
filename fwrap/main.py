@@ -8,6 +8,8 @@ import tempfile
 from optparse import OptionParser
 from fwrap.code import CodeBuffer, reflow_fort
 from numpy.distutils.fcompiler import CompilerNotFound
+from numpy.distutils.command import config_compiler
+from fwrap.version import get_version
 
 from fwrap import constants
 from fwrap import gen_config as gc
@@ -106,6 +108,13 @@ def wrap(source=None,**kargs):
     # for opt in _available_options:
         # if not (opt == 'source' or opt == 'config'):
             # logger.debug("  %s = %s" % (opt,locals()[opt]))
+
+
+    help_fcompiler = kargs.get('help_fcompiler')
+    if help_fcompiler:
+        from distutils.core import run_setup
+        run_setup(file_name, script_args=make_scriptargs(kargs))
+        return
 
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
@@ -348,7 +357,8 @@ def make_scriptargs(kargs):
 
     for name in ('fcompiler', 'f90flags',
                  'f90exec', 'debug', 'noopt',
-                 'noarch', 'opt', 'arch', 'build_ext'):
+                 'noarch', 'opt', 'arch', 'build_ext',
+                 ):
         exec("%s = kargs.get(name)" % name)
 
     check_fcompiler(fcompiler)
@@ -414,7 +424,6 @@ class fwlogging(object):
         logger = logging.getLogger('fwrap')
 
 def print_version():
-    from fwrap.version import get_version
     vandl = """\
 fwrap v%s
 Copyright (C) 2010 Kurt W. Smith
@@ -431,7 +440,6 @@ def main(use_cmdline, sources=None, logging=True, **options):
 
     if sources is None:
         sources = []
-
 
     defaults = dict(name='fwproj',
                     version=False,
@@ -452,10 +460,26 @@ def main(use_cmdline, sources=None, logging=True, **options):
     if options:
         defaults.update(options)
 
-    parser = OptionParser("usage: %prog [options] <fortran source files>")
+    usage ='''\
+Usage: %prog [options] fortran source [fortran source ...]
+       %prog -h | --help
+       %prog --help-fcompiler
+       %prog -V | --version
+'''
+
+    description = '''\
+%prog is a commandline utility for automatically wrapping Fortran code in C,
+Cython and Python and optionally building a Python extension module.  The %prog
+command is the frontend to the Fwrap package.
+'''
+
+    parser = OptionParser(usage=usage, description=description)
     parser.set_defaults(**defaults)
 
     if use_cmdline:
+
+        parser.add_option('--help-fcompiler', action='store_true', dest='help_fcompiler',
+                          help='output information about fortran compilers and exit')
 
         parser.add_option('-V', '--version', dest="version",
                           action="store_true",
@@ -463,7 +487,7 @@ def main(use_cmdline, sources=None, logging=True, **options):
 
         parser.add_option('-v', '--verbose', dest="verbose",
                           action='count',
-                          help='the more v\'s (up to 3), the more talky it gets')
+                          help='the more v\'s (up to 3), the more chatty it gets')
 
         parser.add_option('-n', '--name', dest='name',
                           help='name for the project directory and extension module '
@@ -476,9 +500,6 @@ def main(use_cmdline, sources=None, logging=True, **options):
 
         parser.add_option('--override', action="store_true", dest='override',
                           help='clobber an existing project with the same name [default: off]')
-
-        parser.add_option('--help-fcompiler', action='store_true', dest='help_fcompiler',
-                          help='output information about fortran compilers and exit')
 
         parser.add_option('--fcompiler', dest='fcompiler',
                           help='specify the fortran compiler to use, see \'--help-fcompiler\'')
@@ -537,6 +558,10 @@ def main(use_cmdline, sources=None, logging=True, **options):
 
     retval = 0
     # Call main routine
+
+    if parsed_options.help_fcompiler:
+       config_compiler.show_fortran_compilers()
+       return 0
 
     if not source_files:
         parser.error("no source files")
