@@ -49,15 +49,15 @@ class test_fort_expr(object):
         eq_(clc3.string, 'as "onthu\'sanetu')
 
 
-def test_gen():
+def _tester(tstr, res, funcs=None):
+    expr = parse(tstr)
+    xtor = ExtractNames()
+    xtor.visit(expr)
+    eq_(xtor.names, res)
+    if funcs:
+        eq_(xtor.funcnames, funcs)
 
-    def test(tstr, res, funcs=None):
-        expr = parse(tstr)
-        xtor = ExtractNames()
-        xtor.visit(expr)
-        eq_(xtor.names, res)
-        if funcs:
-            eq_(xtor.funcnames, funcs)
+def test_gen():
 
     for args in _tests:
         if len(args) == 2:
@@ -65,7 +65,7 @@ def test_gen():
             funcs = []
         elif len(args) == 3:
             tstr, res, funcs = args
-        yield test, tstr, res, funcs
+        yield _tester, tstr, res, funcs
 
 _tests = [
     ("9", []),
@@ -113,4 +113,15 @@ _tests = [
     ("1234.567E12_g_1 + .35009_f13_ / (-.9D3_D__3 + 1._a1)", ['g_1', 'f13_', 'D__3', 'a1']),
     ("*", [], []),
     ("", [], []),
+    # ("(1.0E+0, 0.0E+0)", [], []),
+    # ("(1.0D+0, 0.0D+0)", [], []),
+    # ("(-1.0D+00, 0.0D+00)", [], []),
     ]
+
+def test_regr_reallitconst():
+    tests = [("(1.0E+0, 0.0E+0)", [], []),
+            ("(1.0D+0, 0.0D+0)", [], []),
+            ("(-1.0D+00, 0.0D+00)", [], []),]
+    for t in tests:
+        tstr, res, funcs = t
+        yield _tester, tstr, res, funcs

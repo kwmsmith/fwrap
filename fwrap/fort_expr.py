@@ -85,7 +85,7 @@ class RealLitConst(ExprNode):
     def __init__(self, s, loc, toks):
         self.sign, self.real, self.kind = None, None, None
         toks = toks.asList()
-        if toks[0] in "+-":
+        if str(toks[0]) in "+-":
             self.sign, self.real = toks[0], toks[1]
         else:
             self.sign, self.real = None, toks[0]
@@ -160,7 +160,10 @@ class SignNode(ExprNode):
 
     def __init__(self, s, loc, toks):
         self.sign, = toks.asList()
-        
+
+    def __str__(self):
+        return str(self.sign)
+
 
 class DigitStringNode(ExprNode):
 
@@ -169,6 +172,9 @@ class DigitStringNode(ExprNode):
     def __init__(self, s, loc, toks):
         self.digit_string, = toks.asList()
 
+    def __str__(self):
+        return str(self.digit_string)
+
 class LiteralNode(ExprNode):
 
     child_attrs = []
@@ -176,9 +182,8 @@ class LiteralNode(ExprNode):
     def __init__(self, s, loc, toks):
         self.val, = toks.asList()
 
-    def __repr__(self):
-        return ("<%s.%s object at %d, val='%s'>" %
-                (self.__module__, self.__class__.__name__, id(self), self.val))
+    def __str__(self):
+        return str(self.val)
 
 fort_expr_bnf = None
 def get_fort_expr_bnf():
