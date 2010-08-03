@@ -67,3 +67,15 @@ def test_param_expr():
 
     return np.all(res == compare)
 
+
+def test_assumed_size():
+    u'''
+    >>> test_assumed_size()
+    True
+    '''
+    dim = 20-10+1
+    arr = np.empty((dim,), dtype=fwi_integer, order='F')
+
+    assumed_size(arr)
+
+    return np.all(arr == 5)

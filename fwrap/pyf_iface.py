@@ -334,7 +334,9 @@ class Dim(object):
             if ubound and not lbound:
                 raise ValueError(
                         "%r is an invalid dimension spec" % self.dim_spec_str())
-            if ubound:
+            if ubound == '*':
+                self.is_assumed_size = True
+            elif ubound:
                 self.is_explicit_shape = True
             else:
                 self.is_assumed_shape = True
@@ -353,7 +355,7 @@ class Dim(object):
                         self.dim_spec_str()))
 
         if self.is_assumed_size:
-            self.sizeexpr = "*"
+            self.sizeexpr = None
         elif self.is_assumed_shape:
             self.sizeexpr = None
         elif len(self.spec) == 2:

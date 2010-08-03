@@ -18,6 +18,9 @@ def _setup(self):
     self.explicit2 = pyf.Dim('anteohusatnheuo%asnotehusaeontuh')
     self.explicit3 = pyf.Dim(('LDIM',))
 
+    self.assumed_size1 = pyf.Dim(('0:*'))
+    self.assumed_size2 = pyf.Dim(('n','*'))
+
 class test_dim(object):
 
     def setup(self):
@@ -31,6 +34,8 @@ class test_dim(object):
         eq_(self.colon.sizeexpr, None)
         eq_(self.colon_parsed.sizeexpr, None)
         eq_(self.lbound.sizeexpr, None)
+        eq_(self.assumed_size1.sizeexpr, None)
+        eq_(self.assumed_size2.sizeexpr, None)
         eq_(self.lubound.sizeexpr, '((20) - (10) + 1)')
         eq_(self.lubound_parsed.sizeexpr, '((1) - (1) + 1)')
         eq_(self.expr.sizeexpr, "((%s) - (%s) + 1)" % (self.e2.lower(), self.e1.lower()))

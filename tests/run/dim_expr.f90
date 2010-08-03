@@ -1,3 +1,11 @@
+      subroutine assumed_size(a)
+        implicit none
+        integer, dimension(10:*), intent(inout) :: a
+
+        a(10:20) = 5
+
+      end subroutine
+
       subroutine const_expr(a)
         implicit none
         integer, dimension(10:20), intent(inout) :: a
