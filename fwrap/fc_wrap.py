@@ -219,7 +219,7 @@ class ArgWrapperManager(object):
     def c_proto_args(self):
         ret = []
         for argw in self.arg_wrappers:
-            ret.extend(argw.c_declarations())
+            ret.extend(argw.c_types())
         return ret
 
     def c_proto_return_type(self):
@@ -360,6 +360,9 @@ class ArgWrapper(ArgWrapperBase):
     def c_declarations(self):
         return [extern_arg.c_declaration() for extern_arg in self.extern_args]
 
+    def c_types(self):
+        return [extern_arg.c_type() for extern_arg in self.extern_args]
+
     def intern_declarations(self):
         if self.intern_var:
             return [self.intern_var.declaration()]
@@ -377,6 +380,9 @@ class ErrStrArgWrapper(ArgWrapperBase):
         self.intern_name = self.arg.name
         self.ktp = self.arg.ktp
         self.intent = None
+
+    def c_types(self):
+        return [self.arg.c_type()]
 
     def c_declarations(self):
         return [self.arg.c_declaration()]

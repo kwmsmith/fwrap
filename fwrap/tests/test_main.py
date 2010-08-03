@@ -74,7 +74,7 @@ end function empty_func
         header = '''\
         #include "fwrap_ktp_header.h"
 
-        void empty_func_c(fwi_integer_t *fw_ret_arg, fwi_integer_t *fw_iserr__, fw_character_t *fw_errstr__);
+        void empty_func_c(fwi_integer_t *, fwi_integer_t *, fw_character_t *);
         '''
         compare(buf.getvalue(), header)
         eq_(fname, constants.FC_HDR_TMPL % self.name)
@@ -87,7 +87,7 @@ end function empty_func
         from fwrap_ktp cimport *
 
         cdef extern from "test_fc.h":
-            void empty_func_c(fwi_integer_t *fw_ret_arg, fwi_integer_t *fw_iserr__, fw_character_t *fw_errstr__)
+            void empty_func_c(fwi_integer_t *, fwi_integer_t *, fw_character_t *)
         '''
         compare(header, buf.getvalue())
 

@@ -2,6 +2,10 @@ from fwrap import pyf_iface
 from fwrap import constants
 from fwrap.code import CodeBuffer
 
+from fwrap.pyf_iface import _py_kw_mangler
+
+
+
 def wrap_fc(ast):
     ret = []
     for proc in ast:
@@ -84,8 +88,8 @@ class _CyArgWrapper(object):
 
     def __init__(self, arg):
         self.arg = arg
-        self.intern_name = self.arg.name
-        self.name = self.arg.name
+        self.name = _py_kw_mangler(self.arg.name)
+        self.intern_name = self.name
         self.cy_dtype_name = self._get_cy_dtype_name()
 
     def _get_cy_dtype_name(self):
@@ -97,21 +101,21 @@ class _CyArgWrapper(object):
 
     def extern_declarations(self):
         if self.arg.intent in ('in', 'inout', None):
-            return ["%s %s" % (self.cy_dtype_name, self.arg.name)]
+            return ["%s %s" % (self.cy_dtype_name, self.name)]
         return []
 
     def docstring_extern_arg_list(self):
         if self.arg.intent in ("in", "inout", None):
-            return [self.arg.name]
+            return [self.name]
         return []
 
     def intern_declarations(self):
         if self.arg.intent == 'out':
-            return ["cdef %s %s" % (self.cy_dtype_name, self.arg.name)]
+            return ["cdef %s %s" % (self.cy_dtype_name, self.name)]
         return []
 
     def call_arg_list(self):
-        return ["&%s" % self.arg.name]
+        return ["&%s" % self.name]
 
     def post_call_code(self):
         return []
@@ -120,10 +124,10 @@ class _CyArgWrapper(object):
         return []
 
     def return_tuple_list(self):
-        if self.arg.name == constants.ERR_NAME:
+        if self.name == constants.ERR_NAME:
             return []
         elif self.arg.intent in ('out', 'inout', None):
-            return [self.arg.name]
+            return [self.name]
         return []
 
     docstring_return_tuple_list = return_tuple_list
@@ -141,7 +145,7 @@ class _CyArgWrapper(object):
         return self._gen_dstring()
 
     def out_dstring(self):
-        if self.arg.name == constants.ERR_NAME:
+        if self.name == constants.ERR_NAME:
             return []
         if self.arg.intent not in ('out', 'inout', None):
             return []
@@ -165,9 +169,9 @@ class _CyCharArg(_CyArgWrapper):
 
     def extern_declarations(self):
         if self.arg.intent in ('in', 'inout', None):
-            return ["%s %s" % (self.cy_dtype_name, self.arg.name)]
+            return ["%s %s" % (self.cy_dtype_name, self.name)]
         elif self.is_assumed_size():
-            return ['%s %s' % (self.cy_dtype_name, self.arg.name)]
+            return ['%s %s' % (self.cy_dtype_name, self.name)]
         return []
 
     def intern_declarations(self):
@@ -249,8 +253,8 @@ class _CyErrStrArg(object):
 
     def __init__(self, arg):
         self.arg = arg
-        self.intern_name = self.arg.name
-        self.name = self.arg.name
+        self.name = _py_kw_mangler(self.arg.name)
+        self.intern_name = self.name
 
     def get_len(self):
         return self.arg.dtype.len
@@ -292,7 +296,7 @@ class _CyCmplxArg(_CyArgWrapper):
     def __init__(self, arg):
         super(_CyCmplxArg, self).__init__(arg)
         self.intern_name = 'fw_%s' % self.arg.name
-        self.name = self.arg.name
+        # self.name = self.arg.name
 
     def intern_declarations(self):
         return super(_CyCmplxArg, self).intern_declarations()
@@ -313,8 +317,8 @@ class _CyArrayArgWrapper(object):
 
     def __init__(self, arg):
         self.arg = arg
-        self.intern_name = '%s_' % self.arg.intern_name
-        self.extern_name = self.arg.intern_name
+        self.extern_name = _py_kw_mangler(self.arg.name)
+        self.intern_name = '%s_' % self.extern_name
 
     def extern_declarations(self):
         return ['object %s' % self.extern_name]
@@ -362,7 +366,7 @@ class _CyArrayArgWrapper(object):
         dims = self.arg.orig_arg.dimension
         ndims = len(dims)
         dstring = ("%s : %s, %dD array, %s" %
-                        (self.arg.name,
+                        (self.extern_name,
                          self._get_py_dtype_name(),
                          ndims,
                          dims.attrspec))
@@ -379,11 +383,11 @@ class _CyArrayArgWrapper(object):
         return self._gen_dstring()
 
     def docstring_extern_arg_list(self):
-        return [self.arg.name]
+        return [self.extern_name]
 
     def docstring_return_tuple_list(self):
         if self.arg.intent in ('out', 'inout', None):
-            return [self.arg.name]
+            return [self.extern_name]
         return []
 
 
@@ -391,9 +395,10 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
 
     def __init__(self, arg):
         super(CyCharArrayArgWrapper, self).__init__(arg)
-        self.odtype_name = "%s_odtype" % self.arg.intern_name
-        self.shape_name = "%s_shape" % self.arg.intern_name
-        self.name = self.arg.intern_name
+        intern_name = _py_kw_mangler(self.arg.intern_name)
+        self.odtype_name = "%s_odtype" % intern_name
+        self.shape_name = "%s_shape" % intern_name
+        self.name = intern_name
 
     def intern_declarations(self):
         ret = super(CyCharArrayArgWrapper, self).intern_declarations()
@@ -410,14 +415,14 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
                     "(%(name)s.shape[0]/%(shape)s[1])")
         D = {"odtype" : self.odtype_name,
              "ndim" : self.arg.ndims,
-             "name" : self.name,
+             "name" : self.extern_name,
              "intern" : self.intern_name,
              "shape" : self.shape_name}
 
         return (tmpl  % D).splitlines()
 
     def post_call_code(self):
-        return ["%s.dtype = %s" % (self.name, self.odtype_name)]
+        return ["%s.dtype = %s" % (self.extern_name, self.odtype_name)]
 
     def call_arg_list(self):
         shapes = ["&%s[%d]" % (self.shape_name, i)
@@ -430,7 +435,7 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
         ndims = len(dims)
         dtype_len = self.arg.dtype.len
         dstring = ["%s : %s" %
-                    (self.arg.name, self._get_py_dtype_name())]
+                    (self.extern_name, self._get_py_dtype_name())]
         dstring.append("len %s" % dtype_len)
         dstring.append("%dD array" % ndims)
         dstring.append(dims.attrspec)
@@ -520,7 +525,7 @@ class ProcWrapper(object):
 
     def __init__(self, wrapped):
         self.wrapped = wrapped
-        self.name = self.wrapped.wrapped_name()
+        self.name = _py_kw_mangler(self.wrapped.wrapped_name())
         self.arg_mgr = CyArgWrapperManager.from_fwrapped_proc(wrapped)
 
     def all_dtypes(self):

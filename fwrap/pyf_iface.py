@@ -2,6 +2,16 @@ from fwrap import fort_expr
 from intrinsics import intrinsics
 import re
 
+def _py_kw_mangler(name):
+    # mangles name if it's a python keyword.
+    kwds = ('and', 'del', 'from', 'not', 'while', 'as', 'elif', 'global', 'or',
+            'with', 'assert', 'else', 'if', 'pass', 'yield', 'break', 'except',
+            'import', 'print', 'class', 'exec', 'in', 'raise', 'continue',
+            'finally', 'is', 'return', 'def', 'for', 'lambda', 'try')
+    if name.lower() in kwds:
+        return "%s__" % name
+    return name
+
 vfn_matcher = re.compile(r'[a-zA-Z][_a-zA-Z0-9]{,62}$').match
 def valid_fort_name(name):
     return vfn_matcher(name)
@@ -289,6 +299,9 @@ class _NamedType(object):
     def declaration(self):
         return '%s :: %s' % ( ', '.join(self.var_specs()), self.name)
 
+    def c_type(self):
+        return self.dtype.c_declaration()
+
     def c_declaration(self):
         return "%s%s" % (self.dtype.c_declaration(), self.name)
 
@@ -414,16 +427,6 @@ class Var(_NamedType):
             specs.append('pointer')
         return specs
 
-def _py_kw_mangler(name):
-    # mangles name if it's a python keyword.
-    kwds = ('and', 'del', 'from', 'not', 'while', 'as', 'elif', 'global', 'or',
-            'with', 'assert', 'else', 'if', 'pass', 'yield', 'break', 'except',
-            'import', 'print', 'class', 'exec', 'in', 'raise', 'continue',
-            'finally', 'is', 'return', 'def', 'for', 'lambda', 'try')
-    if name.lower() in kwds:
-        return "%s__" % name
-    return name
-
 class Argument(object):
 
     def __init__(self, name, dtype,
@@ -431,7 +434,7 @@ class Argument(object):
                  dimension=None,
                  isvalue=None,
                  is_return_arg=False):
-        self._var = Var(name=_py_kw_mangler(name), dtype=dtype, dimension=dimension)
+        self._var = Var(name=name, dtype=dtype, dimension=dimension)
         self.intent = intent
         self.isvalue = isvalue
         self.is_return_arg = is_return_arg
@@ -475,6 +478,9 @@ class Argument(object):
         if self.intent and not self.is_return_arg:
             return ['intent(%s)' % self.intent]
         return []
+
+    def c_type(self):
+        return self._var.c_type()
 
     def c_declaration(self):
         return self._var.c_declaration()

@@ -28,7 +28,7 @@ def test_generate_fc_h():
     code = '''\
     #include "foobar"
 
-    void two_arg_c(fwr_real_t *fw_ret_arg, fwi_integer_t *a, fwi_integer_t *b, fwi_integer_t *c, fwi_integer_t *d, fwi_integer_t *fw_iserr__, fw_character_t *fw_errstr__);
+    void two_arg_c(fwr_real_t *, fwi_integer_t *, fwi_integer_t *, fwi_integer_t *, fwi_integer_t *, fwi_integer_t *, fw_character_t *);
     '''
     compare(buf.getvalue(), code)
 
@@ -50,7 +50,7 @@ def test_generate_fc_pxd():
     from fwrap_ktp cimport *
 
     cdef extern from "foobar":
-        void two_arg_c(fwr_real_t *fw_ret_arg, fwi_integer_t *a, fwi_integer_t *b, fwi_integer_t *fw_iserr__, fw_character_t *fw_errstr__)
+        void two_arg_c(fwr_real_t *, fwi_integer_t *, fwi_integer_t *, fwi_integer_t *, fw_character_t *)
     '''
     compare(buf.getvalue(), code)
 
@@ -810,11 +810,11 @@ class test_c_proto_generation(object):
         func = pyf.Function('foo', args=args, return_arg=return_arg)
         arg_man = fc_wrap.ArgWrapperManager(func)
         eq_(arg_man.c_proto_args(),
-                ['fwr_real_t *fw_ret_arg',
-                 'fwi_integer_t *int_arg',
-                 'fwr_real_t *real_arg',
-                 'fwi_integer_t *fw_iserr__',
-                 'fw_character_t *fw_errstr__'])
+                ['fwr_real_t *',
+                 'fwi_integer_t *',
+                 'fwr_real_t *',
+                 'fwi_integer_t *',
+                 'fw_character_t *'])
 
     def test_c_proto_array_args(self):
         args = [pyf.Argument(name='array',
@@ -822,12 +822,12 @@ class test_c_proto_generation(object):
                         dimension=(':',)*3, intent='out')]
         subr = pyf.Subroutine('foo', args=args)
         arg_man = fc_wrap.ArgWrapperManager(subr)
-        eq_(arg_man.c_proto_args(), ['fwi_npy_intp_t *array_d1',
-                                     'fwi_npy_intp_t *array_d2',
-                                     'fwi_npy_intp_t *array_d3',
-                                     'fwr_real_t *array',
-                                     'fwi_integer_t *fw_iserr__',
-                                     'fw_character_t *fw_errstr__'])
+        eq_(arg_man.c_proto_args(), ['fwi_npy_intp_t *',
+                                     'fwi_npy_intp_t *',
+                                     'fwi_npy_intp_t *',
+                                     'fwr_real_t *',
+                                     'fwi_integer_t *',
+                                     'fw_character_t *'])
 
     def test_c_proto_return_type(self):
         for dtype in (pyf.default_real, pyf.default_integer):
@@ -851,13 +851,12 @@ class test_c_proto_generation(object):
                           return_arg=return_arg)
         empty_func_wrapper = fc_wrap.FunctionWrapper(wrapped=empty_func)
         eq_(empty_func_wrapper.c_prototype(),
-                ('void empty_func_c(fwi_integer_t *fw_ret_arg, '
-                    'fwi_integer_t *fw_iserr__, fw_character_t *fw_errstr__);'))
+                ('void empty_func_c(fwi_integer_t *, fwi_integer_t *, fw_character_t *);'))
         empty_subr = pyf.Subroutine(name='empty_subr',
                             args=())
         empty_subr_wrapper = fc_wrap.SubroutineWrapper(wrapped=empty_subr)
         eq_(empty_subr_wrapper.c_prototype(),
-                'void empty_subr_c(fwi_integer_t *fw_iserr__, fw_character_t *fw_errstr__);')
+                'void empty_subr_c(fwi_integer_t *, fw_character_t *);')
 
     def test_c_prototype_args(self):
         args = [pyf.Argument(name='int_arg',
@@ -869,14 +868,14 @@ class test_c_proto_generation(object):
         func = pyf.Function(name='func', args=args, return_arg=return_arg)
         func_wrapper = fc_wrap.FunctionWrapper(wrapped=func)
         eq_(func_wrapper.c_prototype(), "void func_c"
-                                        "(fwi_integer_t *fw_ret_arg, "
-                                        "fwi_integer_t *int_arg, "
-                                        "fwi_npy_intp_t *array_d1, "
-                                        "fwi_npy_intp_t *array_d2, "
-                                        "fwi_npy_intp_t *array_d3, "
-                                        "fwr_real_t *array, "
-                                        "fwi_integer_t *fw_iserr__, "
-                                        "fw_character_t *fw_errstr__);")
+                                        "(fwi_integer_t *, "
+                                        "fwi_integer_t *, "
+                                        "fwi_npy_intp_t *, "
+                                        "fwi_npy_intp_t *, "
+                                        "fwi_npy_intp_t *, "
+                                        "fwr_real_t *, "
+                                        "fwi_integer_t *, "
+                                        "fw_character_t *);")
 
 class test_param_declarations(object):
     
