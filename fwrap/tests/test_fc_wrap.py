@@ -238,10 +238,10 @@ def test_logical_function():
                 logical(kind=fwl_lgcl_t) :: lgcl_fun
             end function lgcl_fun
         end interface
-        logical(kind=fwl_lgcl_t), pointer :: fw_ret_arg
+        logical(kind=fwl_lgcl_t), pointer :: fw_fw_ret_arg
         fw_iserr__ = FW_INIT_ERR__
-        call c_f_pointer(fw_ret_arg, fw_ret_arg)
-        fw_ret_arg = lgcl_fun()
+        call c_f_pointer(fw_ret_arg, fw_fw_ret_arg)
+        fw_fw_ret_arg = lgcl_fun()
         fw_iserr__ = FW_NO_ERR__
     end subroutine lgcl_fun_c
 '''

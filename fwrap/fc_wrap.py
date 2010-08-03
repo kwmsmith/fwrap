@@ -2,8 +2,6 @@ from fwrap import pyf_iface as pyf
 from fwrap import constants
 
 def _arg_name_mangler(name):
-    if name == constants.RETURN_ARG_NAME:
-        return name
     return "fw_%s" % name
 
 def wrap_pyf_iface(ast):
@@ -170,7 +168,7 @@ class FunctionWrapper(ProcWrapper):
         return self.arg_man.return_spec_declaration()
 
     def proc_result_name(self):
-        return self.RETURN_ARG_NAME
+        return self.arg_man.proc_result_name()
 
 
 class ArgWrapperManager(object):
@@ -178,6 +176,7 @@ class ArgWrapperManager(object):
     def __init__(self, proc):
         self.proc = proc
         self.isfunction = (proc.kind == 'function')
+        self.ret_arg = None
         if self.isfunction:
             ra = pyf.Argument(name=FunctionWrapper.RETURN_ARG_NAME,
                     dtype=proc.return_arg.dtype,
@@ -197,13 +196,19 @@ class ArgWrapperManager(object):
         for arg in self._orig_args + [self.errflag]:
             wargs.append(ArgWrapperFactory(arg))
         self.arg_wrappers = wargs + [self.errstr]
+        if self.isfunction:
+            self.ret_arg = self.arg_wrappers[0]
 
     def call_arg_list(self):
         cl = [argw.intern_name for argw in self.arg_wrappers
                 if (argw.intern_name != FunctionWrapper.RETURN_ARG_NAME and
                     argw.intern_name != constants.ERR_NAME and
-                    argw.intern_name != constants.ERRSTR_NAME)]
+                    argw.intern_name != constants.ERRSTR_NAME and
+                    argw.intern_name != _arg_name_mangler(FunctionWrapper.RETURN_ARG_NAME))]
         return cl
+
+    def proc_result_name(self):
+        return self.ret_arg.intern_name
 
     def extern_arg_list(self):
         ret = []

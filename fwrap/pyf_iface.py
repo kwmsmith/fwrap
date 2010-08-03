@@ -414,6 +414,16 @@ class Var(_NamedType):
             specs.append('pointer')
         return specs
 
+def _py_kw_mangler(name):
+    # mangles name if it's a python keyword.
+    kwds = ('and', 'del', 'from', 'not', 'while', 'as', 'elif', 'global', 'or',
+            'with', 'assert', 'else', 'if', 'pass', 'yield', 'break', 'except',
+            'import', 'print', 'class', 'exec', 'in', 'raise', 'continue',
+            'finally', 'is', 'return', 'def', 'for', 'lambda', 'try')
+    if name.lower() in kwds:
+        return "%s__" % name
+    return name
+
 class Argument(object):
 
     def __init__(self, name, dtype,
@@ -421,7 +431,7 @@ class Argument(object):
                  dimension=None,
                  isvalue=None,
                  is_return_arg=False):
-        self._var = Var(name=name, dtype=dtype, dimension=dimension)
+        self._var = Var(name=_py_kw_mangler(name), dtype=dtype, dimension=dimension)
         self.intent = intent
         self.isvalue = isvalue
         self.is_return_arg = is_return_arg
