@@ -492,16 +492,15 @@ def main(use_cmdline, sources=None, logging=True, **options):
         defaults.update(options)
 
     usage ='''\
-Usage: %prog [options] fortran source [fortran source ...]
-       %prog -h | --help
-       %prog --help-fcompiler
-       %prog -V | --version
+Usage: %prog [options] fortran-source [fortran-source ...]
+       %prog --build [compiler-specific options] fortran-source [fortran-source ...]
+       %prog --help-fcompiler [compiler-specific options]
+       %prog --help | --version
 '''
 
     description = '''\
-%prog is a commandline utility for automatically wrapping Fortran code in C,
-Cython and Python and optionally building a Python extension module.  The %prog
-command is the frontend to the Fwrap package.
+%prog is a commandline utility that automatically wraps Fortran code in C, Cython,
+& Python, optionally building a Python extension module.
 '''
 
     parser = OptionParser(usage=usage, description=description)
