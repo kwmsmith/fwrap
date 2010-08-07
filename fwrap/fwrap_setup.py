@@ -58,6 +58,8 @@ ccompiler.exec_command = fw_exec_command
 from numpy.distutils import unixccompiler
 unixccompiler.exec_command = fw_exec_command
 
+from numpy.distutils.core import DistutilsError
+
 from numpy.distutils.command.config import config as np_config, old_config
 from numpy.distutils.command.build_src import build_src as np_build_src
 from numpy.distutils.command.build_ext import build_ext as np_build_ext
