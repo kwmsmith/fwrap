@@ -29,8 +29,8 @@
 #------------------------------------------------------------------------------
 
 # Set isrelease = True for release version.
-isrelease = True
-base_version = "0.1.0"
+isrelease = False
+base_version = "0.2.0"
 
 def get_version():
 
