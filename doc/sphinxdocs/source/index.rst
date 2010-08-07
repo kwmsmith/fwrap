@@ -3,6 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
++++++++++++++++++++++++++++++++++++++
 Fortran for Speed, Python for Comfort
 +++++++++++++++++++++++++++++++++++++
 
@@ -15,28 +16,37 @@ Fortran 77. [#sane-def]_
 
 Fwrap is licensed under the new BSD license.
 
-.. note::
-   Fwrap is under heavy development and is quickly approaching its first
-   release.  This page is constantly being updated with new information and
-   links.
+Fwrap is in beta-stage until otherwise indicated.  All commandline options and
+public APIs are subject to change.
 
+Download Fwrap
+==============
+
+Get the lastest version `here <https://sourceforge.net/projects/fwrap/files/>`_.
+    https://sourceforge.net/projects/fwrap/files/
 
 Dependencies
 ============
 
+`Python <http://python.org>`_
+    Tested with 2.5 & 2.6 (2.4 in the near future, 3.x planned)
+
 `NumPy <http://numpy.scipy.org/>`_ 
     Tested with NumPy >= 1.3.0
+
 `Cython <http://www.cython.org/>`_ 
     Tested with Cython >= 0.11
-`Fparser <http://f2py.googlecode.com/svn/trunk/fparser/>`_ 
-    Used by fwrap for parsing Fortran code (will be distributed with fwrap's
-    releases)
 
-And, of course a sufficiently recent version of `Python
-<http://www.python.org/>`_ (tested with versions 2.5 and 2.6) and a Fortran 90
-compiler.  `Gfortran <http://gcc.gnu.org/wiki/GFortran>`_ version >= 4.3.3
-works well, as does Intel's `ifort
-<http://software.intel.com/en-us/intel-compilers/>`_.
+**A Fortran 90 compiler**
+
+    Known to work with:
+
+      * ``gfortran`` >= 4.4.1
+
+      * ``ifort`` >= 11.1
+
+      * ``g95`` >= 0.92
+
 
 Bug reports, Wiki & Mailing list
 ================================
@@ -66,9 +76,9 @@ Some helpful links
 .. rubric:: Footnotes
 
 .. [#sane-def]
-   By "sane", we mean "don't use Fortran 77 features officially discouraged by
-   the Fortran 9x standard."  This restriction will gradually relax as more F77
-   features are supported.
+   By "sane", we mean don't use `ENTRY`, `EQUIVALENCE`, STATEMENT functions, or
+   other dark corners of Fortran 77.  If you don't know what these are, count
+   yourself lucky.
 
 
 ..  Indices and tables
