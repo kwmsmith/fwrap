@@ -38,10 +38,12 @@ if os.name == 'posix':
 else:
     scripts = ['fwrapc.py']
 
+from fwrap.version import get_version
+
 setup(name="fwrap",
-      version="0.1a1",
+      version=get_version(),
       description="Tool to wrap Fortran 77/90/95 code in C, Cython & Python.",
-      author="Kurt W. Smith",
+      author="Kurt W. Smith & contributors",
       author_email="kwmsmith@gmail.com",
       url="http://fwrap.sourceforge.net/",
       packages=[

@@ -1,0 +1,4 @@
+include fwrap/*.config
+include fwrap/fparser/*.config
+include runnose.py runtests.py
+recursive-include tests *.f90 *.py

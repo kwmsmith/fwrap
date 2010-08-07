@@ -40,8 +40,8 @@ def get_version():
     try:
         pp = Popen("hg identify --id --rev tip".split(), stdout=PIPE, stderr=PIPE)
         pp.wait()
-        global_id = pp.stdout.read()
+        global_id = pp.stdout.read().strip()
         err_txt = pp.stderr.read()
     except OSError:
         global_id = "unknown"
-    return "%sdev_%s" % (base_version, global_id)
+    return "%s_dev%s" % (base_version, global_id)
