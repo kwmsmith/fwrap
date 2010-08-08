@@ -11,10 +11,9 @@ subroutine D1(a)
 
 end subroutine D1
 
-subroutine D2(a, b)
+subroutine D2(a)
     implicit none
     logical*4, intent(out), dimension(:,:) :: a
-    complex*8, intent(inout), dimension(:) :: b
 
     a = .true.
     a(::2, ::2) = .false.
@@ -27,4 +26,5 @@ subroutine D3(a)
 
     a = .true.
     a(::2, :, :) = .false.
+
 end subroutine
