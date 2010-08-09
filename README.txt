@@ -32,6 +32,9 @@ Fwrap has been sucessfully tested with:
 
  * NumPy >= 1.3.0
 
+ * Nose (fairly recent version) for running unittests. The
+   *integration* tests (see below) do not require nose.
+
  * A sufficiently modern Fortran 90 compiler.
 
 Fwrap has been tested on three fortran compilers to date (see below),
@@ -55,8 +58,8 @@ dimensions, then there's no problem. (Gfortran works in 4.4.1 and
 later.)
 
 
-Running the Tests
------------------
+Running the Integration Tests
+-----------------------------
 
 Fwrap has a pretty good testsuite.  Getting it running will indicate
 if everything is working on your system and is highly recommended
@@ -68,8 +71,7 @@ executable.  For a bash shell, do the following:
 
     $ export F90=/path/to/fortran/executable
 
-    $ export LDFLAGS='-L/path/to/fortran/runtime/lib
-     -l<runtimelibname>'
+    $ export LDFLAGS='-L/path/to/fortran/runtime/lib -l<runtimelibname>'
 
 For gfortran:
 
@@ -107,4 +109,4 @@ For fwrap news:
 
     http://fortrancython.wordpress.com/
 
-.. vim:tw=69
+.. vim:tw=69 ft=rst

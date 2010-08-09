@@ -31,8 +31,6 @@
 from fwrap import pyf_iface as pyf
 from fparser import api
 
-from nose.tools import set_trace
-
 def generate_ast(fsrcs):
     ast = []
     for src in fsrcs:
