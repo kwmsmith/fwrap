@@ -2,7 +2,7 @@ include fwrap/*.config
 include fwrap/fparser/*.config
 recursive-include fwrap/tests *.py
 
-include runnose.py runtests.py fwrapc.py
+include runnose.py runtests.py fwrapc.py *.txt MANIFEST.in
 
 recursive-include tests *.f90 *.py *.txt
 recursive-include examples Makefile *.f90
