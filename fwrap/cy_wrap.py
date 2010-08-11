@@ -585,8 +585,10 @@ class ProcWrapper(object):
     def return_tuple(self):
         ret_arg_list = []
         ret_arg_list.extend(self.arg_mgr.return_tuple_list())
-        if ret_arg_list:
+        if len(ret_arg_list) > 1:
             return "return (%s,)" % ", ".join(ret_arg_list)
+        elif len(ret_arg_list) == 1:
+            return "return %s" % ret_arg_list[0]
         else:
             return ''
 
@@ -649,9 +651,12 @@ class ProcWrapper(object):
         in_args = ", ".join(self.arg_mgr.docstring_extern_arg_list())
         dstring = "%s(%s)" % (self.name, in_args)
 
-        out_args = ", ".join(self.arg_mgr.docstring_return_tuple_list())
-        if out_args:
-            dstring = "%s -> (%s,)" % (dstring, out_args)
+        doc_ret_vars = self.arg_mgr.docstring_return_tuple_list()
+        out_args = ", ".join(doc_ret_vars)
+        if len(doc_ret_vars) > 1:
+            dstring = '%s -> (%s)' % (dstring, out_args)
+        elif len(doc_ret_vars) == 1:
+            dstring = '%s -> %s' % (dstring, out_args)
 
         return [dstring]
 

@@ -19,7 +19,7 @@ def test_const_expr(bad_size=False):
     arr = np.empty(extent, dtype=np.int32, order='F')
     arr.fill(0)
 
-    (arr,) = const_expr(arr)
+    arr = const_expr(arr)
     return np.all(arr == array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]))
 
 def test_arg_expr(bad_size=False):
@@ -37,7 +37,7 @@ def test_arg_expr(bad_size=False):
     if bad_size:
         extent -= 1
     arr = np.empty(extent, dtype=np.int32, order='F')
-    res, = arg_expr(arr, n1, n2)
+    res = arg_expr(arr, n1, n2)
     return np.all(res == 12)
 
 def test_param_expr():
@@ -63,7 +63,7 @@ def test_param_expr():
                 k = -d3 + k_
                 compare[i_,j_,k_] = i + j + k
 
-    res, = param_expr(arr)
+    res = param_expr(arr)
 
     return np.all(res == compare)
 

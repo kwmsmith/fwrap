@@ -499,7 +499,7 @@ class test_cy_proc_wrapper(object):
         cy_wrapper = '''\
 cpdef api object fort_subr(fwi_integer_t int_arg_in, fwi_integer_t int_arg_inout, fwr_real_t real_arg):
     """
-    fort_subr(int_arg_in, int_arg_inout, real_arg) -> (int_arg_inout, int_arg_out, real_arg,)
+    fort_subr(int_arg_in, int_arg_inout, real_arg) -> (int_arg_inout, int_arg_out, real_arg)
 
     Parameters
     ----------
@@ -530,7 +530,7 @@ cpdef api object fort_subr(fwi_integer_t int_arg_in, fwi_integer_t int_arg_inout
         cy_wrapper = '''\
 cpdef api object fort_func(fwi_integer_t int_arg_in, fwi_integer_t int_arg_inout, fwr_real_t real_arg):
     """
-    fort_func(int_arg_in, int_arg_inout, real_arg) -> (fw_ret_arg, int_arg_inout, int_arg_out, real_arg,)
+    fort_func(int_arg_in, int_arg_inout, real_arg) -> (fw_ret_arg, int_arg_inout, int_arg_out, real_arg)
 
     Parameters
     ----------
@@ -573,7 +573,7 @@ class test_docstring_gen(object):
 
     def test_func_dstring(self):
         dstring = """\
-        dstring_func(int_arg_inout, int_arg, int_array) -> (fw_ret_arg, int_arg_inout, int_arg, int_array,)
+        dstring_func(int_arg_inout, int_arg, int_array) -> (fw_ret_arg, int_arg_inout, int_arg, int_array)
 
         Parameters
         ----------

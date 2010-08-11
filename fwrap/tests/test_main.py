@@ -163,7 +163,7 @@ cdef extern from "string.h":
     void *memcpy(void *dest, void *src, size_t n)
 cpdef api object empty_func():
     """
-    empty_func() -> (fw_ret_arg,)
+    empty_func() -> fw_ret_arg
 
     Parameters
     ----------
@@ -180,7 +180,7 @@ cpdef api object empty_func():
     empty_func_c(&fw_ret_arg, &fw_iserr__, fw_errstr__)
     if fw_iserr__ != FW_NO_ERR__:
         raise RuntimeError("an error was encountered when calling the 'empty_func' wrapper.")
-    return (fw_ret_arg,)
+    return fw_ret_arg
 ''' % get_version()
         compare(test_str, buf.getvalue())
 

@@ -6,12 +6,12 @@ __doc__ = u'''
 >>> char_star('aaaaa', 'bb', 'cccccccccc', 'dddddddd')
 ('bb   ', 'dddddddd  ', 'dddddddd')
 >>> char1("1234567890")
-('aoeuidhtns          ',)
+'aoeuidhtns          '
 >>> char2("1234567890")
 >>> char3()
-("',.py",)
+"',.py"
 >>> char4("a")
-('^',)
+'^'
 >>> char_len_x(ch='a'*20, ch_in='b'*10, ch_inout='_')
 ('bbbbbbbbbb_bbbb_bbbb', '_bbbb', 'a')
 >>> len_1_args('a', 'b')

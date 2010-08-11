@@ -12,7 +12,7 @@ def test_D1():
     acpy = a.copy()
     acpy[...] = True
     acpy[::2] = False
-    ar, = d1(a)
+    ar = d1(a)
     return np.all(ar.astype(bool) == acpy)
 
 def test_D2():
@@ -24,7 +24,7 @@ def test_D2():
     acpy = a.copy()
     acpy[...] = True
     acpy[::2, ::2] = False
-    ar, = d2(a)
+    ar = d2(a)
     return np.all(ar.astype(bool) == acpy)
 
 def test_D3():
@@ -36,5 +36,5 @@ def test_D3():
     acpy = a.copy()
     acpy[...] = True
     acpy[::2,:,:] = False
-    ar, = d3(a)
+    ar = d3(a)
     return np.all(ar.astype(bool) == acpy.astype(bool))
