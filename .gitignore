@@ -1,0 +1,3 @@
+*.pyc
+BUILD/*
+fwrap/fparser
