@@ -417,3 +417,68 @@ fwrap_cmdclass = {'config' : fw_config,
                   'build_src' : fw_build_src,
                   'build_ext' : fw_build_ext,
                   'scons' : _dummy_scons}
+
+
+def show_fcompilers(dist=None):
+    """Print list of available compilers (used by the "--help-fcompiler"
+    option to "config_fc").
+    """
+    from numpy.distutils import fcompiler, log
+    if dist is None:
+        from distutils.dist import Distribution
+        from numpy.distutils.command.config_compiler import config_fc
+        dist = Distribution()
+        dist.script_name = os.path.basename(sys.argv[0])
+        dist.script_args = ['config_fc'] + sys.argv[1:]
+        try:
+            dist.script_args.remove('--help-fcompiler')
+        except ValueError:
+            pass
+        dist.cmdclass['config_fc'] = config_fc
+        dist.parse_config_files()
+        dist.parse_command_line()
+    compilers = {}
+    compilers_na = []
+    compilers_ni = []
+    if not fcompiler.fcompiler_class:
+        fcompiler.load_all_fcompiler_classes()
+    platform_compilers = fcompiler.available_fcompilers_for_platform()
+    for compiler in platform_compilers:
+        v = None
+        log.set_verbosity(-2)
+        try:
+            c = fcompiler.new_fcompiler(compiler=compiler, verbose=dist.verbose)
+            c.customize(dist)
+            v = c.get_version()
+        except (fcompiler.DistutilsModuleError, fcompiler.CompilerNotFound), e:
+            log.debug("show_fcompilers: %s not found" % (compiler,))
+            log.debug(repr(e))
+
+        if v is None:
+            compilers_na.append(("fcompiler="+compiler, None,
+                              fcompiler.fcompiler_class[compiler][2]))
+        else:
+            c.dump_properties()
+            compilers[compiler] = c
+            # compilers.append(("fcompiler="+compiler, None,
+                              # fcompiler.fcompiler_class[compiler][2] + ' (%s)' % v))
+
+    # compilers_ni = list(set(fcompiler.fcompiler_class.keys()) - set(platform_compilers))
+    # compilers_ni = [("fcompiler="+fc, None, fcompiler.fcompiler_class[fc][2])
+                    # for fc in compilers_ni]
+
+    # compilers.sort()
+    # compilers_na.sort()
+    # compilers_ni.sort()
+
+    return compilers
+
+    # pretty_printer = fcompiler.FancyGetopt(compilers)
+    # pretty_printer.print_help("Fortran compilers found:")
+    # pretty_printer = fcompiler.FancyGetopt(compilers_na)
+    # pretty_printer.print_help("Compilers available for this "
+                              # "platform, but not found:")
+    # if compilers_ni:
+        # pretty_printer = fcompiler.FancyGetopt(compilers_ni)
+        # pretty_printer.print_help("Compilers not available on this platform:")
+    # print "For compiler details, run 'config_fc --verbose' setup command."

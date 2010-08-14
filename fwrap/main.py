@@ -590,8 +590,8 @@ Usage: %prog [options] fortran-source [fortran-source ...]
     # Call main routine
 
     if parsed_options.help_fcompiler:
-       config_compiler.show_fortran_compilers()
-       return 0
+        config_compiler.show_fortran_compilers()
+        return 0
 
     if not source_files:
         parser.error("no source files")
