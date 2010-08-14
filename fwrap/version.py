@@ -38,7 +38,7 @@ def get_version():
 
     from subprocess import Popen, PIPE
     try:
-        pp = Popen("hg identify --id --rev tip".split(), stdout=PIPE, stderr=PIPE)
+        pp = Popen("git rev-parse --short HEAD".split(), stdout=PIPE, stderr=PIPE)
         pp.wait()
         global_id = pp.stdout.read().strip()
         err_txt = pp.stderr.read()

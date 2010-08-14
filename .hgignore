@@ -1,9 +1,0 @@
-syntax: glob
-*.swp
-fparser
-.coverage
-*.vim
-BUILD/*
-*.log
-doc/sphinxdocs/build/*
-doc/sphinxdocs/sphinx-build
