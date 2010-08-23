@@ -1,3 +1,4 @@
 *.pyc
 BUILD/*
 fwrap/fparser
+fwrap.log
