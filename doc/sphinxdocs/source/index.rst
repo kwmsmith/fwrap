@@ -19,6 +19,10 @@ Fwrap is licensed under the new BSD license.
 Fwrap is in beta-stage until otherwise indicated.  All commandline options and
 public APIs are subject to change.
 
+Fwrap changed its SCM from Mercurial to Git (github with a mirror on
+sourceforge).  You can access the main development repository 
+`here on github <http://github.com/kwmsmith/fwrap>`_.
+
 Download Fwrap
 ==============
 
@@ -60,7 +64,7 @@ Bug reports, Wiki & Mailing list
 Development
 ===========
 
-`Mercurial Repository <http://bitbucket.org/kwmsmith/fwrap-dev/>`_
+`Git repository <http://github.com/kwmsmith/fwrap>`_
     To get the latest development version
 
 `Development blog <http://fortrancython.wordpress.com/>`_
