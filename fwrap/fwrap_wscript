@@ -40,7 +40,7 @@ def build(bld):
 		typemap = 'fwrap_type_specs.in',
 		use = 'fcshlib',
 		includes = '.',
-		target = 'test_waf_f',
+		name = 'test_waf_f',
 		)
 
 	bld(
@@ -149,8 +149,6 @@ def process_typemaps(self):
 	wrap_tsk = self.create_compiled_task('fc', wrapper)
 	wrap_tsk.set_run_after(tsk)
 	wrap_tsk.nomod = True
-	import pdb; pdb.set_trace()
-	# wrap_tsk.includes = [self.bld.bldnode]
 
 class modmap(Task.Task):
 	"""
