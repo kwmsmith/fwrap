@@ -1,3 +1,10 @@
+"""
+TODO:
+	use a cache in find_fc_type().
+	numpy includes (add a conf method like in fc_config.py)
+	'use' statement support...
+	*** ask TN about loading a config file from somewhere else ***
+"""
 top = '.'
 out = 'build'
 
@@ -8,6 +15,9 @@ def options(opt):
 	# opt.load('cython')
 
 def configure(conf):
+	# why doesn't this work?
+	# conf.env.load('fwrap.cache.py')
+
 	conf.load('compiler_c')
 	conf.load('compiler_fc')
 	conf.check_fortran()
