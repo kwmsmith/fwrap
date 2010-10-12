@@ -43,7 +43,7 @@ def build(bld):
 		source = 'fsrc.f90 test_waf.pyx',
 		wrapper = 'test_waf_fc.f90',
 		typemap = 'fwrap_type_specs.in',
-		target = 'test_waf_f',
+		target = 'test_waf',
 		use = 'fcshlib CLIB NUMPY',
 		includes = ['.']
 		)
