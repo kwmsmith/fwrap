@@ -39,7 +39,7 @@ def configure(conf):
 def build(bld):
 
 	bld(
-		features = 'fc typemap pyext cshlib',
+		features = 'c fc typemap pyext cshlib',
 		source = 'fsrc.f90 test_waf.pyx',
 		wrapper = 'test_waf_fc.f90',
 		typemap = 'fwrap_type_specs.in',
