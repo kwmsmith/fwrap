@@ -3,12 +3,12 @@ TODO:
     use a cache in find_fc_type().
     numpy includes (add a conf method like in fc_config.py)
     'use' statement support...
-    *** ask TN about loading a config file from somewhere else ***
 """
 top = '.'
 out = 'build'
 
 def options(opt):
+    opt.add_option('--name', action='store', default='fwproj')
     opt.load('compiler_c')
     opt.load('compiler_fc')
     opt.load('python')
