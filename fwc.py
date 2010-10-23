@@ -1,4 +1,4 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python
 
 """
 fwc.py -- new implementation of fwrapc command, replaces distutils nastiness
@@ -12,7 +12,7 @@ from collections import defaultdict
 import subprocess
 
 def subargs_split(sbcmds, argv):
-    dd = defaultdict(list)
+    dd = {}
     if '' in sbcmds:
         raise ValueError('empty string not a valid subcommand')
     cur_subcmd = ''
@@ -21,9 +21,10 @@ def subargs_split(sbcmds, argv):
             if arg in dd:
                 raise ValueError("duplicate subcommand '%s'" % arg)
             cur_subcmd = arg
+            dd[cur_subcmd] = []
         else:
             dd[cur_subcmd].append(arg)
-    return dict(dd)
+    return dd
 
 def configure_cb(opts, args, orig_args):
     p = os.path
