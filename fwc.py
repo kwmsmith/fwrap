@@ -16,6 +16,7 @@ def subargs_split(sbcmds, argv):
     if '' in sbcmds:
         raise ValueError('empty string not a valid subcommand')
     cur_subcmd = ''
+    dd[cur_subcmd] = []
     for arg in argv:
         if arg in sbcmds:
             if arg in dd:
