@@ -12,7 +12,6 @@ def options(opt):
     opt.load('compiler_c')
     opt.load('compiler_fc')
     opt.load('python')
-    # opt.load('cython')
 
 def configure(conf):
 
@@ -36,16 +35,28 @@ def configure(conf):
     conf.find_program('cython', var='CYTHON')
     conf.check_cython_version(minver=(0,11,1))
 
+    conf.find_program(['fwrapc.py', 'fwrapc'], var='FWRAPC')
+
 def build(bld):
+
+    wrapper = '%s_fc.f90' % bld.options.name
+    cy_src = '%s.pyx' % bld.options.name
+
+    bld(
+        name = 'fwrapc',
+        rule = '${PYTHON} ${FWRAPC} ${SRC}',
+        source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90']),
+        target = ['fwrap_type_specs.in', wrapper, cy_src],
+        )
 
     bld(
         features = 'c fc typemap pyext cshlib',
-        source = 'fsrc.f90 test_waf.pyx',
-        wrapper = 'test_waf_fc.f90',
+        source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90']) + [cy_src],
+        wrapper = wrapper,
         typemap = 'fwrap_type_specs.in',
-        target = 'test_waf',
+        target = bld.options.name,
         use = 'fcshlib CLIB NUMPY',
-        includes = ['.']
+        includes = ['.'],
         )
 
 
@@ -107,7 +118,6 @@ from waflib import TaskGen, Task
 TaskGen.declare_chain(
         name = "cython",
         rule = "${CYTHON} ${CYTHONFLAGS} ${CPPPATH_ST:INCPATHS} ${SRC} -o ${TGT}",
-        # shell=False,
         ext_in = ['.pyx'],
         ext_out = ['.c'],
         reentrant = True,
@@ -115,7 +125,6 @@ TaskGen.declare_chain(
         )
 
 @TaskGen.feature('typemap')
-# This ordering seems clearer than @after('apply_link')
 @TaskGen.after('process_source')
 @TaskGen.before('apply_link')
 def process_typemaps(self):
@@ -123,7 +132,7 @@ def process_typemaps(self):
     modmap: *.f90 + foo.in -> foo.h + foo.f90 + foo.pxd + foo.pxi
     compile foo.f90 like the others
     """
-    node = self.path.find_resource(getattr(self, 'typemap', modmap.typemap_in))
+    node = self.path.find_or_declare(getattr(self, 'typemap', modmap.typemap_in))
     if not node:
         raise self.bld.errors.WafError('no typemap file declared for %r' % self)
 
@@ -185,7 +194,7 @@ from fwrap import gen_config as gc
 
 def gen_type_map_files(bld, inputs, outputs):
     ktp_in = [ip for ip in inputs if ip.name.endswith('.in')][0]
-    ctps = gc.read_type_spec(ktp_in.name)
+    ctps = gc.read_type_spec(ktp_in.abspath())
     find_types(bld, ctps)
 
     def find_by_ext(lst, ext):
@@ -200,11 +209,6 @@ def gen_type_map_files(bld, inputs, outputs):
     gc.write_header(ctps, find_by_ext(outputs, '.h'))
     gc.write_pxd(ctps, find_by_ext(outputs, '.pxd'), header_name)
     gc.write_pxi(ctps, find_by_ext(outputs, '.pxi'))
-
-    # write fortran -> C mapping to file.
-    # fort_file = [ff for ff in outputs if ff.name.endswith('.f90')][0]
-    # c_header = [ch for ch in outputs if ch.name.endswith('.h')][0]
-    # write_type_map(bld, ctps, fort_file, c_header)
 
 def find_types(bld, ctps):
     for ctp in ctps:
@@ -251,27 +255,5 @@ end subroutine outer
     else:
         res = ''
     return res
-
-def write_type_map(bld, ctps, fort_file, c_header):
-    fort_file.write('''\
-module type_maps
-use, intrinsic :: iso_c_binding
-implicit none
-''', flags='w')
-    for ctp in ctps:
-        fort_file.write('integer, parameter :: %s = %s\n' % (ctp.fwrap_name, ctp.fc_type),
-                flags='a')
-    fort_file.write('end module type_maps\n', flags='a')
-
-    cap_name = '%s__' % c_header.name.upper().replace('.', '_')
-    c_header.write('''\
-#ifndef %s
-#define %s
-''' % (cap_name, cap_name), flags='w')
-    for ctp in ctps:
-        # This is just an example, so this would be customized. The 'long long'
-        # would correspond to the actual C type...
-        c_header.write('typedef long long %s\n' % ctp.fwrap_name, flags='a')
-    c_header.write('#endif\n', flags='a')
 
 # vim:ft=python

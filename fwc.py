@@ -27,29 +27,28 @@ def subargs_split(sbcmds, argv):
             dd[cur_subcmd].append(arg)
     return dd
 
-def configure_cb(opts, args, orig_args):
+def setup_dirs(dirname):
     p = os.path
     fwrap_path = p.abspath(p.join(p.dirname(__file__), 'fwrap'))
     # set up the project directory.
-    proj_dir = os.path.join(os.path.abspath(os.curdir), opts.name)
     try:
-        os.mkdir(proj_dir)
+        os.mkdir(dirname)
     except OSError:
         pass
-    src_dir = os.path.join(proj_dir, 'src')
+    src_dir = os.path.join(dirname, 'src')
     try:
         os.mkdir(src_dir)
     except OSError:
         pass
 
-    # cp the wscript into the project dir.
+    # cp waf and wscript into the project dir.
     fw_wscript = os.path.join(
             fwrap_path,
             'fwrap_wscript')
 
     shutil.copy(
             fw_wscript,
-            os.path.join(proj_dir, 'wscript'))
+            os.path.join(dirname, 'wscript'))
 
     waf_path = os.path.join(
             fwrap_path,
@@ -57,56 +56,88 @@ def configure_cb(opts, args, orig_args):
 
     shutil.copy(
             waf_path,
-            proj_dir)
+            dirname)
+
+def wipe_out(dirname):
+    # wipe out everything and start over.
+    shutil.rmtree(dirname, ignore_errors=True)
+
+def proj_dir(opts):
+    return os.path.join(os.path.abspath(os.curdir), opts.name)
+
+def configure_cb(opts, args, orig_args):
+    wipe_out(proj_dir(opts))
+    setup_dirs(proj_dir(opts))
+
+def build_cb(opts, args, argv):
+    srcs = []
+    for arg in args:
+        larg = arg.lower()
+        if larg.endswith('.f') or larg.endswith('.f90'):
+            srcs.append(os.path.abspath(arg))
+            argv.remove(arg)
+
+    dst = os.path.join(proj_dir(opts), 'src')
+    for src in srcs:
+        shutil.copy(src, dst)
+
+def call_waf(opts, args, orig_args):
+    if 'configure' in args:
+        configure_cb(opts, args, orig_args)
+
+    if 'build' in args:
+        build_cb(opts, args, orig_args)
 
     py_exe = sys.executable
 
-    cmd = [py_exe, waf_path, 'configure'] + orig_args
+    waf_path = os.path.join(proj_dir(opts), 'waf')
+
+    cmd = [py_exe, waf_path] + orig_args
     odir = os.path.abspath(os.curdir)
-    os.chdir(proj_dir)
+    os.chdir(proj_dir(opts))
     try:
         subprocess.check_call(cmd)
     finally:
         os.chdir(odir)
 
-if __name__ == '__main__':
+    return 0
+
+def main():
     subcommands = ('configure', 'gen', 'build')
 
     argv = sys.argv[1:]
 
     subargs = subargs_split(subcommands, argv)
 
-    # global options
-    global_parser = OptionParser()
-    global_opts = OptionGroup(global_parser, "Global Options")
-    global_parser.remove_option('--help') # we handle help ourselves.
-    global_opts.add_option('-h', '--help', action="store_true",
-                      default=False,
-                      help="show this help message and exit")
-    global_opts.add_option('--version', dest="version",
+    parser = OptionParser()
+    parser.add_option('--version', dest="version",
                       action="store_true", default=False,
                       help="get version and license info and exit")
-    global_parser.add_option_group(global_opts)
+
+    parser.add_option('-v', dest='verbose', action='count', default=0)
 
     # configure options
-    configure_parser = OptionParser()
-    configure_opts = OptionGroup(configure_parser, "Configure Options")
+    configure_opts = OptionGroup(parser, "Configure Options")
     configure_opts.add_option("--name",
             help='name for the project directory and extension module')
-    configure_parser.add_option_group(configure_opts)
+    parser.add_option_group(configure_opts)
 
     conf_defaults = dict(name="fwproj")
-    configure_parser.set_defaults(**conf_defaults)
+    parser.set_defaults(**conf_defaults)
 
-    if '' in subargs:
-        gopts, gargs = global_parser.parse_args(subargs[''])
-        if gopts.help:
-            global_parser.print_help()
-            configure_parser.print_help()
-        print "global opts, args:", gopts, gargs
+    opts, args = parser.parse_args()
 
-    if 'configure' in subargs:
-        orig_args = subargs['configure']
-        copts, cargs = configure_parser.parse_args(orig_args)
-        print "conf opts, args:", copts, cargs
-        configure_cb(copts, cargs, orig_args)
+    if opts.version:
+        from fwrap.main import print_version
+        print_version()
+        return 0
+
+    if not ('configure' in args or 'build' in args):
+        parser.print_usage()
+        return 1
+
+    return call_waf(opts, args, argv)
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main())
