@@ -1,6 +1,19 @@
 Fwrap - Installation Instructions
 =================================
 
+You first need to install fparser, then you can install fwrap.
+
+Install fparser
+---------------
+
+From the fwrap root git repository::
+
+    hg clone http://f2py.googlecode.com/hg/ f2py
+    ln -s ../f2py/fparser fwrap/fparser
+
+Install fwrap
+-------------
+
 You have two installation options:
 
 1. Run the setup.py script in this directory as follows:
