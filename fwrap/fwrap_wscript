@@ -289,7 +289,7 @@ int main(int argc, char **argv)
     ;
     return 0;
 }
-    '''
+'''
     ctypes = ('signed char', 'short int',
                     'int', 'long int', 'long long int')
     for ctype in ctypes:
@@ -297,6 +297,7 @@ int main(int argc, char **argv)
         try:
             bld.check_cc(
                     fragment=cfrag,
+                    features = 'c',
                     compile_filename='test.c',
                     use='NUMPY pyext')
         except bld.errors.ConfigurationError:
