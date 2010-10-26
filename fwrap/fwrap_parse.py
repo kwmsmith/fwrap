@@ -39,8 +39,8 @@ def generate_ast(fsrcs):
         for proc in tree:
 
             if not is_proc(proc):
-                raise RuntimeError(
-                        "unsupported Fortran construct %r." % proc)
+                # we ignore non-top-level procedures until modules are supported.
+                continue
 
             args = _get_args(proc)
             params = _get_params(proc)
