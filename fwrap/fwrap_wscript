@@ -37,6 +37,10 @@ def configure(conf):
 
     conf.env['FW_PROJ_NAME'] = conf.options.name
 
+    conf.add_os_flags('INCLUDES')
+    conf.add_os_flags('LIB')
+    conf.add_os_flags('LIBPATH')
+
 def build(bld):
 
     wrapper = '%s_fc.f90' % bld.env['FW_PROJ_NAME']
