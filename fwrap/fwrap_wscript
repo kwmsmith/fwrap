@@ -213,14 +213,27 @@ def gen_type_map_files(bld, inputs, outputs):
 def find_types(bld, ctps):
     for ctp in ctps:
         fc_type = None
-        fc_type = find_fc_type(bld, ctp.basetype,
-                    ctp.odecl)
+        if ctp.lang == 'fortran':
+            fc_type = find_fc_type(bld, ctp.basetype,
+                        ctp.odecl)
+        elif ctp.lang == 'c':
+            fc_type = find_c_type(bld, ctp)
         if not fc_type:
             raise bld.errors.WafError(
                     "unable to find C type for type %s" % ctp.odecl)
         ctp.fc_type = fc_type
 
-def find_fc_type(bld, base_type, decl):
+
+fc_type_memo = {}
+def find_fc_type(bld, basetype, decl):
+    res = fc_type_memo.get((basetype, decl), None)
+    if res is not None:
+        return res
+
+    if basetype == 'logical':
+        basetype = 'integer'
+        decl = decl.replace('logical', 'integer')
+
     fsrc_tmpl = '''\
 subroutine outer(a)
   use, intrinsic :: iso_c_binding
@@ -236,8 +249,8 @@ subroutine outer(a)
   call inner(a)
 end subroutine outer
 '''
-    for ctype in gc.type_dict[base_type]:
-        test_decl = '%s(kind=%s)' % (base_type, ctype)
+    for ctype in gc.type_dict[basetype]:
+        test_decl = '%s(kind=%s)' % (basetype, ctype)
         fsrc = fsrc_tmpl % {'TYPE_DECL' : decl,
                             'TEST_DECL' : test_decl}
         try:
@@ -245,8 +258,7 @@ end subroutine outer
                     fragment=fsrc,
                     compile_filename='test.f90',
                     features='fc',
-                    includes = bld.bldnode.abspath(),
-                    )
+                    includes = bld.bldnode.abspath())
         except bld.errors.ConfigurationError:
             pass
         else:
@@ -254,6 +266,46 @@ end subroutine outer
             break
     else:
         res = ''
+    fc_type_memo[basetype, decl] = res
     return res
+
+def find_c_type(bld, ctp):
+    if ctp.lang != 'c':
+        raise ValueError("wrong language, given %s, expected 'c'" % ctp.lang)
+    if ctp.basetype != 'integer':
+        raise ValueError(
+                "only integer basetype supported for C type discovery.")
+
+    tmpl = r'''
+#include "Python.h"
+#include "numpy/arrayobject.h"
+
+typedef %(type)s npy_check_sizeof_type;
+int main(int argc, char **argv)
+{
+    static int test_array [1 - 2 * !(((long) (sizeof (npy_check_sizeof_type))) == sizeof(%(ctype)s))];
+    test_array [0] = 0
+
+    ;
+    return 0;
+}
+    '''
+    ctypes = ('signed char', 'short int',
+                    'int', 'long int', 'long long int')
+    for ctype in ctypes:
+        cfrag = tmpl % {'type' : ctp.odecl, 'ctype' : ctype}
+        try:
+            bld.check_cc(
+                    fragment=cfrag,
+                    compile_filename='test.c',
+                    use='NUMPY pyext')
+        except bld.errors.ConfigurationError:
+            pass
+        else:
+            res = ctype
+            break
+    else:
+        res = ''
+    return gc.c2f[res]
 
 # vim:ft=python
