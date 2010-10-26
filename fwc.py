@@ -11,21 +11,7 @@ from collections import defaultdict
 
 import subprocess
 
-def subargs_split(sbcmds, argv):
-    dd = {}
-    if '' in sbcmds:
-        raise ValueError('empty string not a valid subcommand')
-    cur_subcmd = ''
-    dd[cur_subcmd] = []
-    for arg in argv:
-        if arg in sbcmds:
-            if arg in dd:
-                raise ValueError("duplicate subcommand '%s'" % arg)
-            cur_subcmd = arg
-            dd[cur_subcmd] = []
-        else:
-            dd[cur_subcmd].append(arg)
-    return dd
+PROJECT_OUTDIR = 'fwproj'
 
 def setup_dirs(dirname):
     p = os.path
@@ -62,12 +48,12 @@ def wipe_out(dirname):
     # wipe out everything and start over.
     shutil.rmtree(dirname, ignore_errors=True)
 
-def proj_dir(opts):
-    return os.path.join(os.path.abspath(os.curdir), opts.name)
+def proj_dir():
+    return os.path.join(os.path.abspath(os.curdir), PROJECT_OUTDIR)
 
 def configure_cb(opts, args, orig_args):
-    wipe_out(proj_dir(opts))
-    setup_dirs(proj_dir(opts))
+    wipe_out(proj_dir())
+    setup_dirs(proj_dir())
 
 def build_cb(opts, args, argv):
     srcs = []
@@ -77,7 +63,7 @@ def build_cb(opts, args, argv):
             srcs.append(os.path.abspath(arg))
             argv.remove(arg)
 
-    dst = os.path.join(proj_dir(opts), 'src')
+    dst = os.path.join(proj_dir(), 'src')
     for src in srcs:
         shutil.copy(src, dst)
 
@@ -90,11 +76,11 @@ def call_waf(opts, args, orig_args):
 
     py_exe = sys.executable
 
-    waf_path = os.path.join(proj_dir(opts), 'waf')
+    waf_path = os.path.join(proj_dir(), 'waf')
 
     cmd = [py_exe, waf_path] + orig_args
     odir = os.path.abspath(os.curdir)
-    os.chdir(proj_dir(opts))
+    os.chdir(proj_dir())
     try:
         subprocess.check_call(cmd)
     finally:
@@ -107,8 +93,6 @@ def main():
 
     argv = sys.argv[1:]
 
-    subargs = subargs_split(subcommands, argv)
-
     parser = OptionParser()
     parser.add_option('--version', dest="version",
                       action="store_true", default=False,
@@ -119,7 +103,7 @@ def main():
     # configure options
     configure_opts = OptionGroup(parser, "Configure Options")
     configure_opts.add_option("--name",
-            help='name for the project directory and extension module')
+            help='name for the extension module')
     parser.add_option_group(configure_opts)
 
     conf_defaults = dict(name="fwproj")

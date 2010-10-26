@@ -1,7 +1,5 @@
 """
 TODO:
-    use a cache in find_fc_type().
-    numpy includes (add a conf method like in fc_config.py)
     'use' statement support...
 """
 top = '.'
