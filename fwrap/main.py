@@ -33,7 +33,6 @@
 import os
 import sys
 import shutil
-import logging
 import tempfile
 from optparse import OptionParser
 from fwrap.code import CodeBuffer, reflow_fort
@@ -45,41 +44,6 @@ from fwrap import constants
 from fwrap import gen_config as gc
 from fwrap import fc_wrap
 from fwrap import cy_wrap
-
-import logging, logging.config
-
-
-def _setup_config():
-    pass
-    # Available options parsed from default config files
-    # _config_parser = ConfigParser.SafeConfigParser()
-    # fp = open(os.path.join(os.path.dirname(__file__), 'default.config'),'r')
-    # _config_parser.readfp(fp)
-    # fp.close()
-    # _available_options = {}
-    # for section in _config_parser.sections():
-        # for opt in _config_parser.options(section):
-            # _available_options[opt] = section
-    # Remove source option
-    # _available_options.pop('source')
-    # Add config option
-    # _available_options['config'] = None
-
-
-def get_projectpath(out_dir, name):
-    return os.path.abspath(os.path.join(out_dir, name))
-
-
-def shutdown_logging(projectpath):
-
-    logging.shutdown()
-
-    for fname in os.listdir(os.path.curdir):
-        if fname.endswith('.log'):
-            abspath = os.path.abspath(os.path.join(os.path.curdir, fname))
-            shutil.move(abspath, projectpath)
-
-
 
 def wrap(source=None,**kargs):
     r"""Wrap the source given and compile if requested
@@ -117,136 +81,39 @@ def wrap(source=None,**kargs):
      - *override* - (bool) If a project directory already exists in the
        out_dir specified, remove it and create a fresh project.
     """
-    # # Read in config file if present and parse input options
-    # if kargs.has_key('config'):
-        # file_list = _config_parser.read(kargs['config'])
-        # if kargs['config'] not in file_list:
-            # logger.warning("Could not open configuration file %s" % kargs['config'])
-    # for opt in _available_options.iterkeys():
-        # if not opt == 'config':
-            # if kargs.has_key(opt):
-                # exec("%s = kargs[opt]" % opt)
-            # else:
-                # exec("%s = _config_parser.get(_available_options[opt],opt)" % opt)
 
-    # Do some option parsing
+    # set-up the project path
     out_dir = kargs.get('out_dir')
     out_dir = out_dir.strip()
     name = kargs.get('name')
     name.strip()
-    logger.debug("Running with following options:")
-    # for opt in _available_options:
-        # if not (opt == 'source' or opt == 'config'):
-            # logger.debug("  %s = %s" % (opt,locals()[opt]))
-
-
-    help_fcompiler = kargs.get('help_fcompiler')
-    if help_fcompiler:
-        from distutils.core import run_setup
-        run_setup(file_name, script_args=make_scriptargs(kargs))
-        return
-
-    if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
-    project_path = get_projectpath(out_dir, name)
-
-    if os.path.exists(project_path):
-        override = kargs.get('override')
-        if override:
-            logger.debug("Removing %s" % project_path)
-            shutil.rmtree(project_path)
-            os.mkdir(project_path)
-        else:
-            raise ValueError("Project directory %s already exists" \
-                % os.path.join(out_dir,name.strip()))
-    else:
-        name.strip()
-        os.mkdir(project_path)
-    # *** TODO: Check if distutils can use this fcompiler and f90
+    project_path = out_dir
 
     # Check to see if each source exists and expand to full paths
-    raw_source = False
     source_files = []
-    # Parse config file source list
-    # config_source = _config_parser.get('general','source')
-    # if len(config_source) > 0:
-        # for src in config_source.split(','):
-            # source_files.append(src)
     # Parse function call source list
     if source is not None:
         if isinstance(source,basestring):
             if os.path.exists(source):
                 source_files = [source]
-            else:
-                # Assume this is raw source, put in temporary directory
-                raw_source = True
-                fh,source_path = tempfile.mkstemp(suffix='f90',text=True)
-                fh.write(source)
-                fh.close()
-                source_files.append(source_path)
         elif (isinstance(source,list) or isinstance(source,tuple)):
             for src in source:
                 source_files.append(src)
         else:
             raise ValueError("Must provide either a string or list of source")
 
-    # Validate and parse source list
-    if not source_files:
-        raise ValueError("Must provide at least one source to wrap.")
-    for (i,src) in enumerate(source_files):
-        # Expand variables and path
-        source_files[i] = os.path.expanduser(os.path.expandvars(src.strip()))
-        if not os.path.exists(source_files[i]):
-            raise ValueError("The source file %s does not exist." % source_files[i])
-    logger.debug("Wrapping the following source:")
-    for src in source_files:
-        logger.debug("  %s" % src)
-
     # Parse fortran using fparser
-    logger.info("Parsing source files.")
     f_ast = parse(source_files)
 
-    # XXX: total hack: turns out that when fparser sets up its logging with
+    # XXX: total hack: when fparser sets up its logging with
     # logger.configFile(...), **the logging module disables all existing
     # loggers**, which includes fwrap's logger.  This completely breaks our
     # logging functionality; thankfully it's simple turn it back on again.
-    logger.disabled = 0
-
-    logger.info("Parsing was successful.")
+    # logger.disabled = 0
 
     # Generate wrapper files
-    logger.info("Wrapping fortran...")
     generate(f_ast, name, project_path)
-    logger.info("Wrapping was successful.")
 
-    # generate setup.py file
-    libraries = kargs.get('libraries')
-    library_dirs = kargs.get('library_dirs')
-    extra_objects = kargs.get('extra_objects')
-    log_name = 'fwrap_setup.log'
-    if logging.DEBUG >= fwlogging.console_handler.level:
-        log_name = ""
-    file_name, buf = generate_setup(name, log_name, source_files,
-                                libraries, library_dirs, extra_objects)
-    write_to_project_dir(project_path, file_name, buf)
-
-    # Generate library module if requested
-    logger.info("Compiling sources and generating extension module...")
-    odir = os.path.abspath(os.curdir)
-    try:
-        os.chdir(project_path)
-        logger.info("Changing to project directory %s" % project_path)
-        from distutils.core import run_setup
-        run_setup(file_name, script_args=make_scriptargs(kargs))
-    finally:
-        if os.path.abspath(os.curdir) != odir:
-            logger.info("Returning to %s" % odir)
-            os.chdir(odir)
-    logger.info("Compiling was successful.")
-
-    # If raw source was passed in, we need to delete the temp file we created
-    if raw_source:
-        os.remove(source_files[0])
 
 def check_fcompiler(fcompiler):
     return fcompiler in allowed_fcompilers()
@@ -280,7 +147,7 @@ def generate(fort_ast,name,project_path):
     """
 
     # Generate wrapping abstract syntax trees
-    logger.info("Generating abstract syntax tress for c and cython.")
+    # logger.info("Generating abstract syntax tress for c and cython.")
     c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
     cython_ast = cy_wrap.wrap_fc(c_ast)
 
@@ -420,6 +287,7 @@ def make_scriptargs(kargs):
 
     return scargs
 
+# TODO: slated to be removed
 class fwlogging(object):
 
     ERROR, WARN, INFO, DEBUG = range(4)
@@ -467,7 +335,7 @@ FITNESS FOR A PARTICULAR PURPOSE.
 
 def main(use_cmdline, sources=None, logging=True, **options):
 
-    fwlogging.setup_logging()
+    # fwlogging.setup_logging()
 
     if sources is None:
         sources = []
@@ -508,59 +376,12 @@ Usage: %prog [options] fortran-source [fortran-source ...]
 
     if use_cmdline:
 
-        parser.add_option('--help-fcompiler', action='store_true', dest='help_fcompiler',
-                          help='output information about fortran compilers and exit')
-
-        parser.add_option('-V', '--version', dest="version",
-                          action="store_true",
-                          help="get version and license info and exit")
-
-        parser.add_option('-v', '--verbose', dest="verbose",
-                          action='count',
-                          help='the more v\'s (up to 3), the more chatty it gets')
-
         parser.add_option('-n', '--name', dest='name',
                           help='name for the project directory and extension module '
                           '[default: %default]')
-        parser.add_option('-b',  '--build',  dest='build_ext', action='store_true',
-                          help='create the extension module after generating wrappers [default: off]')
         parser.add_option('-o', '--out_dir', dest='out_dir',
                 help='specify where the project directory is to be placed, '
                 '[default: current directory]')
-
-        parser.add_option('--override', action="store_true", dest='override',
-                          help='clobber an existing project with the same name [default: off]')
-
-        parser.add_option('--fcompiler', dest='fcompiler',
-                          help='specify the fortran compiler to use, see \'--help-fcompiler\'')
-        parser.add_option('--f90exec', dest='f90exec',
-                          help=('Full path of the specified Fortran 90 compiler, '
-                          'not necessary if numpy distutils can discover it (see --help-fcompiler)'))
-        parser.add_option('--f90flags', dest='f90flags',
-                          help='extra fortran compilation flags')
-        parser.add_option('--objects', dest='extra_objects', action='callback',
-                            callback=varargs_cb,
-                            metavar='<object list>',
-                          help='extra object files, archives, etc. to include in the extension module')
-        parser.add_option('-L', dest='library_dirs',  action='append',
-                          metavar='libdir',
-                          help='add directory libdir to ld search path')
-        parser.add_option('-l', dest='libraries',  action='append',
-                          metavar='libname',
-                          help='runtime library name to include during linking,'
-                          ' e.g. -lgfortran or -lg95')
-
-        parser.add_option('--debug', dest='debug', action='store_true',
-                          help='include debug flags during compilation')
-        parser.add_option('--noopt', dest='noopt', action='store_true',
-                          help='remove all optimization flags during compilation')
-        parser.add_option('--noarch', dest='noarch', action='store_true',
-                          help='do not include architecture-specific flags during compilation')
-        parser.add_option('--opt', dest='opt',
-                          help='extra optimization flags to include during compilation')
-        parser.add_option('--arch', dest='arch',
-                          help='include target architecture during compilation')
-
         args = None
 
     else:
@@ -572,19 +393,7 @@ Usage: %prog [options] fortran-source [fortran-source ...]
         print_version()
         return 0
 
-    fwlogging.set_console_level(parsed_options.verbose)
-
     out_dir, name = parsed_options.out_dir, parsed_options.name
-
-    # Loop over options and put in a dictionary for passing into wrap
-    logger.debug("Command line arguments: ")
-    # for opt in _available_options.iterkeys():
-        # try:
-            # if getattr(parsed_options,opt) is not None:
-                # kargs[opt] = getattr(parsed_options,opt)
-                # logger.debug("  %s = %s" % (opt,kargs[opt]))
-        # except:
-            # pass
 
     retval = 0
     # Call main routine
@@ -601,6 +410,4 @@ Usage: %prog [options] fortran-source [fortran-source ...]
     except CompilerNotFound, m:
         print >>sys.stdout, m
         retval = 1
-    finally:
-        shutdown_logging(get_projectpath(out_dir, name))
     return retval

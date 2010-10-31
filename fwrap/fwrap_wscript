@@ -1,0 +1,324 @@
+"""
+TODO:
+    'use' statement support...
+"""
+top = '.'
+out = 'build'
+
+def options(opt):
+    opt.add_option('--name', action='store', default='fwproj')
+    opt.add_option('--outdir', action='store', default='fwproj')
+    opt.load('compiler_c')
+    opt.load('compiler_fc')
+    opt.load('python')
+
+def configure(conf):
+
+    cfg = conf.path.find_resource('fwrap.config.py')
+    if cfg:
+        conf.env.load(cfg.abspath())
+
+    conf.load('compiler_c')
+    conf.load('compiler_fc')
+    conf.check_fortran()
+    conf.check_fortran_verbose_flag()
+    conf.check_fortran_clib()
+
+    conf.load('python')
+    conf.check_python_version((2,5))
+    conf.check_python_headers()
+    conf.check_python_module('numpy')
+    conf.check_numpy_version(minver=(1,3), maxver=(1,5))
+    conf.get_numpy_includes()
+
+    conf.find_program('cython', var='CYTHON')
+    conf.check_cython_version(minver=(0,11,1))
+
+    conf.find_program(['fwrapc.py', 'fwrapc'], var='FWRAPC')
+
+    conf.env['FW_PROJ_NAME'] = conf.options.name
+
+    conf.add_os_flags('INCLUDES')
+    conf.add_os_flags('LIB')
+    conf.add_os_flags('LIBPATH')
+
+def build(bld):
+
+    wrapper = '%s_fc.f90' % bld.env['FW_PROJ_NAME']
+    cy_src = '%s.pyx' % bld.env['FW_PROJ_NAME']
+
+    bld(
+        name = 'fwrapc',
+        rule = '${PYTHON} ${FWRAPC} --name=%s ${SRC}' % bld.env['FW_PROJ_NAME'],
+        source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90']),
+        target = ['fwrap_type_specs.in', wrapper, cy_src],
+        )
+
+    bld(
+        features = 'c fc typemap pyext cshlib',
+        source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90']) + [cy_src],
+        wrapper = wrapper,
+        typemap = 'fwrap_type_specs.in',
+        target = bld.env['FW_PROJ_NAME'],
+        use = 'fcshlib CLIB NUMPY',
+        includes = ['.'],
+        install_path = bld.srcnode.abspath(),
+        )
+
+    bld(
+        rule = 'touch ${TGT}',
+        target = '__init__.py',
+        install_path = bld.srcnode.abspath(),
+        )
+
+
+from waflib.Configure import conf
+@conf
+def check_numpy_version(conf, minver, maxver=None):
+    conf.start_msg("Checking numpy version")
+    minver = tuple(minver)
+    if maxver: maxver = tuple(maxver)
+    (np_ver_str,) = conf.get_python_variables(conf.env['PYTHON'],
+            ['numpy.version.short_version'], ['import numpy'])
+    np_ver = tuple([int(x) for x in np_ver_str.split('.')])
+    if np_ver < minver or (maxver and np_ver > maxver):
+        conf.end_msg(False)
+        conf.fatal("numpy version %s is not in the "
+                "range of supported versions: minimum=%s, maximum=%s" % (np_ver_str, minver, maxver))
+    conf.end_msg(str(np_ver))
+
+@conf
+def get_numpy_includes(conf):
+    conf.start_msg("Checking numpy includes")
+    (np_includes,) = conf.get_python_variables(conf.env['PYTHON'],
+            ['numpy.get_include()'], ['import numpy'])
+    conf.env.INCLUDES_NUMPY = np_includes
+    conf.end_msg('ok (%s)' % np_includes)
+
+@conf
+def check_cython_version(conf, minver):
+    conf.start_msg("Checking cython version")
+    minver = tuple(minver)
+    import re
+    version_re = re.compile(r'cython\s*version\s*(?P<major>\d*)\.(?P<minor>\d*)(?:\.(?P<micro>\d*))?', re.I).search
+    cmd = conf.cmd_to_list(conf.env['CYTHON'])
+    cmd = cmd + ['--version']
+    from waflib.extras import fc_config
+    stdout, stderr = fc_config.getoutput(conf, cmd)
+    if stdout:
+        match = version_re(stdout)
+    else:
+        match = version_re(stderr)
+    if not match:
+        conf.fatal("cannot determine the Cython version")
+    cy_ver = [match.group('major'), match.group('minor')]
+    if match.group('micro'):
+        cy_ver.append(match.group('micro'))
+    else:
+        cy_ver.append('0')
+    cy_ver = tuple([int(x) for x in cy_ver])
+    if cy_ver < minver:
+        conf.end_msg(False)
+        conf.fatal("cython version %s < %s" % (cy_ver, minver))
+    conf.end_msg(str(cy_ver))
+
+import os
+from waflib import Logs, Build, Utils
+
+from waflib import TaskGen, Task
+
+TaskGen.declare_chain(
+        name = "cython",
+        rule = "${CYTHON} ${CYTHONFLAGS} ${CPPPATH_ST:INCPATHS} ${SRC} -o ${TGT}",
+        ext_in = ['.pyx'],
+        ext_out = ['.c'],
+        reentrant = True,
+        after = 'modmap',
+        )
+
+@TaskGen.feature('typemap')
+@TaskGen.after('process_source')
+@TaskGen.before('apply_link')
+def process_typemaps(self):
+    """
+    modmap: *.f90 + foo.in -> foo.h + foo.f90 + foo.pxd + foo.pxi
+    compile foo.f90 like the others
+    """
+    node = self.path.find_or_declare(getattr(self, 'typemap', modmap.typemap_in))
+    if not node:
+        raise self.bld.errors.WafError('no typemap file declared for %r' % self)
+
+    typemap_f90 = self.path.find_or_declare(modmap.typemap_f90)
+    typemap_h = self.path.find_or_declare(modmap.typemap_h)
+    typemap_pxd = self.path.find_or_declare(modmap.typemap_pxd)
+    typemap_pxi = self.path.find_or_declare(modmap.typemap_pxi)
+
+    outputs = [typemap_f90, typemap_h, typemap_pxd, typemap_pxi]
+
+    inputs = [node]
+    for x in self.tasks:
+        if x.inputs and x.inputs[0].name.endswith('.f90'):
+            inputs.append(x.inputs[0])
+
+    tmtsk = self.typemap_task = self.create_task(
+                                    'modmap',
+                                    inputs,
+                                    outputs)
+
+    for x in self.tasks:
+        if x.inputs and x.inputs[0].name.endswith('.f90'):
+            tmtsk.set_run_after(x)
+
+    wrapper = self.path.find_resource(getattr(self, 'wrapper', None))
+
+    tsk = self.create_compiled_task('fc', typemap_f90)
+    tsk.nomod = True # the fortran files won't compile unless all the .mod files are set, ick
+
+    wrap_tsk = self.create_compiled_task('fc', wrapper)
+    wrap_tsk.set_run_after(tsk)
+    wrap_tsk.nomod = True
+
+class modmap(Task.Task):
+    """
+    create .h and .f90 files, so this must run be executed before any c task
+    """
+    ext_out = ['.h'] # before any c task is not mandatory since #732 but i want to be sure (ita)
+    typemap_in = 'fwrap_type_specs.in'
+    typemap_f90 = 'fwrap_ktp_mod.f90'
+    typemap_h = 'fwrap_ktp_header.h'
+    typemap_pxd = 'fwrap_ktp.pxd'
+    typemap_pxi = 'fwrap_ktp.pxi'
+    def run(self):
+        """
+        we need another build context, because we cannot really disable the logger here
+        """
+        obld = self.generator.bld
+        bld = Build.BuildContext(top_dir=obld.srcnode.abspath(), out_dir=obld.bldnode.abspath())
+        bld.init_dirs()
+        bld.in_msg = 1 # disable all that comes from bld.msg(..), bld.start_msg(..) and bld.end_msg(...)
+        bld.env = self.env.derive()
+        node = self.inputs[0]
+        bld.logger = Logs.make_logger(node.parent.get_bld().abspath() + os.sep + node.name + '.log', 'build')
+
+        gen_type_map_files(bld, self.inputs, self.outputs)
+
+from fwrap import gen_config as gc
+
+def gen_type_map_files(bld, inputs, outputs):
+    ktp_in = [ip for ip in inputs if ip.name.endswith('.in')][0]
+    ctps = gc.read_type_spec(ktp_in.abspath())
+    find_types(bld, ctps)
+
+    def find_by_ext(lst, ext):
+        newlst = [x for x in lst if x.name.endswith(ext)]
+        if len(newlst) != 1:
+            return
+        return newlst[0]
+
+    header_name = find_by_ext(outputs, '.h').name
+
+    gc.write_f_mod(ctps, find_by_ext(outputs, '.f90'))
+    gc.write_header(ctps, find_by_ext(outputs, '.h'))
+    gc.write_pxd(ctps, find_by_ext(outputs, '.pxd'), header_name)
+    gc.write_pxi(ctps, find_by_ext(outputs, '.pxi'))
+
+def find_types(bld, ctps):
+    for ctp in ctps:
+        fc_type = None
+        if ctp.lang == 'fortran':
+            fc_type = find_fc_type(bld, ctp.basetype,
+                        ctp.odecl)
+        elif ctp.lang == 'c':
+            fc_type = find_c_type(bld, ctp)
+        if not fc_type:
+            raise bld.errors.WafError(
+                    "unable to find C type for type %s" % ctp.odecl)
+        ctp.fc_type = fc_type
+
+
+fc_type_memo = {}
+def find_fc_type(bld, basetype, decl):
+    res = fc_type_memo.get((basetype, decl), None)
+    if res is not None:
+        return res
+
+    if basetype == 'logical':
+        basetype = 'integer'
+        decl = decl.replace('logical', 'integer')
+
+    fsrc_tmpl = '''\
+subroutine outer(a)
+  use, intrinsic :: iso_c_binding
+  implicit none
+  %(TEST_DECL)s, intent(inout) :: a
+  interface
+    subroutine inner(a)
+      use, intrinsic :: iso_c_binding
+      implicit none
+      %(TYPE_DECL)s, intent(inout) :: a
+    end subroutine inner
+  end interface
+  call inner(a)
+end subroutine outer
+'''
+    for ctype in gc.type_dict[basetype]:
+        test_decl = '%s(kind=%s)' % (basetype, ctype)
+        fsrc = fsrc_tmpl % {'TYPE_DECL' : decl,
+                            'TEST_DECL' : test_decl}
+        try:
+            bld.check_cc(
+                    fragment=fsrc,
+                    compile_filename='test.f90',
+                    features='fc',
+                    includes = bld.bldnode.abspath())
+        except bld.errors.ConfigurationError:
+            pass
+        else:
+            res = ctype
+            break
+    else:
+        res = ''
+    fc_type_memo[basetype, decl] = res
+    return res
+
+def find_c_type(bld, ctp):
+    if ctp.lang != 'c':
+        raise ValueError("wrong language, given %s, expected 'c'" % ctp.lang)
+    if ctp.basetype != 'integer':
+        raise ValueError(
+                "only integer basetype supported for C type discovery.")
+
+    tmpl = r'''
+#include "Python.h"
+#include "numpy/arrayobject.h"
+
+typedef %(type)s npy_check_sizeof_type;
+int main(int argc, char **argv)
+{
+    static int test_array [1 - 2 * !(((long) (sizeof (npy_check_sizeof_type))) == sizeof(%(ctype)s))];
+    test_array [0] = 0
+
+    ;
+    return 0;
+}
+'''
+    ctypes = ('signed char', 'short int',
+                    'int', 'long int', 'long long int')
+    for ctype in ctypes:
+        cfrag = tmpl % {'type' : ctp.odecl, 'ctype' : ctype}
+        try:
+            bld.check_cc(
+                    fragment=cfrag,
+                    features = 'c',
+                    compile_filename='test.c',
+                    use='NUMPY pyext')
+        except bld.errors.ConfigurationError:
+            pass
+        else:
+            res = ctype
+            break
+    else:
+        res = ''
+    return gc.c2f[res]
+
+# vim:ft=python

@@ -49,4 +49,4 @@ def get_version():
         err_txt = pp.stderr.read()
     except OSError:
         global_id = "unknown"
-    return "%s_dev%s" % (base_version, global_id)
+    return "%sdev_%s" % (base_version, global_id)
