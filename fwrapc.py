@@ -30,8 +30,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #------------------------------------------------------------------------------
 
-
 import sys
-from fwrap.main import main
+from fwrap.fwrapc import fwrapc
 
-sys.exit(main(use_cmdline=True))
+sys.exit(fwrapc(sys.argv[1:]))

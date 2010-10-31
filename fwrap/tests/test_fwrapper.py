@@ -34,7 +34,7 @@ import tempfile
 from fwrap import fc_wrap
 from fwrap import cy_wrap
 from fwrap import constants
-from fwrap import main
+from fwrap import fwrapper
 from cStringIO import StringIO
 from fwrap import pyf_iface as pyf
 from fwrap.code import CodeBuffer
@@ -43,7 +43,7 @@ from nose.tools import ok_, eq_, set_trace
 
 from tutils import compare
 
-class test_main(object):
+class test_fwrapper(object):
 
     fsrc = '''\
 function empty_func()
@@ -61,7 +61,7 @@ end function empty_func
 
 
     def test_parse(self):
-        ast = main.parse(self.source_file_lst)
+        ast = fwrapper.parse(self.source_file_lst)
         return_arg = pyf.Argument('empty_func', dtype=pyf.default_integer)
         empty_func = pyf.Function(name='empty_func',
                                   args=(),
@@ -71,9 +71,9 @@ end function empty_func
         eq_(len(ast[0].args), len(empty_func.args))
 
     def test_generate_fc_f(self):
-        fort_ast = main.parse(self.source_file_lst)
+        fort_ast = fwrapper.parse(self.source_file_lst)
         c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
-        fname, buf = main.generate_fc_f(c_ast, self.name)
+        fname, buf = fwrapper.generate_fc_f(c_ast, self.name)
         fc = '''\
         subroutine empty_func_c(fw_ret_arg, fw_iserr__, fw_errstr__) bind(c, name="em&
         &pty_func_c")
@@ -98,9 +98,9 @@ end function empty_func
         compare(fc, buf.getvalue())
 
     def test_generate_fc_h(self):
-        fort_ast = main.parse(self.source_file_lst)
+        fort_ast = fwrapper.parse(self.source_file_lst)
         c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
-        fname, buf = main.generate_fc_h(c_ast, self.name)
+        fname, buf = fwrapper.generate_fc_h(c_ast, self.name)
         header = '''\
         #include "fwrap_ktp_header.h"
 
@@ -110,9 +110,9 @@ end function empty_func
         eq_(fname, constants.FC_HDR_TMPL % self.name)
 
     def test_generate_fc_pxd(self):
-        fort_ast = main.parse(self.source_file_lst)
+        fort_ast = fwrapper.parse(self.source_file_lst)
         c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
-        fname, buf = main.generate_fc_pxd(c_ast, self.name)
+        fname, buf = fwrapper.generate_fc_pxd(c_ast, self.name)
         header = '''\
         from fwrap_ktp cimport *
 
@@ -122,10 +122,10 @@ end function empty_func
         compare(header, buf.getvalue())
 
     def test_generate_cy_pxd(self):
-        fort_ast = main.parse(self.source_file_lst)
+        fort_ast = fwrapper.parse(self.source_file_lst)
         c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
         cython_ast = cy_wrap.wrap_fc(c_ast)
-        fname, buf = main.generate_cy_pxd(cython_ast, self.name)
+        fname, buf = fwrapper.generate_cy_pxd(cython_ast, self.name)
         pxd = '''\
         cimport numpy as np
         from test_fc cimport *
@@ -136,10 +136,10 @@ end function empty_func
 
     def test_generate_cy_pyx(self):
         from fwrap.version import get_version
-        fort_ast = main.parse(self.source_file_lst)
+        fort_ast = fwrapper.parse(self.source_file_lst)
         c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
         cython_ast = cy_wrap.wrap_fc(c_ast)
-        fname, buf = main.generate_cy_pyx(cython_ast, self.name)
+        fname, buf = fwrapper.generate_cy_pyx(cython_ast, self.name)
         test_str = '''\
 """
 The test module was generated with Fwrap v%s.
@@ -186,10 +186,10 @@ cpdef api object empty_func():
 
     def test_generate_type_specs(self):
         from cPickle import loads
-        fort_ast = main.parse(self.source_file_lst)
+        fort_ast = fwrapper.parse(self.source_file_lst)
         c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
         cython_ast = cy_wrap.wrap_fc(c_ast)
-        fname, buf = main.generate_type_specs(fort_ast, self.name)
+        fname, buf = fwrapper.generate_type_specs(fort_ast, self.name)
         ctps = loads(buf.getvalue())
         for ctp in ctps:
             ok_(isinstance(ctp, dict))

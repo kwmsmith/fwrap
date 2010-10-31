@@ -109,7 +109,7 @@ class FwrapCompileTestCase(unittest.TestCase):
             os.makedirs(self.workdirs)
 
     def runTest(self):
-        # fwc.py configure build fsrc...
+        # fwrapc.py configure build fsrc...
         self.projname = os.path.splitext(self.filename)[0] + '_fwrap'
         self.projdir = os.path.join(self.workdir, self.projname)
         fq_fname = os.path.join(os.path.abspath(self.directory), self.filename)
@@ -118,7 +118,7 @@ class FwrapCompileTestCase(unittest.TestCase):
                 '--outdir=%s' % self.projdir,
                 fq_fname,
                 'install']
-        main(argv=argv)
+        fwrapc(argv=argv)
 
     def compile(self, directory, filename, workdir, incdir):
         self.run_wrapper(directory, filename, workdir, incdir)
@@ -198,7 +198,7 @@ if __name__ == '__main__':
     if not os.path.exists(WORKDIR):
         os.makedirs(WORKDIR)
 
-    from fwc import main
+    from fwrap.fwrapc import fwrapc
 
     sys.stderr.write("Python %s\n" % sys.version)
     sys.stderr.write("\n")

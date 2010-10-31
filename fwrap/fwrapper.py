@@ -1,0 +1,195 @@
+#------------------------------------------------------------------------------
+# Copyright (c) 2010, Kurt W. Smith
+# 
+# All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of the Fwrap project nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#------------------------------------------------------------------------------
+
+# encoding: utf-8
+
+import os
+from optparse import OptionParser
+
+from fwrap import constants
+from fwrap import gen_config as gc
+from fwrap import fc_wrap
+from fwrap import cy_wrap
+from fwrap.code import CodeBuffer, reflow_fort
+
+PROJNAME = 'fwproj'
+
+def wrap(sources, name=PROJNAME):
+    r"""Generate wrappers for sources.
+
+    The core wrapping routine for fwrap.  Generates wrappers for the sources
+    list.  Compilation of the wrappers is left to external utilities, whether
+    distutils or waf.
+
+    :Input:
+     - *sources* - (id) Path to source or a list of paths to source to be
+       wrapped.
+     - *name* - (string) Name of the project and the name of the resulting
+       python module
+    """
+
+    # validate name
+    name = name.strip()
+    name = name.replace(' ', '_')
+
+    # Check to see if each source exists and expand to full paths
+    source_files = []
+    def check(s):
+        return os.path.exists(s)
+    if isinstance(sources, basestring):
+        if check(sources):
+            source_files = [sources]
+    elif isinstance(sources, (list, tuple)):
+        for src in sources:
+            if check(src):
+                source_files.append(src)
+    if not source_files:
+        raise ValueError("Invalid source list. %r" % (sources))
+
+    # Parse fortran using fparser, get fortran ast.
+    f_ast = parse(source_files)
+
+    # Generate wrapper files
+    generate(f_ast, name)
+
+def parse(source_files):
+    r"""Parse fortran code returning parse tree
+
+    :Input:
+     - *source_files* - (list) List of valid source files
+    """
+    from fwrap import fwrap_parse
+    ast = fwrap_parse.generate_ast(source_files)
+
+    return ast
+
+def generate(fort_ast, name):
+    r"""Given a fortran abstract syntax tree ast, generate wrapper files
+
+    :Input:
+     - *fort_ast* - (`fparser.ProgramBlock`) Abstract syntax tree from parser
+     - *name* - (string) Name of the library module
+
+     Raises `Exception.IOError` if writing the generated code fails.
+    """
+
+    # Generate wrapping abstract syntax trees
+    # logger.info("Generating abstract syntax tress for c and cython.")
+    c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
+    cython_ast = cy_wrap.wrap_fc(c_ast)
+
+    # Generate files and write them out
+    generators = ( (generate_type_specs,(c_ast,name)),
+                   (generate_fc_f,(c_ast,name)),
+                   (generate_fc_h,(c_ast,name)),
+                   (generate_fc_pxd,(c_ast,name)),
+                   (generate_cy_pxd,(cython_ast,name)),
+                   (generate_cy_pyx,(cython_ast,name)) )
+
+    for (generator,args) in generators:
+        file_name, buf = generator(*args)
+        write_to_dir(os.getcwd(), file_name, buf)
+
+def write_to_dir(dir, file_name, buf):
+    fh = open(os.path.join(dir, file_name), 'w')
+    try:
+        if isinstance(buf, basestring):
+            fh.write(buf)
+        else:
+            fh.write(buf.getvalue())
+    finally:
+        fh.close()
+
+def generate_type_specs(f_ast, name):
+    buf = CodeBuffer()
+    gc.generate_type_specs(f_ast, buf)
+    return constants.TYPE_SPECS_SRC, buf
+
+def generate_cy_pxd(cy_ast, name):
+    buf = CodeBuffer()
+    fc_pxd_name = (constants.FC_PXD_TMPL % name).split('.')[0]
+    cy_wrap.generate_cy_pxd(cy_ast, fc_pxd_name, buf)
+    return constants.CY_PXD_TMPL % name, buf
+
+def generate_cy_pyx(cy_ast, name):
+    buf = CodeBuffer()
+    cy_wrap.generate_cy_pyx(cy_ast, name, buf)
+    return constants.CY_PYX_TMPL % name, buf
+
+def generate_fc_pxd(fc_ast, name):
+    buf = CodeBuffer()
+    fc_header_name = constants.FC_HDR_TMPL % name
+    fc_wrap.generate_fc_pxd(fc_ast, fc_header_name, buf)
+    return constants.FC_PXD_TMPL % name, buf
+
+def generate_fc_f(fc_ast, name):
+    buf = CodeBuffer()
+    for proc in fc_ast:
+        proc.generate_wrapper(buf)
+    ret_buf = CodeBuffer()
+    ret_buf.putlines(reflow_fort(buf.getvalue()))
+    return constants.FC_F_TMPL % name, ret_buf
+
+def generate_fc_h(fc_ast, name):
+    buf = CodeBuffer()
+    fc_wrap.generate_fc_h(fc_ast, constants.KTP_HEADER_SRC, buf)
+    return constants.FC_HDR_TMPL % name, buf
+
+def fwrapper(use_cmdline, sources=None, **options):
+    """
+    Main entry point, called by cmdline script.
+    """
+
+    if sources is None:
+        sources = []
+    defaults = dict(name=PROJNAME)
+    if options:
+        defaults.update(options)
+    usage ='''\
+Usage: %prog --name=NAME fortran-source [fortran-source ...]
+'''
+    description = '''\
+%prog is a commandline utility that automatically wraps Fortran code in C,
+Cython, & Python.
+'''
+    parser = OptionParser(usage=usage, description=description)
+    parser.set_defaults(**defaults)
+    if use_cmdline:
+        parser.add_option('-n', '--name', dest='name',
+                          help='name for the project directory and extension module '
+                          '[default: %default]')
+        args = None
+    else:
+        args = sources
+    parsed_options, source_files = parser.parse_args(args=args)
+    if not source_files:
+        parser.error("no source files")
+    wrap(source_files, parsed_options.name)
+    return 0

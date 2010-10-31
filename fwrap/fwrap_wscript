@@ -34,7 +34,7 @@ def configure(conf):
     conf.find_program('cython', var='CYTHON')
     conf.check_cython_version(minver=(0,11,1))
 
-    conf.find_program(['fwrapc.py', 'fwrapc'], var='FWRAPC')
+    conf.find_program(['fwrapper.py'], var='FWRAPPER')
 
     conf.env['FW_PROJ_NAME'] = conf.options.name
 
@@ -48,8 +48,8 @@ def build(bld):
     cy_src = '%s.pyx' % bld.env['FW_PROJ_NAME']
 
     bld(
-        name = 'fwrapc',
-        rule = '${PYTHON} ${FWRAPC} --name=%s ${SRC}' % bld.env['FW_PROJ_NAME'],
+        name = 'fwrapper',
+        rule = '${PYTHON} ${FWRAPPER} --name=%s ${SRC}' % bld.env['FW_PROJ_NAME'],
         source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90']),
         target = ['fwrap_type_specs.in', wrapper, cy_src],
         )

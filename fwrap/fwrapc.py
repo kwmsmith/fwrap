@@ -1,22 +1,45 @@
-#!/usr/bin/env python
+#------------------------------------------------------------------------------
+# Copyright (c) 2010, Kurt W. Smith
+# 
+# All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of the Fwrap project nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#------------------------------------------------------------------------------
 
-"""
-fwc.py -- new implementation of fwrapc command, replaces distutils nastiness
-with comfort, speed & elegance of waf.
-"""
+# encoding: utf-8
 
 import os, sys, shutil
-from optparse import OptionParser, OptionGroup
-from collections import defaultdict
-
 import subprocess
+from optparse import OptionParser, OptionGroup
 
 PROJECT_OUTDIR = 'fwproj'
 PROJECT_NAME = PROJECT_OUTDIR
 
 def setup_dirs(dirname):
     p = os.path
-    fwrap_path = p.abspath(p.join(p.dirname(__file__), 'fwrap'))
+    fwrap_path = p.abspath(p.dirname(__file__))
     # set up the project directory.
     try:
         os.mkdir(dirname)
@@ -89,15 +112,28 @@ def call_waf(opts, args, orig_args):
 
     return 0
 
-def main(argv):
+def print_version():
+    from fwrap.version import get_version
+    vandl = """\
+fwrap v%s
+Copyright (C) 2010 Kurt W. Smith
+Fwrap is distributed under an open-source license.   See the source for
+licensing information.  There is NO warranty, not even for MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.
+""" % get_version()
+    print vandl
+
+def fwrapc(argv):
+    """
+    Main entry point -- called by cmdline script.
+    """
+
     subcommands = ('configure', 'gen', 'build')
 
     parser = OptionParser()
     parser.add_option('--version', dest="version",
                       action="store_true", default=False,
                       help="get version and license info and exit")
-
-    parser.add_option('-v', dest='verbose', action='count', default=0)
 
     # configure options
     configure_opts = OptionGroup(parser, "Configure Options")
@@ -113,7 +149,6 @@ def main(argv):
     opts, args = parser.parse_args(args=argv)
 
     if opts.version:
-        from fwrap.main import print_version
         print_version()
         return 0
 
@@ -122,7 +157,3 @@ def main(argv):
         return 1
 
     return call_waf(opts, args, argv)
-
-if __name__ == '__main__':
-    import sys
-    sys.exit(main(sys.argv[1:]))
