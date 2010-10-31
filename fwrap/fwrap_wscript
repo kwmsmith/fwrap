@@ -7,6 +7,7 @@ out = 'build'
 
 def options(opt):
     opt.add_option('--name', action='store', default='fwproj')
+    opt.add_option('--outdir', action='store', default='fwproj')
     opt.load('compiler_c')
     opt.load('compiler_fc')
     opt.load('python')
@@ -61,6 +62,13 @@ def build(bld):
         target = bld.env['FW_PROJ_NAME'],
         use = 'fcshlib CLIB NUMPY',
         includes = ['.'],
+        install_path = bld.srcnode.abspath(),
+        )
+
+    bld(
+        rule = 'touch ${TGT}',
+        target = '__init__.py',
+        install_path = bld.srcnode.abspath(),
         )
 
 

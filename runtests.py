@@ -195,31 +195,16 @@ class FwrapCompileTestCase(unittest.TestCase):
             os.makedirs(self.workdirs)
 
     def runTest(self):
+        # fwc.py configure build fsrc...
         self.projname = os.path.splitext(self.filename)[0] + '_fwrap'
         self.projdir = os.path.join(self.workdir, self.projname)
         fq_fname = os.path.join(os.path.abspath(self.directory), self.filename)
-        main(use_cmdline=False,
-             sources=[fq_fname],
-             name=self.projname,
-             out_dir=self.workdir,
-             fcompiler=(self.fcompiler or 'gnu95'),
-             verbose=self.verbosity-1, # bit of a hack here.
-             build_ext=True)
-        self.runCompileTest_distutils()
-
-    def runCompileTest_distutils(self):
-        thisdir = os.path.abspath(os.curdir)
-        try:
-            os.chdir(self.projdir)
-            if self.projdir not in sys.path:
-                sys.path.insert(0, self.projdir)
-            # try to import the compiled extension module
-            __import__(self.projname)
-            del sys.modules[self.projname]
-        finally:
-            if self.projdir in sys.path:
-                sys.path.remove(self.projdir)
-            os.chdir(thisdir)
+        argv = ['configure', 'build',
+                '--name=%s' % self.projname,
+                '--outdir=%s' % self.projdir,
+                fq_fname,
+                'install']
+        main(argv=argv)
 
     def compile(self, directory, filename, workdir, incdir):
         self.run_wrapper(directory, filename, workdir, incdir)
@@ -564,8 +549,7 @@ if __name__ == '__main__':
             sys.stderr.write("Running tests without Cython.\n")
     #if 0
 
-    # from fwrap.main import wrap
-    from fwrap.main import main
+    from fwc import main
 
     sys.stderr.write("Python %s\n" % sys.version)
     sys.stderr.write("\n")

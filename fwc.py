@@ -12,6 +12,7 @@ from collections import defaultdict
 import subprocess
 
 PROJECT_OUTDIR = 'fwproj'
+PROJECT_NAME = PROJECT_OUTDIR
 
 def setup_dirs(dirname):
     p = os.path
@@ -48,12 +49,12 @@ def wipe_out(dirname):
     # wipe out everything and start over.
     shutil.rmtree(dirname, ignore_errors=True)
 
-def proj_dir():
-    return os.path.join(os.path.abspath(os.curdir), PROJECT_OUTDIR)
+def proj_dir(name):
+    return os.path.abspath(name)
 
 def configure_cb(opts, args, orig_args):
-    wipe_out(proj_dir())
-    setup_dirs(proj_dir())
+    wipe_out(proj_dir(opts.outdir))
+    setup_dirs(proj_dir(opts.outdir))
 
 def build_cb(opts, args, argv):
     srcs = []
@@ -63,7 +64,7 @@ def build_cb(opts, args, argv):
             srcs.append(os.path.abspath(arg))
             argv.remove(arg)
 
-    dst = os.path.join(proj_dir(), 'src')
+    dst = os.path.join(proj_dir(opts.outdir), 'src')
     for src in srcs:
         shutil.copy(src, dst)
 
@@ -76,11 +77,11 @@ def call_waf(opts, args, orig_args):
 
     py_exe = sys.executable
 
-    waf_path = os.path.join(proj_dir(), 'waf')
+    waf_path = os.path.join(proj_dir(opts.outdir), 'waf')
 
     cmd = [py_exe, waf_path] + orig_args
     odir = os.path.abspath(os.curdir)
-    os.chdir(proj_dir())
+    os.chdir(proj_dir(opts.outdir))
     try:
         subprocess.check_call(cmd)
     finally:
@@ -88,10 +89,8 @@ def call_waf(opts, args, orig_args):
 
     return 0
 
-def main():
+def main(argv):
     subcommands = ('configure', 'gen', 'build')
-
-    argv = sys.argv[1:]
 
     parser = OptionParser()
     parser.add_option('--version', dest="version",
@@ -103,13 +102,15 @@ def main():
     # configure options
     configure_opts = OptionGroup(parser, "Configure Options")
     configure_opts.add_option("--name",
-            help='name for the extension module')
+            help='name for the extension module [default %default]')
+    configure_opts.add_option("--outdir",
+            help='directory for the intermediate files [default %default]')
     parser.add_option_group(configure_opts)
 
-    conf_defaults = dict(name="fwproj")
+    conf_defaults = dict(name=PROJECT_NAME, outdir=PROJECT_OUTDIR)
     parser.set_defaults(**conf_defaults)
 
-    opts, args = parser.parse_args()
+    opts, args = parser.parse_args(args=argv)
 
     if opts.version:
         from fwrap.main import print_version
@@ -124,4 +125,4 @@ def main():
 
 if __name__ == '__main__':
     import sys
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))
