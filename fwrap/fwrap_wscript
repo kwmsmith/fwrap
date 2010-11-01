@@ -42,6 +42,8 @@ def configure(conf):
     conf.add_os_flags('INCLUDES')
     conf.add_os_flags('LIB')
     conf.add_os_flags('LIBPATH')
+    conf.add_os_flags('STLIB')
+    conf.add_os_flags('STLIBPATH')
 
 def build(bld):
 
