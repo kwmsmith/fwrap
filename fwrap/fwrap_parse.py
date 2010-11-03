@@ -114,6 +114,7 @@ name2default = {
         'real'    : pyf.default_real,
         'doubleprecision' : pyf.default_dbl,
         'complex' : pyf.default_complex,
+        'doublecomplex' : pyf.default_double_complex,
         'character' : pyf.default_character,
         'logical' : pyf.default_logical,
         }
