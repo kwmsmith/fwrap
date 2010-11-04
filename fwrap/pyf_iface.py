@@ -8,11 +8,17 @@ from intrinsics import intrinsics
 import re
 
 def _py_kw_mangler(name):
-    # mangles name if it's a python keyword.
-    kwds = ('and', 'del', 'from', 'not', 'while', 'as', 'elif', 'global', 'or',
-            'with', 'assert', 'else', 'if', 'pass', 'yield', 'break', 'except',
-            'import', 'print', 'class', 'exec', 'in', 'raise', 'continue',
-            'finally', 'is', 'return', 'def', 'for', 'lambda', 'try')
+    # mangles name if it's a Python or Cython keyword.
+    kwds = (
+        # Python keywords
+        'and', 'del', 'from', 'not', 'while', 'as', 'elif', 'global', 'or',
+        'with', 'assert', 'else', 'if', 'pass', 'yield', 'break', 'except',
+        'import', 'print', 'class', 'exec', 'in', 'raise', 'continue',
+        'finally', 'is', 'return', 'def', 'for', 'lambda', 'try',
+        # Cython keywords
+        'include', 'ctypedef', 'cdef', 'cpdef',
+        'cimport', 'by'
+        )
     if name.lower() in kwds:
         return "%s__" % name
     return name
