@@ -16,25 +16,42 @@ def generate_ast(fsrcs):
             if not is_proc(proc):
                 # we ignore non-top-level procedures until modules are supported.
                 continue
+        _process_node(block, ast, language)
+    return ast
 
-            args = _get_args(proc)
-            params = _get_params(proc)
-
-            if proc.blocktype == 'subroutine':
+def _process_node(node, ast, language):
+    # ast: Output list of function/subroutine nodes
+    if not hasattr(node, 'content'):
+        return
+    children = node.content
+    if len(children) == 0:
+        return
+    for child in children:
+        # For processing .pyf files, simply skip the initial
+        # wrapping pythonmodule and interface nodes
+        # TODO: Multiple pythonmodule in one .pyf?
+        if child.blocktype in ('pythonmodule', 'interface'):
+            _process_node(child, ast)
+        elif not is_proc(child):
+            # we ignore non-top-level procedures until modules are supported.
+            pass
+        else:
+            args = _get_args(child)
+            params = _get_params(child)
+            if child.blocktype == 'subroutine':
                 ast.append(pyf.Subroutine(
-                                name=proc.name,
+                                name=child.name,
                                 args=args,
                                 params=params,
                                 language=language))
             elif proc.blocktype == 'function':
                 ast.append(pyf.Function(
-                                name=proc.name,
+                                name=child.name,
                                 args=args,
                                 params=params,
-                                return_arg=_get_ret_arg(proc),
+                                return_arg=_get_ret_arg(child),
                                 language=language))
     return ast
-
 
 def is_proc(proc):
     return proc.blocktype in ('subroutine', 'function')
