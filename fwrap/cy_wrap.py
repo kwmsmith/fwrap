@@ -9,12 +9,14 @@ from fwrap.code import CodeBuffer
 
 from fwrap.pyf_iface import _py_kw_mangler
 import re
+import warnings
 
 plain_sizeexpr_re = re.compile(r'\(([a-zA-Z0-9_]+)\)')
 
 class CythonCodeGenerationContext:
     def __init__(self):
         self.utility_codes = set()
+        self.language = None
 
     def use_utility_code(self, snippet):
         self.utility_codes.add(snippet)
@@ -48,6 +50,8 @@ def generate_cy_pyx(ast, name, buf):
     gen_cimport_decls(buf)
     gen_cdef_extern_decls(buf)
     for proc in ast:
+        ctx.language = proc.wrapped.wrapped.language
+        assert ctx.language in ('fortran', 'pyf')
         proc.generate_wrapper(ctx, buf)
     for utilcode in ctx.utility_codes:
         buf.putblock(utilcode)
@@ -348,18 +352,8 @@ class _CyArrayArgWrapper(object):
                                    all(dim.is_explicit_shape
                                        for dim in arg.orig_arg.dimension))
         if self.explicit_out_array:
-            for dim in arg.orig_arg.dimension:
-                # Expression parsing is currently not working very well,
-                # so only validate that we have the simplest kind of
-                # expression for now, "(varname)"
-                if not plain_sizeexpr_re.match(dim.sizeexpr):
-                    if False:
-                        raise NotImplementedError(
-                        'Automatic creation of explicit-shape out-arrays'
-                        'turned on, but size expression too complicated: %s' %
-                        dim.sizeexpr)
-            self.explicit_out_array_shape = [_py_kw_mangler(dim.sizeexpr[1:-1])
-                                             for dim in arg.orig_arg.dimension]
+            self.explicit_out_array_sizeexprs = [
+                dim.sizeexpr for dim in arg.orig_arg.dimension]
 
     def extern_declarations(self):
         default_value = 'None' if self.explicit_out_array else None
@@ -391,11 +385,29 @@ class _CyArrayArgWrapper(object):
              'dtenum' : self.arg.dtype.npy_enum,
              'ndim' : self.arg.ndims}
         lines = []
-        if not self.explicit_out_array:
+
+        allocate_outs = self.explicit_out_array
+        if allocate_outs:
+            sizeexprs = list(self.explicit_out_array_sizeexprs)
+            if ctx.language != 'pyf':
+                # With .pyf, C expressions can be used directly
+                # Otherwise, only very simplest cases supported.
+                # TODO: Fix this up (compile Fortran-side function to give
+                # resulting shape?)
+                for i, expr in enumerate(sizeexprs):
+                    m = plain_sizeexpr_re.match(expr)
+                    if not m:
+                        warnings.warn(
+                            'Cannot automatically allocate explicit-shape intent(out) array '
+                            'as expression is too complicated: %s' % expr)
+                        allocate_outs = False
+                        break
+                    sizeexprs[i] = _py_kw_mangler(m.group(1))
+        if not allocate_outs:
             lines = ['%(intern)s = np.PyArray_FROMANY(%(extern)s, %(dtenum)s, '
                      '%(ndim)d, %(ndim)d, np.NPY_F_CONTIGUOUS)' % d]
         else:
-            d['shape'] = ', '.join(self.explicit_out_array_shape)
+            d['shape'] = ', '.join(sizeexprs)
             ctx.use_utility_code(explicit_shape_out_array_utility_code)
             lines = ['%(intern)s = fw_getoutarray(%(extern)s, %(dtenum)s, '
                      '%(ndim)d, [%(shape)s])' % d]
