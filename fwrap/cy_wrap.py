@@ -126,17 +126,19 @@ class _CyArgWrapper(object):
         string representation of possible default value (normally
         either None or 'None')
         """
-        if self.arg.intent in ('in', 'inout', None):
+        if (self.arg.intent in ('in', 'inout', None) and
+            not self.arg.hide_in_wrapper):
             return [("%s %s" % (self.cy_dtype_name, self.name), None)]
         return []
 
     def docstring_extern_arg_list(self):
-        if self.arg.intent in ("in", "inout", None):
+        if (self.arg.intent in ("in", "inout", None) and
+            not self.arg.hide_in_wrapper):
             return [self.name]
         return []
 
     def intern_declarations(self):
-        if self.arg.intent == 'out':
+        if self.arg.intent == 'out' or self.arg.hide_in_wrapper:
             return ["cdef %s %s" % (self.cy_dtype_name, self.name)]
         return []
 
@@ -147,6 +149,10 @@ class _CyArgWrapper(object):
         return []
 
     def pre_call_code(self, ctx):
+        # When parsing pyf files, one can specify arbitrary initialization
+        # code (assumed to be in Cython)
+        if self.arg.init_code is not None:
+            return ["%s = %s" % (self.name, self.arg.init_code)]
         return []
 
     def return_tuple_list(self):

@@ -444,11 +444,15 @@ class Argument(object):
                  intent=None,
                  dimension=None,
                  isvalue=None,
-                 is_return_arg=False):
+                 is_return_arg=False,
+                 init_code=None,
+                 hide_in_wrapper=False):
         self._var = Var(name=name, dtype=dtype, dimension=dimension)
         self.intent = intent
         self.isvalue = isvalue
         self.is_return_arg = is_return_arg
+        self.init_code = init_code
+        self.hide_in_wrapper = hide_in_wrapper
 
         if self.dtype.type == 'c_ptr' and not self.isvalue:
             raise ValueError(
