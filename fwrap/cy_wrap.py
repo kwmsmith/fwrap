@@ -363,8 +363,6 @@ class _CyArrayArgWrapper(object):
         if self.explicit_out_array:
             self.explicit_out_array_sizeexprs = [
                 dim.sizeexpr for dim in arg.orig_arg.dimension]
-        print arg.name
-        print arg.hide_in_wrapper
         if arg.hide_in_wrapper:
             raise NotImplementedError()
 
