@@ -26,3 +26,9 @@ subroutine assumed_shape(m, by, arr)
   end do
 end subroutine assumed_shape
 
+subroutine noop(n, arr)
+  implicit none
+  integer, intent(in) :: n
+  real*8, dimension(n), intent(out) :: arr
+end subroutine
+
