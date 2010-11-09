@@ -35,7 +35,7 @@ def configure(conf):
     conf.find_program('cython', var='CYTHON')
     conf.check_cython_version(minver=(0,11,1))
 
-    conf.find_program(['fwrapper.py'], var='FWRAPPER')
+    conf.find_program(['fwrapper'], var='FWRAPPER')
 
     conf.env['FW_PROJ_NAME'] = conf.options.name
 
