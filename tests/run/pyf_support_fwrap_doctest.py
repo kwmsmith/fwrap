@@ -1,8 +1,8 @@
 from pyf_support_fwrap import *
 
 #
-# Check that explicit-shape intent(out) arrays can be
-# created automatically
+# Check that the 4 arguments (see pyf_support.f)
+# are turned into 2
 #
 
 
