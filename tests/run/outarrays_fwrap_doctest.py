@@ -17,4 +17,10 @@ __doc__ = u'''
     >>> arr = np.zeros((2, 3), order='F')
     >>> explicit_shape(2, 3, arr) is arr
     True
+
+Check that auto-allocated array is zeroed out (following
+the behaviour of f2py):
+
+    >>> noop(10)
+    array([ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.])
 '''

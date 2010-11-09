@@ -732,5 +732,5 @@ cdef fw_getoutarray(object value, int typenum, int ndim, np.npy_intp* shape):
     if value is not None:
         return np.PyArray_FROMANY(value, typenum, ndim, ndim, np.NPY_F_CONTIGUOUS)
     else:
-        return np.PyArray_EMPTY(ndim, shape, typenum, 1)
+        return np.PyArray_ZEROS(ndim, shape, typenum, 1)
 """
