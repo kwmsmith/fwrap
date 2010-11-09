@@ -31,7 +31,7 @@ def _process_node(node, ast, language):
         # wrapping pythonmodule and interface nodes
         # TODO: Multiple pythonmodule in one .pyf?
         if child.blocktype in ('pythonmodule', 'interface'):
-            _process_node(child, ast)
+            _process_node(child, ast, language)
         elif not is_proc(child):
             # we ignore non-top-level procedures until modules are supported.
             pass
@@ -78,21 +78,30 @@ def _get_param(p_param):
     return pyf.Parameter(name=name, dtype=dtype, expr=p_param.init)
 
 def _get_arg(p_arg):
+    if not p_arg.is_scalar() and not p_arg.is_array():
+        raise RuntimeError(
+                "argument %s is neither "
+                    "a scalar or an array (derived type?)" % p_arg)
+
     p_typedecl = p_arg.get_typedecl()
     dtype = _get_dtype(p_typedecl)
     name = p_arg.name
     intent = _get_intent(p_arg)
-    if p_arg.is_scalar():
-        return pyf.Argument(name=name, dtype=dtype, intent=intent)
-    elif p_arg.is_array():
+    hide_in_wrapper = p_arg.is_intent_hide() and not p_arg.is_intent_out()
+    init_code = p_arg.init
+
+    if p_arg.is_array():
         p_dims = p_arg.get_array_spec()
         dimspec = pyf.Dimension(p_dims)
-        return pyf.Argument(name=name,
-                dtype=dtype, intent=intent, dimension=dimspec)
     else:
-        raise RuntimeError(
-                "argument %s is neither "
-                    "a scalar or an array (derived type?)" % p_arg)
+        dimspec = None
+        
+    return pyf.Argument(name=name,
+                        dtype=dtype,
+                        intent=intent,
+                        dimension=dimspec,
+                        init_code=init_code,
+                        hide_in_wrapper=hide_in_wrapper)
 
 def _get_args(proc):
     args = []
@@ -120,6 +129,8 @@ def _get_intent(arg):
             intents.append("inout")
         if arg.is_intent_out():
             intents.append("out")
+    if not intents and arg.is_intent_hide():
+        intents.append("in")
     if not intents:
         raise RuntimeError("argument has no intent specified, '%s'" % arg)
     if len(intents) > 1:

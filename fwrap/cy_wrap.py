@@ -111,6 +111,7 @@ class _CyArgWrapper(object):
         self.name = _py_kw_mangler(self.arg.name)
         self.intern_name = self.name
         self.cy_dtype_name = self._get_cy_dtype_name()
+        self.hide_in_wrapper = arg.hide_in_wrapper
 
     def _get_cy_dtype_name(self):
         return self.arg.ktp
@@ -127,18 +128,18 @@ class _CyArgWrapper(object):
         either None or 'None')
         """
         if (self.arg.intent in ('in', 'inout', None) and
-            not self.arg.hide_in_wrapper):
+            not self.hide_in_wrapper):
             return [("%s %s" % (self.cy_dtype_name, self.name), None)]
         return []
 
     def docstring_extern_arg_list(self):
         if (self.arg.intent in ("in", "inout", None) and
-            not self.arg.hide_in_wrapper):
+            not self.hide_in_wrapper):
             return [self.name]
         return []
 
     def intern_declarations(self):
-        if self.arg.intent == 'out' or self.arg.hide_in_wrapper:
+        if self.arg.intent == 'out' or self.hide_in_wrapper:
             return ["cdef %s %s" % (self.cy_dtype_name, self.name)]
         return []
 
@@ -282,6 +283,7 @@ class _CyCharArg(_CyArgWrapper):
 
 
 class _CyErrStrArg(object):
+    hide_in_wrapper = False
 
     def __init__(self, arg):
         self.arg = arg
@@ -346,6 +348,7 @@ def CyArrayArgWrapper(arg):
 class _CyArrayArgWrapper(object):
 
     is_array = True
+    hide_in_wrapper = False
 
     def __init__(self, arg):
         self.arg = arg
@@ -360,6 +363,10 @@ class _CyArrayArgWrapper(object):
         if self.explicit_out_array:
             self.explicit_out_array_sizeexprs = [
                 dim.sizeexpr for dim in arg.orig_arg.dimension]
+        print arg.name
+        print arg.hide_in_wrapper
+        if arg.hide_in_wrapper:
+            raise NotImplementedError()
 
     def extern_declarations(self):
         default_value = 'None' if self.explicit_out_array else None
@@ -576,6 +583,8 @@ class CyArgWrapperManager(object):
     def docstring_in_descrs(self):
         descrs = []
         for arg in self.args:
+            if arg.hide_in_wrapper:
+                continue
             descrs.extend(arg.in_dstring())
         return descrs
 
