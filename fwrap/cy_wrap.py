@@ -129,7 +129,10 @@ class _CyArgWrapper(object):
         """
         if (self.arg.intent in ('in', 'inout', None) and
             not self.hide_in_wrapper):
-            return [("%s %s" % (self.cy_dtype_name, self.name), None)]
+            # In pyf files, one can insert initialization code using '= value'
+            # in the declaration. For now, put it here (that is, only supports
+            # literals and not expressions in the other arguments)
+            return [("%s %s" % (self.cy_dtype_name, self.name), self.arg.init_code)]
         return []
 
     def docstring_extern_arg_list(self):
@@ -151,8 +154,9 @@ class _CyArgWrapper(object):
 
     def pre_call_code(self, ctx):
         # When parsing pyf files, one can specify arbitrary initialization
-        # code (assumed to be in Cython)
-        if self.arg.init_code is not None:
+        # code (assumed to be in Cython). For hidden arguments, this
+        # must be inserted here.
+        if self.hide_in_wrapper and self.arg.init_code is not None:
             return ["%s = %s" % (self.name, self.arg.init_code)]
         return []
 
