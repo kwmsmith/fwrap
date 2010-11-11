@@ -1,4 +1,5 @@
 *.pyc
+doc/sphinxdocs/build
 BUILD/*
 fwrap/fparser
 fwrap.log

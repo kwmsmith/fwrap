@@ -7,9 +7,6 @@
 Fortran for Speed, Python for Comfort
 +++++++++++++++++++++++++++++++++++++
 
-..  ..  .. toctree::
-..  ..  :maxdepth: 2
-
 Fwrap wraps Fortran code in C, Cython and Python.  It focuses on Fortran 90 and
 95, and will work with Fortran 77 so long as you limit yourself to "sane"
 Fortran 77. [#sane-def]_ 
@@ -69,6 +66,18 @@ Development
 
 `Development blog <http://fortrancython.wordpress.com/>`_
     For all fwrap-related news
+
+Documentation
+=============
+
+"Official" documentation is nearly non-existent at the moment, and 
+these documents mostly serve as a place to dump notes
+while developing.
+
+.. toctree::
+   :maxdepth: 2
+
+   doc/compatibility
 
 Some helpful links
 ------------------
