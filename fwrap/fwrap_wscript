@@ -29,13 +29,13 @@ def configure(conf):
     conf.check_python_version((2,5))
     conf.check_python_headers()
     conf.check_python_module('numpy')
-    conf.check_numpy_version(minver=(1,3), maxver=(1,5))
+    conf.check_numpy_version(minver=(1,3))
     conf.get_numpy_includes()
 
     conf.find_program('cython', var='CYTHON')
     conf.check_cython_version(minver=(0,11,1))
 
-    conf.find_program(['fwrapper.py'], var='FWRAPPER')
+    conf.find_program(['fwrapper'], var='FWRAPPER')
 
     conf.env['FW_PROJ_NAME'] = conf.options.name
 
