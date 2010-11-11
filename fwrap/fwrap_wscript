@@ -9,6 +9,7 @@ out = 'build'
 def options(opt):
     opt.add_option('--name', action='store', default='fwproj')
     opt.add_option('--outdir', action='store', default='fwproj')
+    opt.add_option('--no-iso-c-binding', action='store_true', default=False)
     opt.load('compiler_c')
     opt.load('compiler_fc')
     opt.load('python')
@@ -38,6 +39,12 @@ def configure(conf):
     conf.find_program(['fwrapper'], var='FWRAPPER')
 
     conf.env['FW_PROJ_NAME'] = conf.options.name
+    if conf.options.no_iso_c_binding:
+        conf.env['FW_ISO_C_BINDING'] = False
+        conf.env['FWRAPPER_OPTS'] = '--no-iso-c-binding'
+    else:
+        conf.env['FW_ISO_C_BINDING'] = True
+        conf.env['FWRAPPER_OPTS'] = ''
 
     conf.add_os_flags('INCLUDES')
     conf.add_os_flags('LIB')
@@ -52,7 +59,7 @@ def build(bld):
 
     bld(
         name = 'fwrapper',
-        rule = '${PYTHON} ${FWRAPPER} --name=%s ${SRC}' % bld.env['FW_PROJ_NAME'],
+        rule = '${PYTHON} ${FWRAPPER} --name=%s ${FWRAPPER_OPTS} ${SRC}' % bld.env['FW_PROJ_NAME'],
         source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90']),
         target = ['fwrap_type_specs.in', wrapper, cy_src],
         )

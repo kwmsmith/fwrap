@@ -16,7 +16,7 @@ from fwrap.code import CodeBuffer, reflow_fort
 
 PROJNAME = 'fwproj'
 
-def wrap(sources, name=PROJNAME):
+def wrap(sources, name, options):
     r"""Generate wrappers for sources.
 
     The core wrapping routine for fwrap.  Generates wrappers for the sources
@@ -52,7 +52,7 @@ def wrap(sources, name=PROJNAME):
     f_ast = parse(source_files)
 
     # Generate wrapper files
-    generate(f_ast, name)
+    generate(f_ast, name, options)
 
 def parse(source_files):
     r"""Parse fortran code returning parse tree
@@ -65,7 +65,7 @@ def parse(source_files):
 
     return ast
 
-def generate(fort_ast, name):
+def generate(fort_ast, name, options):
     r"""Given a fortran abstract syntax tree ast, generate wrapper files
 
     :Input:
@@ -160,11 +160,13 @@ Cython, & Python.
         parser.add_option('-n', '--name', dest='name',
                           help='name for the project directory and extension module '
                           '[default: %default]')
+        parser.add_option('--no-iso-c-binding', action='store_true',
+                          help='older f2py-style wrapping')
         args = None
     else:
         args = sources
     parsed_options, source_files = parser.parse_args(args=args)
     if not source_files:
         parser.error("no source files")
-    wrap(source_files, parsed_options.name)
+    wrap(source_files, parsed_options.name, parsed_options)
     return 0

@@ -9,7 +9,8 @@ TEST_RUN_DIRS = ['run', 'pyregr']
 
 class FwrapTestBuilder(object):
     def __init__(self, rootdir, workdir, selectors, exclude_selectors,
-            cleanup_workdir, cleanup_sharedlibs, verbosity=0):
+                 cleanup_workdir, cleanup_sharedlibs, verbosity=0,
+                 configure_flags=()):
         self.rootdir = rootdir
         self.workdir = workdir
         self.selectors = selectors
@@ -17,6 +18,7 @@ class FwrapTestBuilder(object):
         self.cleanup_workdir = cleanup_workdir
         self.cleanup_sharedlibs = cleanup_sharedlibs
         self.verbosity = verbosity
+        self.configure_flags = configure_flags
 
     def build_suite(self):
         suite = unittest.TestSuite()
@@ -60,7 +62,8 @@ class FwrapTestBuilder(object):
         return test_class(path, workdir, filename,
                 cleanup_workdir=self.cleanup_workdir,
                 cleanup_sharedlibs=self.cleanup_sharedlibs,
-                verbosity=self.verbosity)
+                verbosity=self.verbosity,
+                configure_flags=self.configure_flags)
 
 class _devnull(object):
 
@@ -73,13 +76,14 @@ class _devnull(object):
 class FwrapCompileTestCase(unittest.TestCase):
     def __init__(self, directory, workdir, filename,
             cleanup_workdir=True, cleanup_sharedlibs=True,
-            verbosity=0):
+            verbosity=0, configure_flags=()):
         self.directory = directory
         self.workdir = workdir
         self.filename = filename
         self.cleanup_workdir = cleanup_workdir
         self.cleanup_sharedlibs = cleanup_sharedlibs
         self.verbosity = verbosity
+        self.configure_flags = configure_flags
         unittest.TestCase.__init__(self)
 
     def shortDescription(self):
@@ -113,7 +117,7 @@ class FwrapCompileTestCase(unittest.TestCase):
         self.projname = os.path.splitext(self.filename)[0] + '_fwrap'
         self.projdir = os.path.join(self.workdir, self.projname)
         fq_fname = os.path.join(os.path.abspath(self.directory), self.filename)
-        argv = ['configure', 'build',
+        argv = ['configure'] + self.configure_flags + ['build',
                 '--name=%s' % self.projname,
                 '--outdir=%s' % self.projdir,
                 fq_fname,
@@ -184,6 +188,10 @@ if __name__ == '__main__':
     parser.add_option("-T", "--ticket", dest="tickets",
                       action="append",
                       help="a bug ticket number to run the respective test in 'tests/bugs'")
+    parser.add_option("-C", metavar="CONFIGUREFLAG", action="append",
+                      dest="configure_flags", default=[],
+                      help="passes flag on to the waf configure command "
+                      "(example: -C no-iso-c-binding)")
 
     options, cmd_args = parser.parse_args()
 
@@ -234,8 +242,12 @@ if __name__ == '__main__':
 
     test_suite = unittest.TestSuite()
 
+    configure_flags = ['--%s' % x for x in options.configure_flags]
+
     filetests = FwrapTestBuilder(ROOTDIR, WORKDIR, selectors, exclude_selectors,
-            options.cleanup_workdir, options.cleanup_sharedlibs, options.verbosity)
+                                 options.cleanup_workdir, options.cleanup_sharedlibs,
+                                 options.verbosity,
+                                 configure_flags=configure_flags)
     test_suite.addTest(filetests.build_suite())
 
     unittest.TextTestRunner(verbosity=options.verbosity).run(test_suite)
