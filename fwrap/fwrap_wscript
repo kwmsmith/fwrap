@@ -9,7 +9,7 @@ out = 'build'
 def options(opt):
     opt.add_option('--name', action='store', default='fwproj')
     opt.add_option('--outdir', action='store', default='fwproj')
-    opt.add_option('--no-iso-c-binding', action='store_true', default=False)
+    opt.add_option('--f77binding', action='store_true', default=False)
     opt.load('compiler_c')
     opt.load('compiler_fc')
     opt.load('python')
@@ -39,12 +39,9 @@ def configure(conf):
     conf.find_program(['fwrapper'], var='FWRAPPER')
 
     conf.env['FW_PROJ_NAME'] = conf.options.name
-    if conf.options.no_iso_c_binding:
-        conf.env['FW_ISO_C_BINDING'] = False
-        conf.env['FWRAPPER_OPTS'] = '--no-iso-c-binding'
-    else:
-        conf.env['FW_ISO_C_BINDING'] = True
-        conf.env['FWRAPPER_OPTS'] = ''
+    conf.env['FW_F77_BINDING'] = conf.options.f77binding
+    if conf.options.f77binding:
+        conf.env['FWRAPPER_OPTS'] = '--f77binding'
 
     conf.add_os_flags('INCLUDES')
     conf.add_os_flags('LIB')

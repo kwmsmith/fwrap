@@ -191,7 +191,7 @@ if __name__ == '__main__':
     parser.add_option("-C", metavar="CONFIGUREFLAG", action="append",
                       dest="configure_flags", default=[],
                       help="passes flag on to the waf configure command "
-                      "(example: -C no-iso-c-binding)")
+                      "(example: -Cf77binding)")
 
     options, cmd_args = parser.parse_args()
 

@@ -160,8 +160,9 @@ Cython, & Python.
         parser.add_option('-n', '--name', dest='name',
                           help='name for the project directory and extension module '
                           '[default: %default]')
-        parser.add_option('--no-iso-c-binding', action='store_true',
-                          help='older f2py-style wrapping')
+        parser.add_option('--f77binding', action='store_true',
+                          help='avoid iso_c_binding and use older f2py-style '
+                          'wrapping instead')
         args = None
     else:
         args = sources

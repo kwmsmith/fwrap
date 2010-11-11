@@ -116,8 +116,9 @@ def fwrapc(argv):
             help='name for the extension module [default %default]')
     configure_opts.add_option("--outdir",
                               help='directory for the intermediate files [default %default]')
-    configure_opts.add_option('--no-iso-c-binding', action='store_true',
-                              help='older f2py-style wrapping')
+    configure_opts.add_option('--f77binding', action='store_true',
+                              help='avoid iso_c_binding and use older f2py-style '
+                              'wrapping instead')
     parser.add_option_group(configure_opts)
 
     conf_defaults = dict(name=PROJECT_NAME, outdir=PROJECT_OUTDIR)
