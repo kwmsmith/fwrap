@@ -13,6 +13,7 @@ from fwrap import gen_config as gc
 from fwrap import fc_wrap
 from fwrap import cy_wrap
 from fwrap.code import CodeBuffer, reflow_fort
+from fwrap.context import Context
 
 PROJNAME = 'fwproj'
 
@@ -80,9 +81,12 @@ def generate(fort_ast, name, options):
     c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
     cython_ast = cy_wrap.wrap_fc(c_ast)
 
+    ctx = Context(f77binding=options.f77binding,
+                  fc_wrapper_orig_types=options.f77binding)
+
     # Generate files and write them out
     generators = ( (generate_type_specs,(c_ast,name)),
-                   (generate_fc_f,(c_ast,name)),
+                   (generate_fc_f,(c_ast,name,ctx)),
                    (generate_fc_h,(c_ast,name)),
                    (generate_fc_pxd,(c_ast,name)),
                    (generate_cy_pxd,(cython_ast,name)),
@@ -124,10 +128,10 @@ def generate_fc_pxd(fc_ast, name):
     fc_wrap.generate_fc_pxd(fc_ast, fc_header_name, buf)
     return constants.FC_PXD_TMPL % name, buf
 
-def generate_fc_f(fc_ast, name):
+def generate_fc_f(fc_ast, name, ctx):
     buf = CodeBuffer()
     for proc in fc_ast:
-        proc.generate_wrapper(buf)
+        proc.generate_wrapper(buf, ctx)
     ret_buf = CodeBuffer()
     ret_buf.putlines(reflow_fort(buf.getvalue()))
     return constants.FC_F_TMPL % name, ret_buf

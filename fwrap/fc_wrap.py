@@ -36,16 +36,16 @@ def generate_fc_h(ast, ktp_header_name, buf):
     for proc in ast:
         buf.putln(proc.c_prototype())
 
-def generate_interface(proc, buf, gmn=constants.KTP_MOD_NAME):
-        buf.putln('interface')
-        buf.indent()
-        buf.putln(proc.proc_declaration())
-        buf.indent()
-        proc.proc_preamble(gmn, buf)
-        buf.dedent()
-        buf.putln(proc.proc_end())
-        buf.dedent()
-        buf.putln('end interface')
+def generate_interface(proc, buf, ctx, gmn=constants.KTP_MOD_NAME):
+    buf.putln('interface')
+    buf.indent()
+    buf.putln(proc.proc_declaration(ctx))
+    buf.indent()
+    proc.proc_preamble(gmn, buf, ctx)
+    buf.dedent()
+    buf.putln(proc.proc_end())
+    buf.dedent()
+    buf.putln('end interface')
 
 def _err_test_block(test, errcode, argname):
     tmpl = '''\
@@ -87,49 +87,54 @@ class ProcWrapper(object):
     def proc_end(self):
         return "end subroutine %s" % self.name
 
-    def proc_preamble(self, ktp_mod, buf):
-        buf.putln('use %s' % ktp_mod)
+    def proc_preamble(self, ktp_mod, buf, ctx):
+        if not ctx.f77binding:
+            buf.putln('use %s' % ktp_mod)
         buf.putln('implicit none')
-        for declaration in (self.arg_declarations() +
-                            self.param_declarations()):
+        for declaration in (self.arg_declarations(ctx) +
+                            self.param_declarations(ctx)):
             buf.putln(declaration)
 
-    def generate_wrapper(self, buf, gmn=constants.KTP_MOD_NAME):
-        buf.putln(self.proc_declaration())
+    def generate_wrapper(self, buf, ctx, gmn=constants.KTP_MOD_NAME):
+        buf.putln(self.proc_declaration(ctx))
         buf.indent()
-        self.proc_preamble(gmn, buf)
-        generate_interface(self.wrapped, buf, gmn)
-        self.temp_declarations(buf)
-        self.pre_call_code(buf)
+        self.proc_preamble(gmn, buf, ctx)
+        generate_interface(self.wrapped, buf, ctx, gmn)
+        self.temp_declarations(buf, ctx)
+        self.pre_call_code(buf, ctx)
         self.proc_call(buf)
-        self.post_call_code(buf)
+        self.post_call_code(buf, ctx)
         buf.dedent()
         buf.putln(self.proc_end())
 
-    def proc_declaration(self):
-        return 'subroutine %s(%s) bind(c, name="%s")' % \
-                (self.name, ', '.join(self.extern_arg_list()),
-                        self.name)
+    def proc_declaration(self, ctx):
+        if not ctx.f77binding:
+            return 'subroutine %s(%s) bind(c, name="%s")' % \
+                   (self.name, ', '.join(self.extern_arg_list()),
+                    self.name)
+        else:
+            return 'subroutine %s(%s) ' % \
+                   (self.name, ', '.join(self.extern_arg_list()))
 
-    def temp_declarations(self, buf):
-        for declaration in self.arg_man.temp_declarations():
+    def temp_declarations(self, buf, ctx):
+        for declaration in self.arg_man.temp_declarations(ctx):
             buf.putln(declaration)
 
     def extern_arg_list(self):
         return self.arg_man.extern_arg_list()
 
-    def arg_declarations(self):
-        return self.arg_man.arg_declarations()
+    def arg_declarations(self, ctx):
+        return self.arg_man.arg_declarations(ctx)
 
-    def param_declarations(self):
-        return self.arg_man.param_declarations()
+    def param_declarations(self, ctx):
+        return self.arg_man.param_declarations(ctx)
 
-    def pre_call_code(self, buf):
-        for line in self.arg_man.pre_call_code():
+    def pre_call_code(self, buf, ctx):
+        for line in self.arg_man.pre_call_code(ctx):
             buf.putln(line)
 
-    def post_call_code(self, buf):
-        for line in self.arg_man.post_call_code():
+    def post_call_code(self, buf, ctx):
+        for line in self.arg_man.post_call_code(ctx):
             buf.putln(line)
 
     def proc_call(self, buf):
@@ -230,53 +235,61 @@ class ArgWrapperManager(object):
     def c_proto_return_type(self):
         return 'void'
 
-    def param_declarations(self):
+    def param_declarations(self, ctx):
         proc_arg_man = self.proc.arg_man
         decls = []
+        orig = ctx.fc_wrapper_orig_types
         for o in proc_arg_man.order_declarations():
             if isinstance(o, pyf.Parameter):
-                decls.append(o.declaration())
+                decls.append(o.declaration(orig))
         return decls
 
-    def arg_declarations(self):
+    def arg_declarations(self, ctx):
         decls = []
         for argw in self.arg_wrappers:
-            decls.extend(argw.extern_declarations())
+            decls.extend(argw.extern_declarations(ctx))
         return decls
 
     def __return_spec_declaration(self):
         #XXX: demeter ???
         return self.return_arg_wrapper.extern_arg.declaration()
 
-    def temp_declarations(self):
+    def temp_declarations(self, ctx):
         #XXX: demeter ???
         decls = []
         for argw in self.arg_wrappers:
-            decls.extend(argw.intern_declarations())
+            decls.extend(argw.intern_declarations(ctx))
         return decls
 
-    def init_err(self):
-        return "%s = FW_INIT_ERR__" % constants.ERR_NAME
+    def assign_err_flag(self, value, ctx):
+        if ctx.f77binding:
+            value = str(constants.ERR_CODES[value])
+        return "%s = %s" % (constants.ERR_NAME, value)
 
     def no_err(self):
-        return "%s = FW_NO_ERR__" % constants.ERR_NAME
+        if ctx.f77binding:
+            return "%s = %d" % (
+                constants.ERR_NAME,
+                constants.ERR_CODES['FW_NO_ERR__'])
+        else:
+            return "%s = FW_NO_ERR__" % constants.ERR_NAME
 
-    def pre_call_code(self):
-        all_pcc = [self.init_err()]
+    def pre_call_code(self, ctx):
+        all_pcc = [self.assign_err_flag('FW_INIT_ERR__', ctx)]
         for argw in self.arg_wrappers:
             pcc = argw.pre_call_code()
             if pcc:
                 all_pcc.extend(pcc)
         return all_pcc
 
-    def post_call_code(self):
+    def post_call_code(self, ctx):
         all_pcc = []
         wpprs = self.arg_wrappers[:]
         for argw in wpprs:
             pcc = argw.post_call_code()
             if pcc:
                 all_pcc.extend(pcc)
-        all_pcc += [self.no_err()]
+        all_pcc += [self.assign_err_flag('FW_NO_ERR__', ctx)]
         return all_pcc
 
     def _return_var_name(self):
@@ -359,18 +372,22 @@ class ArgWrapper(ArgWrapperBase):
     def extern_arg_list(self):
         return [extern_arg.name for extern_arg in self.extern_args]
 
-    def extern_declarations(self):
-        return [extern_arg.declaration() for extern_arg in self.extern_args]
+    def extern_declarations(self, ctx):
+        orig_type = ctx.fc_wrapper_orig_types
+        return [extern_arg.declaration(orig_type)
+                for extern_arg in self.extern_args]
 
     def c_declarations(self):
-        return [extern_arg.c_declaration() for extern_arg in self.extern_args]
+        return [extern_arg.c_declaration()
+                for extern_arg in self.extern_args]
 
     def c_types(self):
         return [extern_arg.c_type() for extern_arg in self.extern_args]
 
-    def intern_declarations(self):
+    def intern_declarations(self, ctx):
+        orig = ctx.fc_wrapper_orig_types
         if self.intern_var:
-            return [self.intern_var.declaration()]
+            return [self.intern_var.declaration(orig)]
         else:
             return []
 
@@ -395,10 +412,15 @@ class ErrStrArgWrapper(ArgWrapperBase):
     def extern_arg_list(self):
         return [self.name]
 
-    def extern_declarations(self):
-        return [self.arg.declaration()]
+    def extern_declarations(self, ctx):
+        orig = ctx.fc_wrapper_orig_types
+        x = self.arg.declaration(orig)
+        if ctx.f77binding:
+            x = x.replace(constants.ERRSTR_LEN,
+                          str(constants.FORT_MAX_ARG_NAME_LEN))
+        return [x]
 
-    def intern_declarations(self):
+    def intern_declarations(self, ctx):
         return []
 
     def all_dtypes(self):
@@ -419,11 +441,12 @@ class HideArgWrapper(ArgWrapperBase):
     def extern_arg_list(self):
         return []
 
-    def extern_declarations(self):
+    def extern_declarations(self, ctx):
         return []
 
-    def intern_declarations(self):
-        return [self._intern_var.declaration()]
+    def intern_declarations(self, ctx):
+        orig = ctx.fc_wrapper_orig_types
+        return [self._intern_var.declaration(orig)]
 
     def pre_call_code(self):
         return ["%s = (%s)" % (self._intern_var.name, self.value)]
