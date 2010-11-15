@@ -54,23 +54,46 @@ def build(bld):
     wrapper = '%s_fc.f90' % bld.env['FW_PROJ_NAME']
     cy_src = '%s.pyx' % bld.env['FW_PROJ_NAME']
 
+    if bld.env['FW_F77_BINDING']:
+        type_specs = []
+    else:
+        type_specs = ['fwrap_type_specs.in']
+
     bld(
         name = 'fwrapper',
         rule = '${PYTHON} ${FWRAPPER} --name=%s ${FWRAPPER_OPTS} ${SRC}' % bld.env['FW_PROJ_NAME'],
         source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90']),
-        target = ['fwrap_type_specs.in', wrapper, cy_src],
+        target = type_specs + [wrapper, cy_src],
         )
 
-    bld(
-        features = 'c fc typemap pyext cshlib',
-        source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90']) + [cy_src],
-        wrapper = wrapper,
-        typemap = 'fwrap_type_specs.in',
-        target = bld.env['FW_PROJ_NAME'],
-        use = 'fcshlib CLIB NUMPY',
-        includes = ['.'],
-        install_path = bld.srcnode.abspath(),
-        )
+    if not bld.env['FW_F77_BINDING']:
+        bld(
+            features = 'c fc typemap pyext cshlib',
+            source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90']) +
+                     [cy_src],
+            wrapper = wrapper,
+            typemap = 'fwrap_type_specs.in',
+            target = bld.env['FW_PROJ_NAME'],
+            use = 'fcshlib CLIB NUMPY',
+            includes = ['.'],
+            install_path = bld.srcnode.abspath(),
+            )
+    else:
+        bld(
+            name = 'generate_typemap',
+            rule = task_generate_typemap_f77binding,
+            target = [modmap.typemap_h, modmap.typemap_pxd, modmap.typemap_pxi]
+            )
+        bld(
+            after = 'generate_typemap',
+            features = 'c fc pyext cshlib',
+            source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90']) +
+                     [cy_src, wrapper],
+            target = bld.env['FW_PROJ_NAME'],
+            use = 'fcshlib CLIB NUMPY',
+            includes = ['.'],
+            install_path = bld.srcnode.abspath(),
+            )
 
     bld(
         rule = 'touch ${TGT}',
@@ -207,15 +230,14 @@ class modmap(Task.Task):
         node = self.inputs[0]
         bld.logger = Logs.make_logger(node.parent.get_bld().abspath() + os.sep + node.name + '.log', 'build')
 
-        gen_type_map_files(bld, self.inputs, self.outputs)
+        ktp_in = [ip for ip in self.inputs if ip.name.endswith('.in')][0]
+        ctps = gc.read_type_spec(ktp_in.abspath())
+        find_types(bld, ctps)
+        gen_type_map_files(ctps, self.outputs, write_f90_mod=True)
 
 from fwrap import gen_config as gc
 
-def gen_type_map_files(bld, inputs, outputs):
-    ktp_in = [ip for ip in inputs if ip.name.endswith('.in')][0]
-    ctps = gc.read_type_spec(ktp_in.abspath())
-    find_types(bld, ctps)
-
+def gen_type_map_files(ctps, outputs, write_f90_mod):
     def find_by_ext(lst, ext):
         newlst = [x for x in lst if x.name.endswith(ext)]
         if len(newlst) != 1:
@@ -223,8 +245,8 @@ def gen_type_map_files(bld, inputs, outputs):
         return newlst[0]
 
     header_name = find_by_ext(outputs, '.h').name
-
-    gc.write_f_mod(ctps, find_by_ext(outputs, '.f90'))
+    if write_f90_mod:
+        gc.write_f_mod(ctps, find_by_ext(outputs, '.f90'))
     gc.write_header(ctps, find_by_ext(outputs, '.h'))
     gc.write_pxd(ctps, find_by_ext(outputs, '.pxd'), header_name)
     gc.write_pxi(ctps, find_by_ext(outputs, '.pxi'))
@@ -327,5 +349,11 @@ int main(int argc, char **argv)
     else:
         res = ''
     return gc.c2f[res]
+
+def task_generate_typemap_f77binding(task):
+    from fwrap.f77_config import get_f77_ctps
+    ctps = get_f77_ctps()
+    gen_type_map_files(ctps, task.outputs, write_f90_mod=False)
+
 
 # vim:ft=python

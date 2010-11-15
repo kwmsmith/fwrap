@@ -81,6 +81,7 @@ def call_waf(opts, args, orig_args):
     odir = os.path.abspath(os.curdir)
     os.chdir(proj_dir(opts.outdir))
     try:
+#        assert os.system(' '.join(cmd)) == 0
         subprocess.check_call(cmd)
     finally:
         os.chdir(odir)

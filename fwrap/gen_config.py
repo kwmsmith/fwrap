@@ -21,17 +21,17 @@ def all_dtypes(ast):
 def extract_ctps(ast):
     return ctps_from_dtypes(all_dtypes(ast))
 
+def ctp_from_dtype(dtype):
+    return ConfigTypeParam(basetype=dtype.type,
+                           fwrap_name=dtype.fw_ktp,
+                           odecl=dtype.odecl,
+                           npy_enum=dtype.npy_enum,
+                           lang=dtype.lang)
+
 def ctps_from_dtypes(dtypes):
-    ret = []
-    for dtype in dtypes:
-        if dtype.odecl is None:
-            continue
-        ret.append(ConfigTypeParam(basetype=dtype.type,
-                       fwrap_name=dtype.fw_ktp,
-                       odecl=dtype.odecl,
-                       npy_enum=dtype.npy_enum,
-                       lang=dtype.lang))
-    return ret
+    return [ctp_from_dtype(dtype)
+            for dtype in dtypes
+            if dtype.odecl is not None]
 
 def generate_type_specs(ast, buf):
     ctps = extract_ctps(ast)

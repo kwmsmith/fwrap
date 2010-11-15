@@ -132,22 +132,25 @@ def _get_dtype(typedecl):
         raise RuntimeError(
                 "only intrinsic types supported ATM... [%s]" % str(typedecl))
     length, kind = typedecl.selector
+    return create_dtype(typedecl.name, length, kind)
+
+def create_dtype(name, length, kind):
     if not kind and not length:
-        return name2default[typedecl.name]
-    if length and kind and typedecl.name != 'character':
+        return name2default[name]
+    if length and kind and name != 'character':
         raise RuntimeError("both length and kind specified for "
                                "non-character intrinsic type: "
                                "length: %s kind: %s" % (length, kind))
-    if typedecl.name == 'character':
+    if name == 'character':
         if length == '*':
-            fw_ktp = '%s_xX' % (typedecl.name)
+            fw_ktp = '%s_xX' % (name)
         else:
-            fw_ktp = '%s_x%s' % (typedecl.name, length)
+            fw_ktp = '%s_x%s' % (name, length)
         return pyf.CharacterType(fw_ktp=fw_ktp,
                         len=length, kind=kind)
     if length and not kind:
-        return name2type[typedecl.name](fw_ktp="%s_x%s" %
-                (typedecl.name, length),
+        return name2type[name](fw_ktp="%s_x%s" %
+                (name, length),
                 length=length)
     try:
         int(kind)
@@ -155,7 +158,7 @@ def _get_dtype(typedecl):
         raise RuntimeError(
                 "only integer constant kind "
                     "parameters supported ATM, given '%s'" % kind)
-    if typedecl.name == 'doubleprecision':
+    if name == 'doubleprecision':
         return pyf.default_dbl
-    return name2type[typedecl.name](fw_ktp="%s_%s" %
-            (typedecl.name, kind), kind=kind)
+    return name2type[name](fw_ktp="%s_%s" %
+            (name, kind), kind=kind)
