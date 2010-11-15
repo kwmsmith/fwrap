@@ -28,6 +28,9 @@ import fwrap.gen_config as gc
 from fwrap.fwrap_parse import create_dtype
 
 def get_f77_ctps():
+    # Essentially simulates the effect of parsing
+    # all possible types (integer, integer*2, and so on)
+    # and associate the type
     f77_type_table = [
         ('integer', [
             (None, 'c_int'),
