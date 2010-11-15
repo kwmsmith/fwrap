@@ -87,7 +87,7 @@ def generate(fort_ast, name, options):
     # Generate files and write them out
     generators = ( (generate_type_specs,(c_ast,name)),
                    (generate_fc_f,(c_ast,name,ctx)),
-                   (generate_fc_h,(c_ast,name)),
+                   (generate_fc_h,(c_ast,name,ctx)),
                    (generate_fc_pxd,(c_ast,name)),
                    (generate_cy_pxd,(cython_ast,name)),
                    (generate_cy_pyx,(cython_ast,name)) )
@@ -136,9 +136,9 @@ def generate_fc_f(fc_ast, name, ctx):
     ret_buf.putlines(reflow_fort(buf.getvalue()))
     return constants.FC_F_TMPL % name, ret_buf
 
-def generate_fc_h(fc_ast, name):
+def generate_fc_h(fc_ast, name, ctx):
     buf = CodeBuffer()
-    fc_wrap.generate_fc_h(fc_ast, constants.KTP_HEADER_SRC, buf)
+    fc_wrap.generate_fc_h(fc_ast, constants.KTP_HEADER_SRC, buf, ctx)
     return constants.FC_HDR_TMPL % name, buf
 
 def fwrapper(use_cmdline, sources=None, **options):

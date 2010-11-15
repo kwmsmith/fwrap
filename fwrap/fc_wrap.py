@@ -30,11 +30,21 @@ def generate_fc_pxd(ast, fc_header_name, buf):
         buf.putln(proc.cy_prototype())
     buf.dedent()
 
-def generate_fc_h(ast, ktp_header_name, buf):
+def generate_fc_h(ast, ktp_header_name, buf, ctx):
     buf.putln('#include "%s"' % ktp_header_name)
     buf.putln('')
+    if ctx.f77binding:
+        import f77_config
+        buf.write(f77_config.name_mangling_utility_code)
+        buf.putln('')
     for proc in ast:
-        buf.putln(proc.c_prototype())
+        buf.putln(proc.c_prototype(ctx))
+    if ctx.f77binding:
+        buf.putln('')
+        buf.putln('#if !defined(NO_FORTRAN_MANGLING)')
+        for proc in ast:
+            buf.putln(proc.c_mangle_define())
+        buf.putln('#endif')
 
 def generate_interface(proc, buf, ctx, gmn=constants.KTP_MOD_NAME):
     buf.putln('interface')
@@ -148,8 +158,20 @@ class ProcWrapper(object):
     def call_arg_list(self):
         return self.arg_man.call_arg_list()
 
-    def c_prototype(self):
-        return "%s;" % self.cy_prototype()
+    def c_prototype(self, ctx):
+        if not ctx.f77binding:
+            return "%s;" % self.cy_prototype()
+        else:
+            return "%s F_FUNC(%s,%s)(%s);" % (
+                self.arg_man.c_proto_return_type(),
+                self.name.lower(),
+                self.name.upper(),
+                ", ".join(self.arg_man.c_proto_args()))
+
+    def c_mangle_define(self):
+        return '#define %s F_FUNC(%s,%s)' % (self.name,
+                                             self.name.lower(),
+                                             self.name.upper())
 
     def cy_prototype(self):
         args = ", ".join(self.arg_man.c_proto_args())
