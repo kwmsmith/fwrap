@@ -338,8 +338,6 @@ def ArgWrapperFactory(arg):
         return ArrayArgWrapper(arg)
     elif arg.dtype.type == 'logical':
         return LogicalWrapper(arg)
-    elif arg.intent == 'hide':
-        return HideArgWrapper(arg)
     elif arg.dtype.type == 'character':
         return CharArgWrapper(arg)
     else:
@@ -377,6 +375,8 @@ class ArgWrapper(ArgWrapperBase):
         self.name = arg.name
         self.ktp = arg.ktp
         self.intent = arg.intent
+        self.init_code = arg.init_code
+        self.hide_in_wrapper = arg.hide_in_wrapper
         self._set_intern_name()
         self._set_intern_vars()
         self._set_extern_args()
@@ -447,31 +447,6 @@ class ErrStrArgWrapper(ArgWrapperBase):
 
     def all_dtypes(self):
         return [self.arg.dtype]
-
-
-class HideArgWrapper(ArgWrapperBase):
-
-    def __init__(self, arg):
-        self._orig_arg = arg
-        self._extern_arg = None
-        self._intern_var = \
-                pyf.Var(name=arg.name, dtype=arg.dtype, dimension=None)
-        self.value = arg.value
-        assert self.value is not None
-        self.intern_name = self._intern_var.name
-
-    def extern_arg_list(self):
-        return []
-
-    def extern_declarations(self, ctx):
-        return []
-
-    def intern_declarations(self, ctx):
-        orig = ctx.fc_wrapper_orig_types
-        return [self._intern_var.declaration(orig)]
-
-    def pre_call_code(self):
-        return ["%s = (%s)" % (self._intern_var.name, self.value)]
 
 
 class ArrayArgWrapper(ArgWrapper):

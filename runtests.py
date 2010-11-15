@@ -117,11 +117,15 @@ class FwrapCompileTestCase(unittest.TestCase):
         self.projname = os.path.splitext(self.filename)[0] + '_fwrap'
         self.projdir = os.path.join(self.workdir, self.projname)
         fq_fname = os.path.join(os.path.abspath(self.directory), self.filename)
+        source_files = [fq_fname]
+        pyf_file = '%s.pyf' % os.path.splitext(fq_fname)[0]
+        if os.path.exists(pyf_file):
+            source_files.append(pyf_file)
         argv = ['configure'] + self.configure_flags + ['build',
                 '--name=%s' % self.projname,
-                '--outdir=%s' % self.projdir,
-                fq_fname,
-                'install']
+                '--outdir=%s' % self.projdir]
+        argv += source_files
+        argv += ['install']
         fwrapc(argv=argv)
 
     def compile(self, directory, filename, workdir, incdir):

@@ -39,14 +39,14 @@ class test_cy_arg_intents(object):
         self.intent_in, self.intent_out, self.intent_inout = self.caws
 
     def test_pre_call_code(self):
-        eq_(self.intent_in.pre_call_code(), [])
-        eq_(self.intent_inout.pre_call_code(), [])
-        eq_(self.intent_out.pre_call_code(), [])
+        eq_(self.intent_in.pre_call_code(None), [])
+        eq_(self.intent_inout.pre_call_code(None), [])
+        eq_(self.intent_out.pre_call_code(None), [])
 
     def test_post_call_code(self):
-        eq_(self.intent_in.post_call_code(), [])
-        eq_(self.intent_out.post_call_code(), [])
-        eq_(self.intent_inout.post_call_code(), [])
+        eq_(self.intent_in.post_call_code(None), [])
+        eq_(self.intent_out.post_call_code(None), [])
+        eq_(self.intent_inout.post_call_code(None), [])
 
     def test_call_arg_list(self):
         eq_(self.intent_in.call_arg_list(), ['&name'])
@@ -55,9 +55,9 @@ class test_cy_arg_intents(object):
 
     def test_extern_declarations(self):
         eq_(self.intent_in.extern_declarations(),
-                ['fwi_integer_t name'])
+                [('fwi_integer_t name', None)])
         eq_(self.intent_inout.extern_declarations(),
-                ['fwl_logical_t name'])
+                [('fwl_logical_t name', None)])
         eq_(self.intent_out.extern_declarations(), [])
 
     def test_intern_declarations(self):
@@ -81,8 +81,8 @@ class test_cy_mgr_intents(object):
         self.mgr = cy_wrap.CyArgWrapperManager(args=self.caws)
 
     def test_arg_declarations(self):
-        eq_(self.mgr.arg_declarations(), ['fwi_integer_t name0',
-                                          'fwl_logical_t name2'])
+        eq_(self.mgr.arg_declarations(), [('fwi_integer_t name0', None),
+                                          ('fwl_logical_t name2', None)])
 
     def test_intern_declarations(self):
         eq_(self.mgr.intern_declarations(), ['cdef fwr_real_t name1'])
@@ -97,7 +97,7 @@ class test_cy_arg_wrapper(object):
         self.caws = make_caws(self.dts, ['foo']*len(self.dts))
 
     def test_extern_declarations(self):
-        extern_decls = ["fwi_integer_t foo", "fwr_real_t foo"]
+        extern_decls = [("fwi_integer_t foo", None), ("fwr_real_t foo", None)]
         for ed, caw in zip(extern_decls, self.caws):
             eq_(caw.extern_declarations(), [ed])
 
@@ -142,19 +142,19 @@ class test_cy_char_array_arg_wrapper(object):
                  "charr1_ = charr1",
                  "charr1_shape[0] = <fwi_npy_intp_t>"
                      "(charr1.shape[0]/charr1_shape[1])",]
-        eq_(self.cy_arg1d.pre_call_code(), cmp1)
+        eq_(self.cy_arg1d.pre_call_code(None), cmp1)
         cmp2 = ["charr2_odtype = charr2.dtype",
                  "for i in range(2): charr2_shape[i+1] = charr2.shape[i]",
                  "charr2.dtype = 'b'",
                  "charr2_ = charr2",
                  "charr2_shape[0] = <fwi_npy_intp_t>"
                      "(charr2.shape[0]/charr2_shape[1])"]
-        eq_(self.cy_arg2d.pre_call_code(), cmp2)
+        eq_(self.cy_arg2d.pre_call_code(None), cmp2)
 
     def test_post_call_code(self):
-        eq_(self.cy_arg1d.post_call_code(),
+        eq_(self.cy_arg1d.post_call_code(None),
                 ["charr1.dtype = charr1_odtype"])
-        eq_(self.cy_arg2d.post_call_code(),
+        eq_(self.cy_arg2d.post_call_code(None),
                 ["charr2.dtype = charr2_odtype"])
 
     def test_call_arg_list(self):
@@ -181,8 +181,8 @@ class test_cy_array_arg_wrapper(object):
                             fc_wrap.ArrayArgWrapper(arg2))
 
     def test_extern_declarations(self):
-        eq_(self.cy_arg.extern_declarations(), ['object array'])
-        eq_(self.cy_int_arg.extern_declarations(), ['object int_array'])
+        eq_(self.cy_arg.extern_declarations(), [('object array', None)])
+        eq_(self.cy_int_arg.extern_declarations(), [('object int_array', None)])
 
     def test_intern_declarations(self):
         eq_(self.cy_arg.intern_declarations(),
@@ -203,16 +203,16 @@ class test_cy_array_arg_wrapper(object):
                  '<fwi_integer_t*>int_array_.data'])
 
     def test_pre_call_code(self):
-        eq_(self.cy_arg.pre_call_code(),
+        eq_(self.cy_arg.pre_call_code(None),
                 ['array_ = np.PyArray_FROMANY(array, '
                  'fwr_real_t_enum, 3, 3, np.NPY_F_CONTIGUOUS)'])
-        eq_(self.cy_int_arg.pre_call_code(),
+        eq_(self.cy_int_arg.pre_call_code(None),
                 ['int_array_ = np.PyArray_FROMANY(int_array, '
                  'fwi_integer_t_enum, 1, 1, np.NPY_F_CONTIGUOUS)'])
 
     def test_post_call_code(self):
-        eq_(self.cy_arg.post_call_code(), [])
-        eq_(self.cy_int_arg.post_call_code(), [])
+        eq_(self.cy_arg.post_call_code(None), [])
+        eq_(self.cy_int_arg.post_call_code(None), [])
 
     def test_return_tuple_list(self):
         eq_(self.cy_arg.return_tuple_list(), [])
@@ -234,14 +234,14 @@ class test_char_assumed_size(object):
 
     def test_extern_declarations(self):
         eq_(self.intent_out.extern_declarations(),
-                ['fw_bytes name'])
+                [('fw_bytes name', None)])
 
     def test_pre_call_code(self):
-        eq_(self.intent_out.pre_call_code(),
+        eq_(self.intent_out.pre_call_code(None),
                 ['fw_name_len = len(name)',
                  'fw_name = PyBytes_FromStringAndSize(NULL, fw_name_len)',
                  'fw_name_buf = <char*>fw_name',])
-        eq_(self.intent_inout.pre_call_code(),
+        eq_(self.intent_inout.pre_call_code(None),
                 ['fw_name_len = len(name)',
                  'fw_name = PyBytes_FromStringAndSize(NULL, fw_name_len)',
                  'fw_name_buf = <char*>fw_name',
@@ -262,9 +262,9 @@ class test_char_args(object):
 
     def test_extern_declarations(self):
         eq_(self.intent_in.extern_declarations(),
-               ['fw_bytes name'])
+               [('fw_bytes name', None)])
         eq_(self.intent_inout.extern_declarations(),
-               ['fw_bytes name'])
+               [('fw_bytes name', None)])
         eq_(self.intent_out.extern_declarations(),
                [])
 
@@ -286,23 +286,23 @@ class test_char_args(object):
                  'cdef char *fw_name_buf'])
 
     def test_pre_call_code(self):
-        eq_(self.intent_out.pre_call_code(),
+        eq_(self.intent_out.pre_call_code(None),
                 ['fw_name_len = 20',
                  'fw_name = PyBytes_FromStringAndSize(NULL, fw_name_len)',
                  'fw_name_buf = <char*>fw_name'])
-        eq_(self.intent_in.pre_call_code(),
+        eq_(self.intent_in.pre_call_code(None),
                 ['fw_name_len = len(name)',
                  'fw_name = name',])
-        eq_(self.intent_inout.pre_call_code(),
+        eq_(self.intent_inout.pre_call_code(None),
                 ['fw_name_len = 30',
                  'fw_name = PyBytes_FromStringAndSize(NULL, fw_name_len)',
                  'fw_name_buf = <char*>fw_name',
                  'memcpy(fw_name_buf, <char*>name, fw_name_len+1)',])
 
     def test_post_call_code(self):
-        eq_(self.intent_out.post_call_code(), [])
-        eq_(self.intent_in.post_call_code(), [])
-        eq_(self.intent_inout.post_call_code(), [])
+        eq_(self.intent_out.post_call_code(None), [])
+        eq_(self.intent_in.post_call_code(None), [])
+        eq_(self.intent_inout.post_call_code(None), [])
 
     def test_call_arg_list(self):
         eq_(self.intent_out.call_arg_list(), ['&fw_name_len', 'fw_name_buf'])
@@ -329,11 +329,11 @@ class test_cmplx_args(object):
 
     def test_extern_declarations(self):
         eq_(self.intent_in.extern_declarations(),
-                ['fwc_complex_t name'])
+                [('fwc_complex_t name', None)])
         eq_(self.intent_inout.extern_declarations(),
-                ['fwc_complex_t name'])
+                [('fwc_complex_t name', None)])
         eq_(self.intent_none.extern_declarations(),
-                ['fwc_complex_t name'])
+                [('fwc_complex_t name', None)])
 
     def test_intern_declarations(self):
         eq_(self.intent_out.intern_declarations(),
@@ -343,12 +343,12 @@ class test_cmplx_args(object):
         eq_(self.intent_none.intern_declarations(), [])
 
     def test_pre_call_code(self):
-        eq_(self.intent_in.pre_call_code(), [])
-        eq_(self.intent_out.pre_call_code(), [])
+        eq_(self.intent_in.pre_call_code(None), [])
+        eq_(self.intent_out.pre_call_code(None), [])
 
     def test_post_call_code(self):
-        eq_(self.intent_out.post_call_code(), [])
-        eq_(self.intent_in.post_call_code(), [])
+        eq_(self.intent_out.post_call_code(None), [])
+        eq_(self.intent_in.post_call_code(None), [])
 
     def test_call_arg_list(self):
         eq_(self.intent_in.call_arg_list(), ['&name'])
@@ -470,7 +470,7 @@ class test_cy_proc_wrapper(object):
 
     def test_subr_generate_wrapper(self):
         buf = CodeBuffer()
-        self.cy_subr_wrapper.generate_wrapper(buf)
+        self.cy_subr_wrapper.generate_wrapper(None, buf)
         cy_wrapper = '''\
 cpdef api object fort_subr(fwi_integer_t int_arg_in, fwi_integer_t int_arg_inout, fwr_real_t real_arg):
     """
@@ -501,7 +501,7 @@ cpdef api object fort_subr(fwi_integer_t int_arg_in, fwi_integer_t int_arg_inout
 
     def test_func_generate_wrapper(self):
         buf = CodeBuffer()
-        self.cy_func_wrapper.generate_wrapper(buf)
+        self.cy_func_wrapper.generate_wrapper(None, buf)
         cy_wrapper = '''\
 cpdef api object fort_func(fwi_integer_t int_arg_in, fwi_integer_t int_arg_inout, fwr_real_t real_arg):
     """

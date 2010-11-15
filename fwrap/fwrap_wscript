@@ -62,7 +62,7 @@ def build(bld):
     bld(
         name = 'fwrapper',
         rule = '${PYTHON} ${FWRAPPER} --name=%s ${FWRAPPER_OPTS} ${SRC}' % bld.env['FW_PROJ_NAME'],
-        source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90']),
+        source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90', 'src/*.pyf']),
         target = type_specs + [wrapper, cy_src],
         )
 

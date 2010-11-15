@@ -58,7 +58,7 @@ def build_cb(opts, args, argv):
     srcs = []
     for arg in args:
         larg = arg.lower()
-        if larg.endswith('.f') or larg.endswith('.f90'):
+        if larg.endswith('.f') or larg.endswith('.f90') or larg.endswith('.pyf'):
             srcs.append(os.path.abspath(arg))
             argv.remove(arg)
 

@@ -1,0 +1,13 @@
+python module pyf_support
+    interface
+        subroutine testone(m_hidden, m, n, arr)
+            callstatement ** *ignore this please **
+            callprotoargument ignore this too ** *
+            integer intent(hide), depend(m) :: m_hidden=m+1
+            integer intent(in), check(m>=3) :: m
+            integer intent(in), check(n>=2) :: n = 2
+            real*8 intent(out),dimension(1:m_hidden,1:n),depend(m_hidden,n) :: arr
+        end subroutine testone
+    end interface 
+end python module pyf_support
+
