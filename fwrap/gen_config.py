@@ -79,21 +79,17 @@ module fwrap_ktp_mod
 
     fbuf.write(buf.getvalue())
 
-def get_ctp_classes(ctps):
-    clses = set([type(ctp) for ctp in ctps])
-    return clses
+def get_c_preambles(ctps):
+    blocks = set()
+    for tp in ctps:
+        blocks.update(tp.get_c_preambles())
+    return blocks
 
-def get_c_includes(ctp_classes):
-    includes = []
-    for tp in ctp_classes:
-        includes.extend(tp.c_includes)
-    return includes
-
-def get_pxd_cimports(ctp_classes):
-    cimports = []
-    for tp in ctp_classes:
-        cimports.extend(tp.pxd_cimports)
-    return cimports
+def get_pxd_cimports(ctps):
+    blocks = set()
+    for tp in ctps:
+        blocks.update(tp.get_pxd_cimports())
+    return blocks
 
 def write_header(ctps, fbuf):
 
@@ -106,7 +102,7 @@ def write_header(ctps, fbuf):
     buf.write("#ifndef %s\n" % fbuf.name.upper().replace('.','_'))
     buf.write("#define %s\n" % fbuf.name.upper().replace('.', '_'))
     write_err_codes(buf)
-    for incl in get_c_includes(get_ctp_classes(ctps)):
+    for incl in get_c_preambles(ctps):
         if incl: buf.write(incl+'\n')
     for ctp in ctps:
         for line in ctp.gen_c_typedef():
@@ -137,7 +133,7 @@ def write_pxd(ctps, fbuf, h_name):
 
     buf = StringIO()
     extern_block = StringIO()
-    for cimp in get_pxd_cimports(get_ctp_classes(ctps)):
+    for cimp in get_pxd_cimports(ctps):
         if cimp: buf.write(cimp+'\n')
     for ctp in ctps:
         for line in ctp.gen_pxd_intern_typedef():
@@ -187,9 +183,8 @@ class _ConfigTypeParam(object):
 
     lang = 'fortran'
 
-    c_includes = ''
-
-    pxd_cimports = ''
+    c_preambles = []
+    pxd_cimports = []
 
     def __init__(self, basetype, odecl, fwrap_name, npy_enum):
         self.basetype = basetype
@@ -202,6 +197,12 @@ class _ConfigTypeParam(object):
         return self.basetype == other.basetype and \
                 self.odecl == other.odecl and \
                 self.fwrap_name == other.fwrap_name
+
+    def get_c_preambles(self):
+        return self.c_preambles
+
+    def get_pxd_cimports(self):
+        return self.pxd_cimports
 
     def cy_name(self):
         return self.fwrap_name
@@ -251,17 +252,17 @@ def _get_py_version():
 def _get_pybytes():
     major, minor = _get_py_version()
     if major < 3:
-        return ['from python_string cimport PyString_FromStringAndSize '
-                            'as PyBytes_FromStringAndSize',
-                'ctypedef str fw_bytes']
+        return '''\
+from python_string cimport PyString_FromStringAndSize as PyBytes_FromStringAndSize
+ctypedef str fw_bytes'''
     elif major == 3:
-        return ['from python_bytes cimport PyBytes_FromStringAndSize',
-                'ctypedef bytes fw_bytes'
-                ]
+        return '''\
+from python_bytes cimport PyBytes_FromStringAndSize
+ctypedef bytes fw_bytes'''
 
 class _CharTypeParam(_ConfigTypeParam):
 
-    pxd_cimports = _get_pybytes()
+    pxd_cimports = [_get_pybytes()]
 
     def _get_odecl(self):
         return "character(1)"
@@ -319,7 +320,7 @@ f2c = {
     'c_int'             : 'int',
     'c_short'           : 'short int',
     'c_long'            : 'long int',
-    'c_long_long'       : 'long long int',
+    'c_long_long'       : 'fw_long_long',
     'c_signed_char'     : 'signed char',
     'c_size_t'          : 'size_t',
     'c_int8_t'          : 'int8_t',
