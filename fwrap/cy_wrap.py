@@ -33,6 +33,7 @@ def gen_cdef_extern_decls(buf):
         buf.putlines(dtype.cdef_extern_decls)
 
 def generate_cy_pyx(ast, name, buf):
+    buf.putln("#cython: ccomplex=True")
     put_cymod_docstring(ast, name, buf)
     buf.putln("np.import_array()")
     buf.putln("include 'fwrap_ktp.pxi'")
