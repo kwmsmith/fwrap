@@ -16,6 +16,8 @@ def reflow_fort(code, level=0, max_len=LINE_LENGTH):
     return '\n'.join(newcode)
 
 def reflow_line(text, level=0, max_len=LINE_LENGTH):
+    if text == '':
+        return ['']
     line_len = max_len - len(INDENT)*level
     broken_text = []
     lim = int(ceil(len(text)/float(line_len)))
