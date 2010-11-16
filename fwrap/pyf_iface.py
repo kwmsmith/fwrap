@@ -644,8 +644,9 @@ class ArgManager(object):
 
 class Procedure(object):
 
-    def __init__(self, name, args, params=()):
+    def __init__(self, name, args, params=(), language='fortran'):
         super(Procedure, self).__init__()
+        assert language in ('fortran', 'pyf')
         if not valid_fort_name(name):
             raise InvalidNameException(
                     "%s is not a valid Fortran procedure name.")
@@ -653,6 +654,7 @@ class Procedure(object):
         self.args = args
         self.arg_man = None
         self.params = params
+        self.language = language
 
     def extern_arg_list(self):
         return self.arg_man.extern_arg_list()
@@ -681,8 +683,9 @@ class Procedure(object):
 
 class Function(Procedure):
 
-    def __init__(self, name, args, return_arg, params=()):
-        super(Function, self).__init__(name, args, params)
+    def __init__(self, name, args, return_arg, params=(),
+                 language='fortran'):
+        super(Function, self).__init__(name, args, params, language)
         self.return_arg = return_arg
         self.return_arg.name = self.name
         self.kind = 'function'
@@ -693,8 +696,8 @@ class Function(Procedure):
 
 class Subroutine(Procedure):
 
-    def __init__(self, name, args, params=()):
-        super(Subroutine, self).__init__(name, args, params)
+    def __init__(self, name, args, params=(), language='fortran'):
+        super(Subroutine, self).__init__(name, args, params, language)
         self.kind = 'subroutine'
         self.arg_man = ArgManager(self.args, params=self.params)
 

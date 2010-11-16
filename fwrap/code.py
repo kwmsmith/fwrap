@@ -94,6 +94,9 @@ class CodeBuffer(object):
         else:
             self.putempty()
 
+    def putblock(self, block):
+        self.sio.write(block)
+
     def indent(self):
         self._level += 1
 

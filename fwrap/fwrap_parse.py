@@ -9,10 +9,10 @@ from fparser import api
 def generate_ast(fsrcs):
     ast = []
     for src in fsrcs:
+        language = 'pyf' if src.endswith('.pyf') else 'fortran'
         block = api.parse(src, analyze=True)
         tree = block.content
         for proc in tree:
-
             if not is_proc(proc):
                 # we ignore non-top-level procedures until modules are supported.
                 continue
@@ -24,13 +24,15 @@ def generate_ast(fsrcs):
                 ast.append(pyf.Subroutine(
                                 name=proc.name,
                                 args=args,
-                                params=params))
+                                params=params,
+                                language=language))
             elif proc.blocktype == 'function':
                 ast.append(pyf.Function(
                                 name=proc.name,
                                 args=args,
                                 params=params,
-                                return_arg=_get_ret_arg(proc)))
+                                return_arg=_get_ret_arg(proc),
+                                language=language))
     return ast
 
 
