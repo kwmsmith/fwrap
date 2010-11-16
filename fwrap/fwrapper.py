@@ -12,7 +12,7 @@ from fwrap import constants
 from fwrap import gen_config as gc
 from fwrap import fc_wrap
 from fwrap import cy_wrap
-from fwrap.code import CodeBuffer, reflow_fort
+from fwrap.code import CodeBuffer, CodeBufferFixedForm, reflow_fort
 from fwrap.configuration import Configuration
 
 PROJNAME = 'fwproj'
@@ -129,12 +129,23 @@ def generate_fc_pxd(fc_ast, name):
     return constants.FC_PXD_TMPL % name, buf
 
 def generate_fc_f(fc_ast, name, cfg):
-    buf = CodeBuffer()
+    if not cfg.f77binding:
+        buf = CodeBuffer()
+        outfile = constants.FC_F_TMPL % name
+    else:
+        buf = CodeBufferFixedForm()
+        outfile = constants.FC_F_TMPL_F77 % name
+        
     for proc in fc_ast:
         proc.generate_wrapper(buf, cfg)
-    ret_buf = CodeBuffer()
-    ret_buf.putlines(reflow_fort(buf.getvalue()))
-    return constants.FC_F_TMPL % name, ret_buf
+        
+    if not cfg.f77binding:
+        ret_buf = CodeBuffer()
+        ret_buf.putlines(reflow_fort(buf.getvalue()))
+    else:
+        ret_buf = buf
+        
+    return outfile, ret_buf
 
 def generate_fc_h(fc_ast, name, cfg):
     buf = CodeBuffer()

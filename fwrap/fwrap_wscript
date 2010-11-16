@@ -50,11 +50,13 @@ def configure(conf):
     conf.add_os_flags('STLIBPATH')
 
 def build(bld):
+    want_f77 = bld.env['FW_F77_BINDING']
 
-    wrapper = '%s_fc.f90' % bld.env['FW_PROJ_NAME']
+    wrapper = '%s_fc.%s' % (bld.env['FW_PROJ_NAME'],
+                            'f' if want_f77 else 'f90')
     cy_src = '%s.pyx' % bld.env['FW_PROJ_NAME']
 
-    if bld.env['FW_F77_BINDING']:
+    if want_f77:
         type_specs = []
     else:
         type_specs = ['fwrap_type_specs.in']
@@ -66,7 +68,7 @@ def build(bld):
         target = type_specs + [wrapper, cy_src],
         )
 
-    if not bld.env['FW_F77_BINDING']:
+    if not want_f77:
         bld(
             features = 'c fc typemap pyext cshlib',
             source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90']) +

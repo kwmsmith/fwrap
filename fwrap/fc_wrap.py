@@ -47,15 +47,18 @@ def generate_fc_h(ast, ktp_header_name, buf, cfg):
         buf.putln('#endif')
 
 def generate_interface(proc, buf, cfg, gmn=constants.KTP_MOD_NAME):
-    buf.putln('interface')
-    buf.indent()
-    buf.putln(proc.proc_declaration(cfg))
-    buf.indent()
-    proc.proc_preamble(gmn, buf, cfg)
-    buf.dedent()
-    buf.putln(proc.proc_end())
-    buf.dedent()
-    buf.putln('end interface')
+    if cfg.f77binding:
+        buf.putln('external %s' % proc.name)
+    else:
+        buf.putln('interface')
+        buf.indent()
+        buf.putln(proc.proc_declaration(cfg))
+        buf.indent()
+        proc.proc_preamble(gmn, buf, cfg)
+        buf.dedent()
+        buf.putln(proc.proc_end())
+        buf.dedent()
+        buf.putln('end interface')
 
 def _err_test_block(test, errcode, argname):
     tmpl = '''\
@@ -102,9 +105,10 @@ class ProcWrapper(object):
             buf.putln('use %s' % ktp_mod)
         buf.putln('implicit none')
         if cfg.f77binding:
-            for line in constants.get_fortran_constants_utility_code(f77=False):
+            for line in constants.get_fortran_constants_utility_code(f77=True):
                 buf.putln(line)
-            buf.putln('character, parameter :: c_null_char = char(0)')
+            buf.putln("character C_NULL_CHAR")
+            buf.putln("parameter (C_NULL_CHAR = '\\0')")
         for declaration in (self.arg_declarations(cfg) +
                             self.param_declarations(cfg)):
             buf.putln(declaration)
