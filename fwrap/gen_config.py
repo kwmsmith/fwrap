@@ -61,9 +61,8 @@ def read_type_spec(fname):
 def write_f_mod(ctps, fbuf):
 
     def write_err_codes(f_out):
-        for err_name in sorted(constants.ERR_CODES):
-            f_out.write(INDENT+"integer, parameter :: %s = %d\n" % \
-                    (err_name, constants.ERR_CODES[err_name]))
+        for line in constants.get_fortran_constants_utility_code():
+            f_out.write(INDENT + line + '\n')
 
     buf = StringIO()
     buf.write('''

@@ -35,3 +35,13 @@ ERR_CODES = {
         'FW_ARR_DIM__' : 2,
         }
 
+def get_fortran_constants_utility_code(f77=False):
+    lines = []
+    if not f77:
+        template = 'integer, parameter :: %s = %d'
+    else:
+        template = 'parameter %s = %d'
+    for err_name in sorted(ERR_CODES):
+        lines.append(template % (err_name, ERR_CODES[err_name]))
+    return lines
+
