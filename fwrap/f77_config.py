@@ -85,6 +85,9 @@ def get_f77_ctps():
                 ctp = gc.ctp_from_dtype(dtype)
                 ctp.fc_type = fc_type
                 ctps.append(ctp)
+    dim_ctp = gc.ctp_from_dtype(pyf.dim_dtype)
+    dim_ctp.fc_type = 'c_int' # See pyf_iface.DimType
+    ctps.append(dim_ctp)
     return ctps
 
 name_mangling_utility_code = """\
