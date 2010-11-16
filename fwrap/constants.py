@@ -13,6 +13,7 @@ KTP_PXD_HEADER_SRC = "fwrap_ktp.pxd"
 FC_HDR_TMPL = "%s_fc.h"
 FC_PXD_TMPL = "%s_fc.pxd"
 FC_F_TMPL = "%s_fc.f90"
+FC_F_TMPL_F77 = "%s_fc.f"
 
 CY_PXD_TMPL = "%s.pxd"
 CY_PYX_TMPL = "%s.pyx"
@@ -34,4 +35,17 @@ ERR_CODES = {
         'FW_CHAR_SIZE__' : 1,
         'FW_ARR_DIM__' : 2,
         }
+
+def get_fortran_constants_utility_code(f77=False):
+    lines = []
+    if not f77:
+        for err_name in sorted(ERR_CODES):
+            lines.append('integer, parameter :: %s = %d' %
+                         (err_name, ERR_CODES[err_name]))
+    else:
+        for err_name in sorted(ERR_CODES):
+            lines.append('integer %s' % err_name)
+            lines.append('parameter (%s = %d)' %
+                         (err_name, ERR_CODES[err_name]))
+    return lines
 

@@ -16,6 +16,8 @@ def reflow_fort(code, level=0, max_len=LINE_LENGTH):
     return '\n'.join(newcode)
 
 def reflow_line(text, level=0, max_len=LINE_LENGTH):
+    if text == '':
+        return ['']
     line_len = max_len - len(INDENT)*level
     broken_text = []
     lim = int(ceil(len(text)/float(line_len)))
@@ -106,3 +108,36 @@ class CodeBuffer(object):
 
     def write(self, s):
         self.sio.write(s)
+
+#
+# Fortran 77 fixed form
+#
+
+def fixed_width_split(input, linelen):
+    lines = []
+    while len(input) > 0:
+        lines.append(input[:linelen])
+        input = input[linelen:]
+    return lines
+
+class CodeBufferFixedForm(CodeBuffer):
+    #
+    # Column:
+    # 1..5  labels or C
+    # 6     blank or continuation character
+    # 7-72  code
+    # 73-80 unused
+    #
+    # Variable names are NOT limited to 6 characters.
+    # If that is needed, an idea is to auto-mangle all
+    # tokens (except for the subroutine/function name).
+    
+    def __init__(self):
+        super(CodeBufferFixedForm, self).__init__(0, '  ')
+
+    def putln(self, input):
+        input = self.indent_tok * self._level + input.rstrip()
+        lines = fixed_width_split(input, 72 - 6)
+        self.sio.write('      %s\n' % lines[0])
+        for line in lines[1:]:
+            self.sio.write('     &%s\n' % line)

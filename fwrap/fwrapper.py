@@ -12,8 +12,8 @@ from fwrap import constants
 from fwrap import gen_config as gc
 from fwrap import fc_wrap
 from fwrap import cy_wrap
-from fwrap.code import CodeBuffer, reflow_fort
-from fwrap.context import Context
+from fwrap.code import CodeBuffer, CodeBufferFixedForm, reflow_fort
+from fwrap.configuration import Configuration
 
 PROJNAME = 'fwproj'
 
@@ -49,24 +49,27 @@ def wrap(sources, name, options):
     if not source_files:
         raise ValueError("Invalid source list. %r" % (sources))
 
+    cfg = Configuration(f77binding=options.f77binding,
+                        fc_wrapper_orig_types=options.f77binding)
+
     # Parse fortran using fparser, get fortran ast.
-    f_ast = parse(source_files)
+    f_ast = parse(source_files, cfg)
 
     # Generate wrapper files
-    generate(f_ast, name, options)
+    generate(f_ast, name, cfg)
 
-def parse(source_files):
+def parse(source_files, cfg):
     r"""Parse fortran code returning parse tree
 
     :Input:
      - *source_files* - (list) List of valid source files
     """
-    from fwrap import fwrap_parse
+    from fwrap import fwrap_parse, pyf_iface
     ast = fwrap_parse.generate_ast(source_files)
-
+    pyf_iface.check_tree(ast, cfg)
     return ast
 
-def generate(fort_ast, name, options):
+def generate(fort_ast, name, cfg):
     r"""Given a fortran abstract syntax tree ast, generate wrapper files
 
     :Input:
@@ -81,16 +84,13 @@ def generate(fort_ast, name, options):
     c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
     cython_ast = cy_wrap.wrap_fc(c_ast)
 
-    ctx = Context(f77binding=options.f77binding,
-                  fc_wrapper_orig_types=options.f77binding)
-
     # Generate files and write them out
     generators = ( (generate_type_specs,(c_ast,name)),
-                   (generate_fc_f,(c_ast,name,ctx)),
-                   (generate_fc_h,(c_ast,name,ctx)),
+                   (generate_fc_f,(c_ast,name,cfg)),
+                   (generate_fc_h,(c_ast,name,cfg)),
                    (generate_fc_pxd,(c_ast,name)),
                    (generate_cy_pxd,(cython_ast,name)),
-                   (generate_cy_pyx,(cython_ast,name)) )
+                   (generate_cy_pyx,(cython_ast,name,cfg)) )
 
     for (generator,args) in generators:
         file_name, buf = generator(*args)
@@ -117,9 +117,9 @@ def generate_cy_pxd(cy_ast, name):
     cy_wrap.generate_cy_pxd(cy_ast, fc_pxd_name, buf)
     return constants.CY_PXD_TMPL % name, buf
 
-def generate_cy_pyx(cy_ast, name):
+def generate_cy_pyx(cy_ast, name, cfg):
     buf = CodeBuffer()
-    cy_wrap.generate_cy_pyx(cy_ast, name, buf)
+    cy_wrap.generate_cy_pyx(cy_ast, name, buf, cfg)
     return constants.CY_PYX_TMPL % name, buf
 
 def generate_fc_pxd(fc_ast, name):
@@ -128,17 +128,28 @@ def generate_fc_pxd(fc_ast, name):
     fc_wrap.generate_fc_pxd(fc_ast, fc_header_name, buf)
     return constants.FC_PXD_TMPL % name, buf
 
-def generate_fc_f(fc_ast, name, ctx):
-    buf = CodeBuffer()
+def generate_fc_f(fc_ast, name, cfg):
+    if not cfg.f77binding:
+        buf = CodeBuffer()
+        outfile = constants.FC_F_TMPL % name
+    else:
+        buf = CodeBufferFixedForm()
+        outfile = constants.FC_F_TMPL_F77 % name
+        
     for proc in fc_ast:
-        proc.generate_wrapper(buf, ctx)
-    ret_buf = CodeBuffer()
-    ret_buf.putlines(reflow_fort(buf.getvalue()))
-    return constants.FC_F_TMPL % name, ret_buf
+        proc.generate_wrapper(buf, cfg)
+        
+    if not cfg.f77binding:
+        ret_buf = CodeBuffer()
+        ret_buf.putlines(reflow_fort(buf.getvalue()))
+    else:
+        ret_buf = buf
+        
+    return outfile, ret_buf
 
-def generate_fc_h(fc_ast, name, ctx):
+def generate_fc_h(fc_ast, name, cfg):
     buf = CodeBuffer()
-    fc_wrap.generate_fc_h(fc_ast, constants.KTP_HEADER_SRC, buf, ctx)
+    fc_wrap.generate_fc_h(fc_ast, constants.KTP_HEADER_SRC, buf, cfg)
     return constants.FC_HDR_TMPL % name, buf
 
 def fwrapper(use_cmdline, sources=None, **options):
