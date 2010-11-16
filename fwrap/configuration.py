@@ -16,3 +16,5 @@ class Configuration:
         update_self_from_args(self, locals())
     def __nonzero__(self):
         1/0
+
+default_cfg = Configuration(False, False)

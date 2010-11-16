@@ -264,10 +264,9 @@ class ArgWrapperManager(object):
     def param_declarations(self, cfg):
         proc_arg_man = self.proc.arg_man
         decls = []
-        orig = cfg.fc_wrapper_orig_types
         for o in proc_arg_man.order_declarations():
             if isinstance(o, pyf.Parameter):
-                decls.append(o.declaration(orig))
+                decls.append(o.declaration(cfg))
         return decls
 
     def arg_declarations(self, cfg):
@@ -399,8 +398,7 @@ class ArgWrapper(ArgWrapperBase):
         return [extern_arg.name for extern_arg in self.extern_args]
 
     def extern_declarations(self, cfg):
-        orig_type = cfg.fc_wrapper_orig_types
-        return [extern_arg.declaration(orig_type)
+        return [extern_arg.declaration(cfg)
                 for extern_arg in self.extern_args]
 
     def c_declarations(self):
@@ -411,9 +409,8 @@ class ArgWrapper(ArgWrapperBase):
         return [extern_arg.c_type() for extern_arg in self.extern_args]
 
     def intern_declarations(self, cfg):
-        orig = cfg.fc_wrapper_orig_types
         if self.intern_var:
-            return [self.intern_var.declaration(orig)]
+            return [self.intern_var.declaration(cfg)]
         else:
             return []
 
@@ -439,8 +436,7 @@ class ErrStrArgWrapper(ArgWrapperBase):
         return [self.name]
 
     def extern_declarations(self, cfg):
-        orig = cfg.fc_wrapper_orig_types
-        x = self.arg.declaration(orig)
+        x = self.arg.declaration(cfg)
         if cfg.f77binding:
             x = x.replace(constants.ERRSTR_LEN,
                           str(constants.FORT_MAX_ARG_NAME_LEN))
@@ -471,8 +467,7 @@ class HideArgWrapper(ArgWrapperBase):
         return []
 
     def intern_declarations(self, cfg):
-        orig = cfg.fc_wrapper_orig_types
-        return [self._intern_var.declaration(orig)]
+        return [self._intern_var.declaration(cfg)]
 
     def pre_call_code(self):
         return ["%s = (%s)" % (self._intern_var.name, self.value)]

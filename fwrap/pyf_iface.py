@@ -6,6 +6,7 @@
 from fwrap import fort_expr
 from intrinsics import intrinsics
 import re
+from configuration import default_cfg
 
 def _py_kw_mangler(name):
     # mangles name if it's a Python or Cython keyword.
@@ -324,7 +325,8 @@ class _NamedType(object):
             specs.append(self.dimension.attrspec)
         return specs
 
-    def declaration(self, orig):
+    def declaration(self, cfg):
+        orig = cfg.fc_wrapper_orig_types
         return '%s :: %s' % ( ', '.join(self.var_specs(orig)), self.name)
 
     def c_type(self):
@@ -355,7 +357,8 @@ class Parameter(_NamedType):
         deps = super(Parameter, self).depends()
         return deps.union(self.expr.names) - intrinsics
 
-    def declaration(self, orig):
+    def declaration(self, cfg):
+        orig = cfg.fc_wrapper_orig_types
         decl = super(Parameter, self).declaration(orig)
         return "%s = %s" % (decl, self.expr.expr_str)
 
@@ -494,12 +497,15 @@ class Argument(object):
         return self._var.is_array
     is_array = property(_is_array)
 
-    def declaration(self, orig=False):
+    def declaration(self, cfg=default_cfg):
+        orig = cfg.fc_wrapper_orig_types
         var = self._var
         specs = var.var_specs(orig=orig)
         if self.isvalue:
+            assert not cfg.f77binding
             specs.append('value')
-        specs.extend(self.intent_spec())
+        if not cfg.f77binding:
+            specs.extend(self.intent_spec())
         return '%s :: %s' % (', '.join(specs), self.name)
 
     def intent_spec(self):
@@ -621,13 +627,13 @@ class ArgManager(object):
         assert len(decl_list) == len(self._args) + len(self._params)
         return decl_list
 
-    def arg_declarations(self, orig=False):
+    def arg_declarations(self, cfg=default_cfg):
         decls = []
         od = self.order_declarations()
         for arg in od:
-            decls.append(arg.declaration(orig))
+            decls.append(arg.declaration(cfg))
         if self._return_arg:
-            decls.append(self._return_arg.declaration(orig))
+            decls.append(self._return_arg.declaration(cfg))
         return decls
 
     def return_var_name(self):
@@ -659,19 +665,18 @@ class Procedure(object):
     def extern_arg_list(self):
         return self.arg_man.extern_arg_list()
 
-    def arg_declarations(self, orig=False):
-        return self.arg_man.arg_declarations(orig)
+    def arg_declarations(self, cfg=default_cfg):
+        return self.arg_man.arg_declarations(cfg)
 
     def proc_declaration(self, cfg):
         return ("%s %s(%s)" %
                 (self.kind, self.name, ', '.join(self.extern_arg_list())))
 
     def proc_preamble(self, ktp_mod, buf, cfg):
-        orig = cfg.fc_wrapper_orig_types
-        if not orig:
+        if not cfg.f77binding:
             buf.putln('use %s' % ktp_mod)
         buf.putln('implicit none')
-        for decl in self.arg_declarations(orig):
+        for decl in self.arg_declarations(cfg):
             buf.putln(decl)
 
     def proc_end(self):
