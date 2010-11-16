@@ -33,6 +33,10 @@ def generate_fc_pxd(ast, fc_header_name, buf):
 def generate_fc_h(ast, ktp_header_name, buf, cfg):
     buf.putln('#include "%s"' % ktp_header_name)
     buf.putln('')
+    buf.putln('#if !defined(FORTRAN_CALLSPEC)')
+    buf.putln('#define FORTRAN_CALLSPEC __stdcall')
+    buf.putln('#endif')
+    buf.putln('')
     if cfg.f77binding:
         import f77_config
         buf.write(f77_config.name_mangling_utility_code)
@@ -168,9 +172,9 @@ class ProcWrapper(object):
 
     def c_prototype(self, cfg):
         if not cfg.f77binding:
-            return "%s;" % self.cy_prototype()
+            return "FORTRAN_CALLSPEC %s;" % self.cy_prototype()
         else:
-            return "%s F_FUNC(%s,%s)(%s);" % (
+            return "FORTRAN_CALLSPEC %s F_FUNC(%s,%s)(%s);" % (
                 self.arg_man.c_proto_return_type(),
                 self.name.lower(),
                 self.name.upper(),
