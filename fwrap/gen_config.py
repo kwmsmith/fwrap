@@ -205,7 +205,8 @@ class _ConfigTypeParam(object):
             return self.c_preambles
 
     def get_pxd_cimports(self):
-        if 'npy' in self.fc_type:
+        if ('npy' in self.fc_type or
+            (self.lang == 'c' and 'npy' in self.odecl)):
             return ['cimport numpy as np'] + self.pxd_cimports
         else:
             return self.pxd_cimports
@@ -225,14 +226,24 @@ class _ConfigTypeParam(object):
 
     def gen_c_typedef(self):
         self.check_init()
-        return ['typedef %s %s;' % (f2c[self.fc_type], self.fwrap_name)]
+        if self.lang == 'c':
+            # In particular, npy_intp
+            return ['typedef %s %s;' % (self.odecl, self.fwrap_name)]
+        else:
+            return ['typedef %s %s;' % (f2c[self.fc_type], self.fwrap_name)]
 
     def gen_pxd_extern_extra(self):
         return []
 
     def gen_pxd_extern_typedef(self):
         self.check_init()
-        return ['ctypedef %s %s' % (f2cy[self.fc_type], self.fwrap_name)]
+        if self.lang == 'c':
+            decl = self.odecl
+            if decl.startswith('npy'):
+                decl = 'np.' + decl
+            return ['ctypedef %s %s' % (decl, self.fwrap_name)]
+        else:
+            return ['ctypedef %s %s' % (f2cy[self.fc_type], self.fwrap_name)]
 
     def gen_pyx_type_obj(self):
         self.check_init()
@@ -354,7 +365,7 @@ f2c = {
     'c_double_complex'  : 'double _Complex',
     'c_long_double_complex' : 'long double _Complex',
     'c_bool'            : '_Bool',
-    'c_char'            : 'char',
+    'c_char'            : 'char'
     }
 
 f2cy = dict(f2c) # make copy

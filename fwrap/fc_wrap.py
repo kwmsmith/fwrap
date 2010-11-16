@@ -477,24 +477,28 @@ class HideArgWrapper(ArgWrapperBase):
 class ArrayArgWrapper(ArgWrapper):
 
     is_array = True
+    shape_pattern = '%s_shape__'
 
     def _set_extern_args(self):
         self._arr_dims = []
         self.ndims = len(self.orig_arg.dimension)
-        for idx in range(self.ndims):
-            self._arr_dims.append(
-                    pyf.Argument(name='%s_d%d' % (self.name, idx+1),
-                                 dtype=pyf.dim_dtype, intent='in'))
-        dim_names = [dim.name for dim in self._arr_dims]
+
+        self.shape_arg = pyf.Argument(name=self.shape_pattern % self.name,
+                                      dtype=pyf.dim_dtype,
+                                      intent='in',
+                                      dimension=[str(self.ndims)])
+        
+        self._dimension_exprs = ['%s(%d)' % (self.shape_arg.name, i)
+                                 for i in range(1, self.ndims + 1)]
         self.extern_arg = pyf.Argument(
                                 name=self.name,
                                 dtype=self.dtype,
                                 intent=self.intent,
-                                dimension=dim_names)
-        self.extern_args = self._arr_dims + [self.extern_arg]
+                                dimension=self._dimension_exprs)
+        self.extern_args = [self.shape_arg, self.extern_arg]
 
     def pre_call_code(self):
-        dims = pyf.Dimension([dim.name for dim in self._arr_dims])
+        dims = pyf.Dimension(self._dimension_exprs)
         ckstr = _dim_test(self.orig_arg.dimension, dims)
         if ckstr:
             return _err_test_block(

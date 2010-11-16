@@ -341,10 +341,8 @@ class _CyArrayArgWrapper(object):
         return py_type_name_from_type(self.arg.ktp)
 
     def call_arg_list(self):
-        shapes = ['<fwi_npy_intp_t*>&%s.shape[%d]' % (self.intern_name, i) \
-                                for i in range(self.arg.ndims)]
-        data = ['<%s*>%s.data' % (self.arg.ktp, self.intern_name)]
-        return shapes + data
+        return ['np.PyArray_DIMS(%s)' % self.intern_name,
+                '<%s*>%s.data' % (self.arg.ktp, self.intern_name)]
 
     def pre_call_code(self):
         # NOTE: we can support a STRICT macro that would disable the
