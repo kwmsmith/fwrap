@@ -662,12 +662,12 @@ class Procedure(object):
     def arg_declarations(self, orig=False):
         return self.arg_man.arg_declarations(orig)
 
-    def proc_declaration(self, ctx):
+    def proc_declaration(self, cfg):
         return ("%s %s(%s)" %
                 (self.kind, self.name, ', '.join(self.extern_arg_list())))
 
-    def proc_preamble(self, ktp_mod, buf, ctx):
-        orig = ctx.fc_wrapper_orig_types
+    def proc_preamble(self, ktp_mod, buf, cfg):
+        orig = cfg.fc_wrapper_orig_types
         if not orig:
             buf.putln('use %s' % ktp_mod)
         buf.putln('implicit none')
