@@ -31,54 +31,57 @@ def get_f77_ctps():
     # Essentially simulates the effect of parsing
     # all possible types (integer, integer*2, and so on)
     # and associate the type
+    #
+    # long double (real*12/real*16) is not included simply
+    # because that will only compile on given platforms,
+    # and so we couldn't use a static file then
+    #
+    # complex are mapped to c_*** because that is the most
+    # sure way of making sure arguments from Python are properly
+    # converted (and numpy.pxd leads to the same behaviour
+    # anyway, Cython does not do this entirely properly).
     f77_type_table = [
         ('integer', [
-            (None, 'c_int'),
-            (1, 'c_char'),
-            (2, 'c_short'),
-            (4, 'c_int'),
-            (8, 'c_long')]),
+            (None, None, 'c_int'),
+            (1, 1, 'npy_int8'),
+            (2, 2, 'npy_int16'),
+            (4, 4, 'npy_int32'),
+            (8, 8, 'npy_int64')]),
         ('real', [
-            (None, 'c_float'),
-            (4, 'c_float'),
-            (8, 'c_double'),
-            (12, 'c_long_double'),
-            (16, 'c_long_double')]),
+            (None, None, 'c_float'),
+            (4, 4, 'npy_float32'),
+            (8, 8, 'npy_float64')]),
         ('doubleprecision', [
-            (None, 'c_float')]),
+            (None, None, 'c_double')]),
         ('complex', [
-            (None, 'c_float_complex'),
-            (8, 'c_float_complex'),
-            (16, 'c_double_complex'),
-            (24, 'c_long_double_complex'),
-            (32, 'c_long_double_complex')]),
+            (None, None, 'c_float_complex'),
+            (8, 4, 'c_float_complex'),
+            (16, 8, 'c_double_complex')]),
         ('doublecomplex', [
-            (None, 'c_double_complex')]),
+            (None, None, 'c_double_complex')]),
         ('character', [
-            (None, 'c_char')]),
+            (None, None, 'c_char')]),
         ('logical', [
-            (None, 'c_int'),
-            (1, 'c_char'),
-            (2, 'c_short'),
-            (4, 'c_int'),
-            (8, 'c_long')]),
+            (None, None, 'c_int'),
+            (1, 1, 'npy_int8'),
+            (2, 2, 'npy_int16'),
+            (4, 4, 'npy_int32'),
+            (8, 8, 'npy_int64')]),
     ]
 
     ctps = []
     for name, subtypes in f77_type_table:
-        for length, fc_type in subtypes:
+        for length, kind, fc_type in subtypes:
             dtype = create_dtype(name, length=length, kind=None)
             ctp = gc.ctp_from_dtype(dtype)
             ctp.fc_type = fc_type
             ctps.append(ctp)
-
-            # We assume that kind and length are the same for now.
-            # This is WRONG, e.g., for the g77 compiler, but allows
-            # us to use F90 testcases with gfortran in f77binding
-            # mode during development. TODO: Consider disabling this
-            # or implement build time detection.
-            if length is not None:
-                dtype = create_dtype(name, length=None, kind=length)
+            # The kinds given are WRONG, e.g., for the g77 compiler,
+            # but allows us to use F90 testcases with gfortran in
+            # f77binding mode during development. TODO: Consider
+            # disabling this or implement build time detection.
+            if kind is not None:
+                dtype = create_dtype(name, length=None, kind=kind)
                 ctp = gc.ctp_from_dtype(dtype)
                 ctp.fc_type = fc_type
                 ctps.append(ctp)
@@ -131,7 +134,7 @@ name_mangling_utility_code = strip_leading_whitespace("""\
 def gen_type_map_files():
     ctps = get_f77_ctps()
     for func, fname, args in [(gc.write_header, 'ktp.h', ()),
-                              (gc.write_pxd, 'ktp.pxd', ('FOO',)),
+                              (gc.write_pxd, 'ktp.pxd', ('ktp.h',)),
                               (gc.write_pxi, 'ktp.pxi', ())]:
         with file(fname, 'w') as buf:
             func(ctps, buf, *args)

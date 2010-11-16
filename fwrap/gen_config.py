@@ -199,10 +199,19 @@ class _ConfigTypeParam(object):
                 self.fwrap_name == other.fwrap_name
 
     def get_c_preambles(self):
-        return self.c_preambles
+        if 'npy' in self.fc_type:
+            return ['#include <numpy/npy_math.h>'] + self.c_preambles
+        else:
+            return self.c_preambles
+
+    def get_pxd_directives(self):
+        return []
 
     def get_pxd_cimports(self):
-        return self.pxd_cimports
+        if 'npy' in self.fc_type:
+            return ['cimport numpy as np'] + self.pxd_cimports
+        else:
+            return self.pxd_cimports
 
     def cy_name(self):
         return self.fwrap_name
@@ -226,7 +235,7 @@ class _ConfigTypeParam(object):
 
     def gen_pxd_extern_typedef(self):
         self.check_init()
-        return ['ctypedef %s %s' % (f2c[self.fc_type], self.fwrap_name)]
+        return ['ctypedef %s %s' % (f2cy[self.fc_type], self.fwrap_name)]
 
     def gen_pyx_type_obj(self):
         self.check_init()
@@ -287,13 +296,17 @@ class _CmplxTypeParam(_ConfigTypeParam):
     c_includes = ['#include <complex.h>']
 
     _c2r_map = {'c_float_complex' : 'c_float',
-               'c_double_complex' : 'c_double',
-               'c_long_double_complex' : 'c_long_double'
+                'c_double_complex' : 'c_double',
+                'c_long_double_complex' : 'c_long_double',
+                'npy_complex64' : 'np.float32',
+                'npy_complex128' : 'np.float64',
                }
 
     _c2cy_map = {'c_float_complex' : 'float complex',
                  'c_double_complex' : 'double complex',
-                 'c_long_double_complex' : 'long double complex'
+                 'c_long_double_complex' : 'long double complex',
+                 'npy_complex64' : 'np.complex64',
+                 'npy_complex128' : 'np.complex128'
                 }
 
     def gen_pxd_intern_typedef(self):
@@ -347,6 +360,14 @@ f2c = {
     'c_char'            : 'char',
     }
 
+f2cy = dict(f2c) # make copy
+
+# Add NumPy types (used in f77binding mode)
+for x in ('npy_int8', 'npy_int16', 'npy_int32', 'npy_int64',
+          'npy_float32', 'npy_float64', 'npy_complex64', 'npy_complex128'):
+    f2c[x] = x
+    f2cy[x] = '%s_t' % x.replace('y_', '.') # npy_float64 -> np.float64_t
+
 c2f = dict([(y,x) for (x,y) in f2c.items()])
 
 type_dict = {
@@ -388,6 +409,16 @@ f2npy_type = {
     'c_long_double_complex' : 'clongdouble',
     # 'c_bool'            : '_Bool',
     'c_char'            : 'byte',
+
+    'npy_int8'          : 'int8',
+    'npy_int16'         : 'int16',
+    'npy_int32'         : 'int32',
+    'npy_int64'         : 'int64',
+    'npy_float32'       : 'float32',
+    'npy_float64'       : 'float64',
+    'npy_complex64'     : 'complex64',
+    'npy_complex128'    : 'complex128',
+
     }
 
 type2enum = {
@@ -407,6 +438,7 @@ type2enum = {
     'c_double_complex'  : 'NPY_CDOUBLE',
     'c_long_double_complex' : 'NPY_CLONGDOUBLE',
     'c_char'            : 'NPY_BYTE',
+
     # 'c_bool'            : '_Bool',
     # 'c_size_t'          : 'size_t',
     # 'c_int_least8_t'    : 'int_least8_t',
@@ -419,4 +451,13 @@ type2enum = {
     # 'c_int_fast64_t'    : 'int_fast64_t',
     # 'c_intmax_t'        : 'intmax_t',
     # 'c_intptr_t'        : 'intp',
+
+    'npy_int8'          : 'NPY_INT8',
+    'npy_int16'         : 'NPY_INT16',
+    'npy_int32'         : 'NPY_INT32',
+    'npy_int64'         : 'NPY_INT64',
+    'npy_float32'       : 'NPY_FLOAT32',
+    'npy_float64'       : 'NPY_FLOAT64',
+    'npy_complex64'     : 'NPY_COMPLEX64',
+    'npy_complex128'    : 'NPY_COMPLEX128',
     }
