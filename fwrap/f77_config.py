@@ -86,7 +86,8 @@ def get_f77_ctps():
                 ctp.fc_type = fc_type
                 ctps.append(ctp)
     dim_ctp = gc.ctp_from_dtype(pyf.dim_dtype)
-    dim_ctp.fc_type = 'c_int' # See pyf_iface.DimType
+    dim_ctp.fc_type = 'c_int'
+    dim_ctp.odecl = 'int'  # See pyf_iface.DimType
     ctps.append(dim_ctp)
     return ctps
 

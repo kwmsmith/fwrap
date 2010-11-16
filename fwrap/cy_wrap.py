@@ -14,9 +14,12 @@ import warnings
 plain_sizeexpr_re = re.compile(r'\(([a-zA-Z0-9_]+)\)')
 
 class CythonCodeGenerationContext:
-    def __init__(self):
+    def __init__(self, cfg):
+        from fwrap.configuration import Configuration
+        assert isinstance(cfg, Configuration)
         self.utility_codes = set()
         self.language = None
+        self.cfg = cfg
 
     def use_utility_code(self, snippet):
         self.utility_codes.add(snippet)
@@ -42,9 +45,9 @@ def gen_cdef_extern_decls(buf):
     for dtype in pyf_iface.intrinsic_types:
         buf.putlines(dtype.cdef_extern_decls)
 
-def generate_cy_pyx(ast, name, buf):
+def generate_cy_pyx(ast, name, buf, cfg):
     buf.putln("#cython: ccomplex=True")
-    ctx = CythonCodeGenerationContext()
+    ctx = CythonCodeGenerationContext(cfg)
     put_cymod_docstring(ast, name, buf)
     buf.putln("np.import_array()")
     buf.putln("include 'fwrap_ktp.pxi'")
@@ -136,12 +139,12 @@ class _CyArgWrapper(object):
             return [self.name]
         return []
 
-    def intern_declarations(self):
+    def intern_declarations(self, ctx):
         if self.arg.intent == 'out':
             return ["cdef %s %s" % (self.cy_dtype_name, self.name)]
         return []
 
-    def call_arg_list(self):
+    def call_arg_list(self, ctx):
         return ["&%s" % self.name]
 
     def post_call_code(self, ctx):
@@ -201,7 +204,7 @@ class _CyCharArg(_CyArgWrapper):
             return [('%s %s' % (self.cy_dtype_name, self.name), None)]
         return []
 
-    def intern_declarations(self):
+    def intern_declarations(self, ctx):
         ret = ['cdef %s %s' % (self.cy_dtype_name, self.intern_name),
                 'cdef fwi_npy_intp_t %s' % self.intern_len_name]
         if self.arg.intent in ('out', 'inout', None):
@@ -249,7 +252,7 @@ class _CyCharArg(_CyArgWrapper):
         return '%s = PyBytes_FromStringAndSize(NULL, %s)' % \
                     (self.intern_name, self.intern_len_name)
 
-    def call_arg_list(self):
+    def call_arg_list(self, ctx):
         if self.arg.intent == 'in':
             return ['&%s' % self.intern_len_name,
                     '<char*>%s' % self.intern_name]
@@ -289,11 +292,11 @@ class _CyErrStrArg(object):
     def extern_declarations(self):
         return []
 
-    def intern_declarations(self):
+    def intern_declarations(self, ctx):
         return ['cdef fw_character_t %s[%s]' %
                     (self.name, constants.ERRSTR_LEN)]
 
-    def call_arg_list(self):
+    def call_arg_list(self, ctx):
         return [self.name]
 
     def return_tuple_list(self):
@@ -325,10 +328,10 @@ class _CyCmplxArg(_CyArgWrapper):
         self.intern_name = 'fw_%s' % self.arg.name
         # self.name = self.arg.name
 
-    def intern_declarations(self):
-        return super(_CyCmplxArg, self).intern_declarations()
+    def intern_declarations(self, ctx):
+        return super(_CyCmplxArg, self).intern_declarations(ctx)
 
-    def call_arg_list(self):
+    def call_arg_list(self, ctx):
         return ['&%s' % self.name]
 
 
@@ -346,6 +349,7 @@ class _CyArrayArgWrapper(object):
         self.arg = arg
         self.extern_name = _py_kw_mangler(self.arg.name)
         self.intern_name = '%s_' % self.extern_name
+        self.shape_var_name = '%s_shape_' % self.extern_name
 
         # In the special case of explicit-shape intent(out) arrays,
         # find the expressions for constructing the output argument
@@ -360,20 +364,28 @@ class _CyArrayArgWrapper(object):
         default_value = 'None' if self.explicit_out_array else None
         return [('object %s' % self.extern_name, default_value)]
 
-    def intern_declarations(self):
-        return ["cdef np.ndarray[%s, ndim=%d, mode='fortran'] %s" % \
+    def intern_declarations(self, ctx):
+        decls = ["cdef np.ndarray[%s, ndim=%d, mode='fortran'] %s" %
                 (self.arg.ktp,
                  self.arg.ndims,
-                 self.intern_name,)
-                ]
+                 self.intern_name,)]
+        if ctx.cfg.f77binding:
+            decls.append("cdef fw_shape_t %s[%d]" %
+                         (self.shape_var_name,
+                          self.arg.ndims))
+        return decls            
 
     def _get_py_dtype_name(self):
         from fwrap.gen_config import py_type_name_from_type
         return py_type_name_from_type(self.arg.ktp)
 
-    def call_arg_list(self):
-        return ['np.PyArray_DIMS(%s)' % self.intern_name,
-                '<%s*>%s.data' % (self.arg.ktp, self.intern_name)]
+    def call_arg_list(self, ctx):
+        if not ctx.cfg.f77binding:
+            return ['np.PyArray_DIMS(%s)' % self.intern_name,
+                    '<%s*>%s.data' % (self.arg.ktp, self.intern_name)]
+        else:
+            return [self.shape_var_name,
+                    '<%s*>%s.data' % (self.arg.ktp, self.intern_name)]
 
     def pre_call_code(self, ctx):
         # NOTE: we can support a STRICT macro that would disable the
@@ -403,13 +415,19 @@ class _CyArrayArgWrapper(object):
                         break
                     sizeexprs[i] = _py_kw_mangler(m.group(1))
         if not allocate_outs:
-            lines = ['%(intern)s = np.PyArray_FROMANY(%(extern)s, %(dtenum)s, '
-                     '%(ndim)d, %(ndim)d, np.NPY_F_CONTIGUOUS)' % d]
+            lines.append('%(intern)s = np.PyArray_FROMANY(%(extern)s, %(dtenum)s, '
+                         '%(ndim)d, %(ndim)d, np.NPY_F_CONTIGUOUS)' % d)
         else:
             d['shape'] = ', '.join(sizeexprs)
             ctx.use_utility_code(explicit_shape_out_array_utility_code)
-            lines = ['%(intern)s = fw_getoutarray(%(extern)s, %(dtenum)s, '
-                     '%(ndim)d, [%(shape)s])' % d]
+            lines.append('%(intern)s = fw_getoutarray(%(extern)s, %(dtenum)s, '
+                         '%(ndim)d, [%(shape)s])' % d)
+
+        if ctx.cfg.f77binding:
+            ctx.use_utility_code(copy_shape_utility_code)
+            lines.append('fw_copyshape(%s, np.PyArray_DIMS(%s), %d)' %
+                         (self.shape_var_name, self.intern_name, self.arg.ndims))
+
         return lines
 
     def post_call_code(self, ctx):
@@ -458,8 +476,8 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
         self.shape_name = "%s_shape" % intern_name
         self.name = intern_name
 
-    def intern_declarations(self):
-        ret = super(CyCharArrayArgWrapper, self).intern_declarations()
+    def intern_declarations(self, ctx):
+        ret = super(CyCharArrayArgWrapper, self).intern_declarations(ctx)
         return ret + ["cdef fwi_npy_intp_t %s[%d]" %
                 (self.shape_name, self.arg.ndims+1)]
 
@@ -482,7 +500,7 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
     def post_call_code(self, ctx):
         return ["%s.dtype = %s" % (self.extern_name, self.odtype_name)]
 
-    def call_arg_list(self):
+    def call_arg_list(self, ctx):
         shapes = ["&%s[%d]" % (self.shape_name, i)
                     for i in range(self.arg.ndims+1)]
         data = ["<%s*>%s.data" % (self.arg.ktp, self.intern_name)]
@@ -518,10 +536,10 @@ class CyArgWrapperManager(object):
                 args.append(CyArgWrapper(fw_arg))
         return cls(args=args)
 
-    def call_arg_list(self):
+    def call_arg_list(self, ctx):
         cal = []
         for arg in self.args:
-            cal.extend(arg.call_arg_list())
+            cal.extend(arg.call_arg_list(ctx))
         return cal
 
     def arg_declarations(self):
@@ -530,10 +548,10 @@ class CyArgWrapperManager(object):
             decls.extend(arg.extern_declarations())
         return decls
 
-    def intern_declarations(self):
+    def intern_declarations(self, ctx):
         decls = []
         for arg in self.args:
-            decls.extend(arg.intern_declarations())
+            decls.extend(arg.intern_declarations(ctx))
         return decls
 
     def return_tuple_list(self):
@@ -615,14 +633,14 @@ class ProcWrapper(object):
     def proc_declaration(self):
         return "%s:" % self.cy_prototype(in_pxd=False)
 
-    def proc_call(self):
+    def proc_call(self, ctx):
         proc_call = "%(call_name)s(%(call_arg_list)s)" % {
                 'call_name' : self.wrapped.name,
-                'call_arg_list' : ', '.join(self.arg_mgr.call_arg_list())}
+                'call_arg_list' : ', '.join(self.arg_mgr.call_arg_list(ctx))}
         return proc_call
 
-    def temp_declarations(self, buf):
-        decls = self.arg_mgr.intern_declarations()
+    def temp_declarations(self, buf, ctx):
+        decls = self.arg_mgr.intern_declarations(ctx)
         for line in decls:
             buf.putln(line)
 
@@ -676,9 +694,9 @@ class ProcWrapper(object):
         buf.putln(self.proc_declaration())
         buf.indent()
         self.put_docstring(buf)
-        self.temp_declarations(buf)
+        self.temp_declarations(buf, ctx)
         self.pre_call_code(ctx, buf)
-        buf.putln(self.proc_call())
+        buf.putln(self.proc_call(ctx))
         self.post_try_finally(ctx, buf)
         rt = self.return_tuple()
         if rt: buf.putln(rt)
@@ -727,9 +745,18 @@ class ProcWrapper(object):
 
 
 explicit_shape_out_array_utility_code = u"""
-cdef fw_getoutarray(object value, int typenum, int ndim, np.npy_intp* shape):
+cdef object fw_getoutarray(object value, int typenum, int ndim, np.intp_t *shape):
     if value is not None:
         return np.PyArray_FROMANY(value, typenum, ndim, ndim, np.NPY_F_CONTIGUOUS)
     else:
         return np.PyArray_ZEROS(ndim, shape, typenum, 1)
+"""
+
+copy_shape_utility_code = u"""
+cdef void fw_copyshape(fw_shape_t *target, np.intp_t *source, int ndim):
+    # In f77binding mode, we do not always have fw_shape_t and np.npy_intp
+    # as the same type, so must make a copy
+    cdef int i
+    for i in range(ndim):
+        target[i] = source[i]
 """

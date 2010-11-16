@@ -90,7 +90,7 @@ def generate(fort_ast, name, options):
                    (generate_fc_h,(c_ast,name,cfg)),
                    (generate_fc_pxd,(c_ast,name)),
                    (generate_cy_pxd,(cython_ast,name)),
-                   (generate_cy_pyx,(cython_ast,name)) )
+                   (generate_cy_pyx,(cython_ast,name,cfg)) )
 
     for (generator,args) in generators:
         file_name, buf = generator(*args)
@@ -117,9 +117,9 @@ def generate_cy_pxd(cy_ast, name):
     cy_wrap.generate_cy_pxd(cy_ast, fc_pxd_name, buf)
     return constants.CY_PXD_TMPL % name, buf
 
-def generate_cy_pyx(cy_ast, name):
+def generate_cy_pyx(cy_ast, name, cfg):
     buf = CodeBuffer()
-    cy_wrap.generate_cy_pyx(cy_ast, name, buf)
+    cy_wrap.generate_cy_pyx(cy_ast, name, buf, cfg)
     return constants.CY_PYX_TMPL % name, buf
 
 def generate_fc_pxd(fc_ast, name):
