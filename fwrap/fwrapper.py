@@ -49,24 +49,27 @@ def wrap(sources, name, options):
     if not source_files:
         raise ValueError("Invalid source list. %r" % (sources))
 
+    cfg = Configuration(f77binding=options.f77binding,
+                        fc_wrapper_orig_types=options.f77binding)
+
     # Parse fortran using fparser, get fortran ast.
-    f_ast = parse(source_files)
+    f_ast = parse(source_files, cfg)
 
     # Generate wrapper files
-    generate(f_ast, name, options)
+    generate(f_ast, name, cfg)
 
-def parse(source_files):
+def parse(source_files, cfg):
     r"""Parse fortran code returning parse tree
 
     :Input:
      - *source_files* - (list) List of valid source files
     """
-    from fwrap import fwrap_parse
+    from fwrap import fwrap_parse, pyf_iface
     ast = fwrap_parse.generate_ast(source_files)
-
+    pyf_iface.check_tree(ast, cfg)
     return ast
 
-def generate(fort_ast, name, options):
+def generate(fort_ast, name, cfg):
     r"""Given a fortran abstract syntax tree ast, generate wrapper files
 
     :Input:
@@ -80,9 +83,6 @@ def generate(fort_ast, name, options):
     # logger.info("Generating abstract syntax tress for c and cython.")
     c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
     cython_ast = cy_wrap.wrap_fc(c_ast)
-
-    cfg = Configuration(f77binding=options.f77binding,
-                        fc_wrapper_orig_types=options.f77binding)
 
     # Generate files and write them out
     generators = ( (generate_type_specs,(c_ast,name)),

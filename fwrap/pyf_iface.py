@@ -717,3 +717,24 @@ class Use(object):
 
     def __init__(self, mod, only=None):
         pass
+
+#
+# Check
+#
+
+class UnsupportedInputError(Exception):
+    pass
+
+def check_tree(procs, cfg):
+    if cfg.f77binding:
+        check_tree_f77binding(procs, cfg)
+
+def check_tree_f77binding(procs, cfg):
+    for proc in procs:
+        for arg in proc.args:
+            if arg.dimension:
+                for dim in arg.dimension.dims:
+                    if dim.is_assumed_shape:
+                        raise UnsupportedInputError(
+                            'assumed shape arrays not supported '
+                            'in f77binding mode')
