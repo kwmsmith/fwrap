@@ -192,7 +192,22 @@ class IntegerType(Dtype):
 default_integer = IntegerType(
         fw_ktp='integer', kind="kind(0)")
 
-dim_dtype = IntegerType(fw_ktp="npy_intp", cname="npy_intp", lang='c')
+class DimType(Dtype):
+    
+    def __init__(self):
+        super(DimType, self).__init__('fw_shape', mangler='%s',
+                                      cname='npy_intp', lang='c')
+        self.type = 'integer'
+
+    def orig_type_spec(self):
+        # There isn't an odecl in Fortran. It is requested in f77binding mode.
+        # For now, use the default integer; with some build system improvements
+        # one may be able to use integer*4 or integer*8 instead.
+
+        # Note that the odecl (the cname) is left as npy_intp
+        return 'integer'
+
+dim_dtype = DimType()#IntegerType(fw_ktp="npy_intp", cname="npy_intp", lang='c')
 
 
 class LogicalType(Dtype):
