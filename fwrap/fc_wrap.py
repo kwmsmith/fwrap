@@ -98,10 +98,10 @@ class ProcWrapper(object):
         return "end subroutine %s" % self.name
 
     def proc_preamble(self, ktp_mod, buf, ctx):
-        buf.putln('implicit none')
         if not ctx.f77binding:
             buf.putln('use %s' % ktp_mod)
-        else:
+        buf.putln('implicit none')
+        if ctx.f77binding:
             for line in constants.get_fortran_constants_utility_code(f77=False):
                 buf.putln(line)
             buf.putln('character, parameter :: c_null_char = char(0)')
