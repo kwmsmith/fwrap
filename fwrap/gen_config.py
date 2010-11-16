@@ -204,9 +204,6 @@ class _ConfigTypeParam(object):
         else:
             return self.c_preambles
 
-    def get_pxd_directives(self):
-        return []
-
     def get_pxd_cimports(self):
         if 'npy' in self.fc_type:
             return ['cimport numpy as np'] + self.pxd_cimports

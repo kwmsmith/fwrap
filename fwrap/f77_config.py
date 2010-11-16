@@ -87,10 +87,7 @@ def get_f77_ctps():
                 ctps.append(ctp)
     return ctps
 
-def strip_leading_whitespace(block):
-    return '\n'.join(x.lstrip() for x in block.split('\n'))
-
-name_mangling_utility_code = strip_leading_whitespace("""\
+name_mangling_utility_code = """\
 #if !defined(NO_FORTRAN_MANGLING)
     #if !defined(PREPEND_FORTRAN) && defined(NO_APPEND_FORTRAN) && !defined(UPPERCASE_FORTRAN)
         #define NO_FORTRAN_MANGLING 1
@@ -129,7 +126,7 @@ name_mangling_utility_code = strip_leading_whitespace("""\
         #endif
     #endif
 #endif
-""")
+"""
 
 def gen_type_map_files():
     ctps = get_f77_ctps()
