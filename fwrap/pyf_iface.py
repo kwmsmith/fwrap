@@ -8,6 +8,11 @@ from intrinsics import intrinsics
 import re
 from configuration import default_cfg
 
+vfn_re = re.compile(r'[a-zA-Z][_a-zA-Z0-9]{,62}$')
+vfn_matcher = vfn_re.match
+def valid_fort_name(name):
+    return vfn_matcher(name)
+
 def _py_kw_mangler(name):
     # mangles name if it's a Python or Cython keyword.
     kwds = (
@@ -24,9 +29,11 @@ def _py_kw_mangler(name):
         return "%s__" % name
     return name
 
-vfn_matcher = re.compile(r'[a-zA-Z][_a-zA-Z0-9]{,62}$').match
-def valid_fort_name(name):
-    return vfn_matcher(name)
+def py_kw_mangle_expression(expr):
+    # mangles every keyword found in expression
+    def match_action(match):
+        return _py_kw_mangler(match.group(0))
+    return vfn_re.sub(match_action, expr)
 
 class InvalidNameException(Exception):
     pass
@@ -466,13 +473,15 @@ class Argument(object):
                  isvalue=None,
                  is_return_arg=False,
                  init_code=None,
-                 hide_in_wrapper=False):
+                 hide_in_wrapper=False,
+                 check=()):
         self._var = Var(name=name, dtype=dtype, dimension=dimension)
         self.intent = intent
         self.isvalue = isvalue
         self.is_return_arg = is_return_arg
         self.init_code = init_code
         self.hide_in_wrapper = hide_in_wrapper
+        self.check = check
 
         if self.dtype.type == 'c_ptr' and not self.isvalue:
             raise ValueError(

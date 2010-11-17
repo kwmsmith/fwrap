@@ -384,6 +384,7 @@ class ArgWrapper(ArgWrapperBase):
         self.intent = arg.intent
         self.init_code = arg.init_code
         self.hide_in_wrapper = arg.hide_in_wrapper
+        self.check = arg.check
         self._set_intern_name()
         self._set_intern_vars()
         self._set_extern_args()
