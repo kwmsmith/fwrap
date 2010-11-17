@@ -44,7 +44,7 @@ def _process_node(node, ast, language):
                                 args=args,
                                 params=params,
                                 language=language))
-            elif proc.blocktype == 'function':
+            elif child.blocktype == 'function':
                 ast.append(pyf.Function(
                                 name=child.name,
                                 args=args,
