@@ -13,6 +13,7 @@ from fwrap import gen_config as gc
 from fwrap import fc_wrap
 from fwrap import cy_wrap
 from fwrap.code import CodeBuffer, reflow_fort
+from fwrap.configuration import add_configure_options
 
 PROJNAME = 'fwproj'
 
@@ -160,6 +161,7 @@ Cython, & Python.
         parser.add_option('-n', '--name', dest='name',
                           help='name for the project directory and extension module '
                           '[default: %default]')
+        add_configure_options(parser.add_option)
         args = None
     else:
         args = sources
