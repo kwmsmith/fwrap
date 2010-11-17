@@ -6,8 +6,8 @@
 from fwrap import pyf_iface
 from fwrap import constants
 from fwrap.code import CodeBuffer
-
-from fwrap.pyf_iface import _py_kw_mangler
+from fwrap.pyf_iface import _py_kw_mangler, py_kw_mangle_expression
+from fwrap.pyf_utils import c_to_cython
 import re
 import warnings
 
@@ -156,9 +156,15 @@ class _CyArgWrapper(object):
         # When parsing pyf files, one can specify arbitrary initialization
         # code (assumed to be in Cython). For hidden arguments, this
         # must be inserted here.
+        lines = []
         if self.hide_in_wrapper and self.arg.init_code is not None:
-            return ["%s = %s" % (self.name, self.arg.init_code)]
-        return []
+            lines.append("%s = %s" % (self.name, self.arg.init_code))
+        for c in self.arg.check:
+            c = py_kw_mangle_expression(c)
+            c = c_to_cython(c)
+            lines.append("if not (%s):" % c)
+            lines.append("    raise ValueError('Condition on arguments not satisfied: %s')" % c)
+        return lines
 
     def return_tuple_list(self):
         if self.name == constants.ERR_NAME:

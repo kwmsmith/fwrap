@@ -16,4 +16,9 @@ __doc__ = u"""
     array([[ 0.,  1.],
            [ 2.,  3.],
            [ 4.,  5.]])
+
+    >>> testone(10, n) # m_hidden == m+1
+    Traceback (most recent call last):
+        ...
+    ValueError: Condition on arguments not satisfied: (m >= 1) and (m_hidden <= 10)
 """

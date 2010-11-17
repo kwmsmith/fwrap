@@ -95,13 +95,13 @@ def _get_arg(p_arg):
         dimspec = pyf.Dimension(p_dims)
     else:
         dimspec = None
-        
     return pyf.Argument(name=name,
                         dtype=dtype,
                         intent=intent,
                         dimension=dimspec,
                         init_code=init_code,
-                        hide_in_wrapper=hide_in_wrapper)
+                        hide_in_wrapper=hide_in_wrapper,
+                        check=p_arg.check)
 
 def _get_args(proc):
     args = []
