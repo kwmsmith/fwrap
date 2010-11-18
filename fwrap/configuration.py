@@ -3,23 +3,38 @@
 # All rights reserved. See LICENSE.txt.
 #------------------------------------------------------------------------------
 
+from fwrap.version import get_version
 import re
 
 #
 # Configuration context for fwrap
 #
 
-def update_self_from_args(obj, locals_result):
-    del locals_result['self']
-    obj.__dict__.update(locals_result)
-
 class Configuration:
-    def __init__(self, f77binding, fc_wrapper_orig_types):
-        update_self_from_args(self, locals())
+    keys = ['version', 'f77binding']
+    
+    def __init__(self, **kw):
+        for key in self.keys:
+            if key in kw.keys():
+                setattr(self, key, kw[key])
+        # Aliases -- useful if we in the future *may*
+        # split one option into more options
+        self.fc_wrapper_orig_types = self.f77binding
+        # Auto-detected variables
+        self.version = get_version()        
+
+    def serialize(self):
+        # Preserves preferred order of keys
+        return [(key, getattr(self, key))
+                for key in self.keys]
+
+    def to_dict(self):
+        return dict(self.to_list)
+    
     def __nonzero__(self):
         1/0
 
-default_cfg = Configuration(False, False)
+default_cfg = Configuration(f77binding=False)
 
 def add_cmdline_options(add_option):
     # Add configuration options. add_option is a callback,
@@ -33,8 +48,7 @@ def add_cmdline_options(add_option):
     
 
 def configuration_from_cmdline(options):
-    return Configuration(f77binding=options.f77binding,
-                         fc_wrapper_orig_types=options.f77binding)
+    return Configuration(f77binding=options.f77binding)
 
 
 #
@@ -45,6 +59,8 @@ def configuration_from_cmdline(options):
 # a dictionary, and then one can validate the acquired dictionary with
 # a DOM
 #
+# TODO: Switch to ordered list instead of unordered dict for keys
+#
 class ValidationError(ValueError):
     pass
 class ParseError(ValueError):
@@ -54,10 +70,8 @@ class Node:
     def __init__(self, value='', children=None):
         if children is None:
             children = {}
-        if not isinstance(value, str):
-            raise ValueError('value field must be str')
         if not isinstance(children, dict):
-            raise ValueError('children field must be str')
+            raise ValueError('children field must be dict')
         self.value = value
         self.children = children
     def __eq__(self, other):
@@ -74,32 +88,62 @@ class Node:
 #
 ONE, MANY = object(), object()
 
-sha_re = re.compile(r'[0-9a-f]+')
-version_re = re.compile(r'\w+')
-filename_re = re.compile('.*')
+def create_string_parser(regex):
+    regex_obj = re.compile(regex)
+    def parse(value):
+        if regex_obj.match(value) is None:
+            raise ValueError()
+        return value
+    return parse
+
+def parse_bool(value):
+    if value == 'True':
+        return True
+    elif value == 'False':
+        return False
+    else:
+        raise ValueError()
+    
+parse_sha = create_string_parser(r'[0-9a-f]+')
+parse_version = create_string_parser(r'\w+')
+parse_filename = create_string_parser(r'.+')
 
 configuration_dom = {
-    'git-head' : (ONE, sha_re, {}),
-    'version' : (ONE, version_re, {}),
-    'wraps' : (MANY, filename_re, {
-        'sha1' : (ONE, sha_re, {}),
+    # repeat-flag, parser, default value, child-dom
+    'git-head' : (ONE, parse_sha, None, {}),
+    'version' : (ONE, parse_version, None, {}),
+    'wraps' : (MANY, parse_filename, None, {
+        'sha1' : (ONE, parse_sha, None, {}),
         # TODO: Exclude and include filters.
         }),
+    'f77binding' : (ONE, parse_bool, False, {})
     }
 
 
-def validate_configuration(tree, dom=configuration_dom):
+def apply_dom(tree, dom=configuration_dom, validate_only=False):
     for key, entries in tree.iteritems():
         if key not in dom.keys():
             raise ValidationError('Unknown fwrap configuration key: %s' % key)
-        nentries, value_re, child_dom = dom[key]
+        nentries, value_parser, default, child_dom = dom[key]
         if nentries == ONE and len(entries) != 1:
             raise ValidationError('"%s" should only have one entry' % key)
         for node in entries:
-            if value_re.match(node.value) is None:
+            try:
+                value = value_parser(node.value)
+            except ValueError:
                 raise ValidationError('Illegal value for %s: %s' % (key, node.value))
-            validate_configuration(node.children, child_dom)
-
+            if not validate_only:
+                node.value = value
+            apply_dom(node.children, child_dom)
+    if not validate_only:
+        # Fill in defaults
+        for key in set(dom.keys()) - set(tree.keys()):
+            nentries, value_parser, default, child_dom = dom[key]
+            if nentries == ONE:
+                tree[key] = [Node(default)]
+            else:
+                assert default is None
+                tree[key] = {}
 
 #
 # Parsing
@@ -150,3 +194,26 @@ def parse_inline_configuration(s):
         pass
     return result
 
+#
+# Serializing
+#
+INDENT_STR = '    '
+
+def _serialize_entries(entries, buf, indent=0):
+    for key, value in entries:
+        if isinstance(value, Node):
+            children = value.children
+            value = value.value
+        else:
+            children = None
+        if value in ('', None):
+            buf.write('#fwrap: %s%s\n' % (INDENT_STR * indent, key))
+        else:
+            buf.write('#fwrap: %s%s %s\n' % (INDENT_STR * indent, key, value))
+        if children is not None:
+            _serialize_entries(node.children.iteritems(), buf, indent + 1)
+
+def serialize_configuration_to_pyx(cfg, buf):
+    entries = cfg.serialize()
+    _serialize_entries(entries, buf)
+        

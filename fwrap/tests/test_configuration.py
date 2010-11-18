@@ -42,22 +42,30 @@ def test_parser():
                   """)) # inconsistent indentation
 
 
-def test_validation():
+def test_apply_dom():
     tree = {'git-head': [Node('1872')],
             'wraps': [Node('source_a.f90',
                        {'sha1': [Node('346e')]}),
                       Node('source_a.f90')]}
     try:
-        validate_configuration(tree)
+        apply_dom(tree)
     except ValidationError:
         assert_true(False)
 
-    tree['wraps'][0].children['sha1'][0].value = 'not-a-sha'
-    assert_raises(ValidationError, validate_configuration, tree)
+    ok_('f77binding' in tree.keys())
+    eq_(tree['f77binding'][0].value, False)
 
-    assert_raises(ValidationError, validate_configuration,
+    tree['wraps'][0].children['sha1'][0].value = 'not-a-sha'
+    assert_raises(ValidationError, apply_dom, tree)
+
+    assert_raises(ValidationError, apply_dom,
                   {'unknown' : [Node(),]})
-    assert_raises(ValidationError, validate_configuration,
+    assert_raises(ValidationError, apply_dom,
                   {'git-head' : [Node('1'),Node('1'),]}) # ONE only
 
-    
+
+    tree = {'f77binding' : [Node('True')]}
+    apply_dom(tree, validate_only=True)
+    eq_(type(tree['f77binding'][0].value),  str)
+    apply_dom(tree, validate_only=False)
+    ok_(type(tree['f77binding'][0].value), bool)
