@@ -26,11 +26,15 @@ def test_parser():
     """)
 
     obj = parse_inline_configuration(code)
-    eq_(obj, {'git-head': [Node('1872')],
-              'wraps': [Node('source_a.f90',
-                         {'sha1': [Node('346e')]}),
-                        Node('source_a.f90')],
-              'has-no-value': [Node()]})
+    eq_(obj, [
+        ('wraps', 'source_a.f90', [
+            ('sha1', '346e', [])
+            ]),
+        ('git-head', '1872', []),
+        ('wraps', 'source_a.f90', []),
+        ('has-no-value', '', [])
+        ])
+        
 
     assert_raises(ValueError, parse_inline_configuration,
                   "#fwrap:git-head 342d") # need leading space
@@ -43,29 +47,40 @@ def test_parser():
 
 
 def test_apply_dom():
-    tree = {'git-head': [Node('1872')],
-            'wraps': [Node('source_a.f90',
-                       {'sha1': [Node('346e')]}),
-                      Node('source_a.f90')]}
+
+    def filter_tree(x):
+        # Remove top-level keys we don't use in the test
+        return dict((key, value)
+                    for key, value in x.iteritems()
+                    if key in ('git-head', 'wraps', 'f77binding'))
+    
+    parse_tree = [
+        ('git-head', '1872', []),
+        ('wraps', 'source_a.f90', [
+            ('sha1', '346e', [])
+            ]),
+        ('wraps', 'source_b.f90', []),
+        ]
     try:
-        apply_dom(tree)
+        typed_tree = filter_tree(apply_dom(parse_tree))
     except ValidationError:
-        assert_true(False)
+        ok_(False)
 
-    ok_('f77binding' in tree.keys())
-    eq_(tree['f77binding'][0].value, False)
+    eq_(typed_tree, {
+        'git-head' : '1872',
+        'wraps' : [
+            ('source_a.f90', {'sha1': '346e'}),
+            ('source_b.f90', {'sha1': None})
+            ],
+        'f77binding' : False
+        })
 
-    tree['wraps'][0].children['sha1'][0].value = 'not-a-sha'
-    assert_raises(ValidationError, apply_dom, tree)
+    parse_tree[0] = ('git-head', 'not-a-sha', [])
+    assert_raises(ValidationError, apply_dom, parse_tree)
 
     assert_raises(ValidationError, apply_dom,
-                  {'unknown' : [Node(),]})
+                  [('unknown', 'asdf', [])])
     assert_raises(ValidationError, apply_dom,
-                  {'git-head' : [Node('1'),Node('1'),]}) # ONE only
+                  [('git-head', '1', []),
+                   ('git-head', '1', [])]) # repetead
 
-
-    tree = {'f77binding' : [Node('True')]}
-    apply_dom(tree, validate_only=True)
-    eq_(type(tree['f77binding'][0].value),  str)
-    apply_dom(tree, validate_only=False)
-    ok_(type(tree['f77binding'][0].value), bool)

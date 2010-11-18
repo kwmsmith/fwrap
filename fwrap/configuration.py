@@ -73,27 +73,11 @@ class ValidationError(ValueError):
 class ParseError(ValueError):
     pass
 
-class Node:
-    def __init__(self, value='', children=None):
-        if children is None:
-            children = {}
-        if not isinstance(children, dict):
-            raise ValueError('children field must be dict')
-        self.value = value
-        self.children = children
-    def __eq__(self, other):
-        return (isinstance(other, Node) and
-                other.value == self.value and
-                other.children == self.children)
-    def __repr__(self):
-        #buf = StringIO()
-        #child_repr = pprint(self.children, buf)
-        return 'Node(value=%r, children=%r)' % (self.value, self.children)
-
 #
-# Validation
+# Validation and turn raw parse tree into more friendly typed tree
 #
-ONE, MANY = object(), object()
+ATTR = object() # single attribute (e.g., git-head)
+LIST_ITEM = object() # repeated multiple times to form list (e.g., wraps)
 
 def create_string_parser(regex):
     regex_obj = re.compile(regex)
@@ -111,46 +95,59 @@ def parse_bool(value):
     else:
         raise ValueError()
     
-parse_sha = create_string_parser(r'[0-9a-f]+')
-parse_version = create_string_parser(r'\w+')
-parse_filename = create_string_parser(r'.+')
+parse_sha_or_nothing = create_string_parser(r'^[0-9a-f]*$')
+parse_version = create_string_parser(r'^\w+$')
+parse_filename = create_string_parser(r'^.+$')
 
 configuration_dom = {
     # repeat-flag, parser, default value, child-dom
-    'git-head' : (ONE, str, '', {}),
-    'version' : (ONE, parse_version, None, {}),
-    'wraps' : (MANY, parse_filename, None, {
-        'sha1' : (ONE, parse_sha, None, {}),
+    'git-head' : (ATTR, parse_sha_or_nothing, '', {}),
+    'version' : (ATTR, parse_version, None, {}),
+    'wraps' : (LIST_ITEM, parse_filename, None, {
+        'sha1' : (ATTR, parse_sha_or_nothing, None, {}),
         # TODO: Exclude and include filters.
         }),
-    'f77binding' : (ONE, parse_bool, False, {})
+    'f77binding' : (ATTR, parse_bool, False, {})
     }
 
-
-def apply_dom(tree, dom=configuration_dom, validate_only=False):
-    for key, entries in tree.iteritems():
+def apply_dom(tree, dom=configuration_dom):
+    encountered = set()
+    result = {}
+    # Parse tree and give it meaning according to DOM
+    for key, value, children in tree:
         if key not in dom.keys():
             raise ValidationError('Unknown fwrap configuration key: %s' % key)
-        nentries, value_parser, default, child_dom = dom[key]
-        if nentries == ONE and len(entries) != 1:
-            raise ValidationError('"%s" should only have one entry' % key)
-        for node in entries:
-            try:
-                value = value_parser(node.value)
-            except ValueError:
-                raise ValidationError('Illegal value for %s: %s' % (key, node.value))
-            if not validate_only:
-                node.value = value
-            apply_dom(node.children, child_dom)
-    if not validate_only:
-        # Fill in defaults
-        for key in set(dom.keys()) - set(tree.keys()):
-            nentries, value_parser, default, child_dom = dom[key]
-            if nentries == ONE:
-                tree[key] = [Node(default)]
-            else:
-                assert default is None
-                tree[key] = {}
+        nodetype, value_parser, default, child_dom = dom[key]
+        try:
+            typed_value = value_parser(value)
+        except ValueError:
+            raise ValidationError('Illegal value for %s: %s' % (key, value))
+        if nodetype == ATTR:
+            if key in encountered or len(children) > 0:
+                raise ValidationError('"%s" should only have one entry without children' % key)
+            result[key] = typed_value
+        elif nodetype == LIST_ITEM:
+            lst = result.get(key, None)
+            if lst is None:
+                lst = result[key] = []
+
+            children_typed_tree = apply_dom(children, child_dom)
+            lst.append((value, children_typed_tree))
+        else:
+            assert False
+        encountered.add(key)
+            
+    # Fill in defaults
+    for key in set(dom.keys()) - encountered:
+        nodetype, value_parser, default, child_dom = dom[key]
+        if nodetype == ATTR:
+            result[key] = default
+        elif nodetype == LIST_ITEM:
+            assert default is None
+            result[key] = []
+        else:
+            assert False
+    return result
 
 #
 # Parsing
@@ -182,18 +179,15 @@ def _parse_node(it, parent_indent, result):
             value = line_match.group(3).strip()
             # Create children dict, and insert it and the value in parent's
             # result dictionary
-            children = {}
-            lst = result.get(key, None)
-            if lst is None:
-                lst = result[key] = []
-            lst.append(Node(value=value, children=children))
+            children = []
+            result.append((key, value, children))
             # Recurse to capture any children and get next line
             # -- can raise StopIteration
             indent, line_match = _parse_node(it, indent, children)
             
 
 def parse_inline_configuration(s):
-    result = {}
+    result = []
     it = fwrap_section_re.finditer(s)
     try:
         _parse_node(it, -1, result)
@@ -208,17 +202,11 @@ INDENT_STR = '    '
 
 def _serialize_entries(entries, buf, indent=0):
     for key, value in entries:
-        if isinstance(value, Node):
-            children = value.children
-            value = value.value
-        else:
-            children = None
         if value in ('', None):
             buf.write('#fwrap: %s%s\n' % (INDENT_STR * indent, key))
         else:
             buf.write('#fwrap: %s%s %s\n' % (INDENT_STR * indent, key, value))
-        if children is not None:
-            _serialize_entries(node.children.iteritems(), buf, indent + 1)
+        if False:_serialize_entries(node.children.iteritems(), buf, indent + 1)
 
 def serialize_configuration_to_pyx(cfg, buf):
     entries = cfg.serialize()
