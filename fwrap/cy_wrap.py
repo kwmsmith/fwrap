@@ -47,9 +47,10 @@ def gen_cdef_extern_decls(buf):
         buf.putlines(dtype.cdef_extern_decls)
 
 def generate_cy_pyx(ast, name, buf, cfg):
+    ctx = CythonCodeGenerationContext(cfg)
     buf.putln("#cython: ccomplex=True")
     buf.putln('')
-    ctx = CythonCodeGenerationContext(cfg)
+    buf.putln('# Fwrap configuration:')
     cfg.serialize_to_pyx(buf)
     buf.putln(' ')
     put_cymod_docstring(ast, name, buf)

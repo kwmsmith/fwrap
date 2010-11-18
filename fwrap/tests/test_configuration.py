@@ -17,12 +17,12 @@ def test_parser():
     code = dedent("""
     Not included
     foo
-    #fwrap: wraps source_a.f90    
-    #fwrap:     sha1 346e
-    #fwrap: git-head 1872
+    # Fwrap: wraps source_a.f90    
+    # Fwrap:     sha1 346e
+    # Fwrap: git-head 1872
     bar
-    #fwrap: wraps source_a.f90
-    #fwrap: has-no-value
+    # Fwrap: wraps source_a.f90
+    # Fwrap: has-no-value
     yey!
     """)
 
@@ -38,12 +38,12 @@ def test_parser():
         
 
     assert_raises(ValueError, parse_inline_configuration,
-                  "#fwrap:git-head 342d") # need leading space
+                  "# Fwrap:git-head 342d") # need leading space
     assert_raises(ValueError, parse_inline_configuration,
                   dedent("""
-                  #fwrap: foo value
-                  #fwrap:     child1
-                  #fwrap:    child2
+                  # Fwrap: foo value
+                  # Fwrap:     child1
+                  # Fwrap:    child2
                   """)) # inconsistent indentation
 
 
@@ -109,11 +109,11 @@ def test_serialize():
     buf = StringIO()
     serialize_inline_configuration(parse_tree, buf)
     eq_(buf.getvalue(), dedent("""\
-        #fwrap: git-head 1872
-        #fwrap: wraps source_a.f90
-        #fwrap:     sha1 346e
-        #fwrap: wraps source_b.f90
-        #fwrap: f77binding False
+        # Fwrap: git-head 1872
+        # Fwrap: wraps source_a.f90
+        # Fwrap:     sha1 346e
+        # Fwrap: wraps source_b.f90
+        # Fwrap: f77binding False
         """))
 
     
