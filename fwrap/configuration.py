@@ -21,7 +21,7 @@ class Configuration:
 
 default_cfg = Configuration(False, False)
 
-def add_configure_options(add_option):
+def add_cmdline_options(add_option):
     # Add configuration options. add_option is a callback,
     # and might either be add_option from optparse or
     # add_argument from argparse.
@@ -31,6 +31,11 @@ def add_configure_options(add_option):
     add_option('--dummy', action='store_true',
                help='dummy development configuration option')
     
+
+def configuration_from_cmdline(options):
+    return Configuration(f77binding=options.f77binding,
+                         fc_wrapper_orig_types=options.f77binding)
+
 
 #
 # Configuration section parsing etc.

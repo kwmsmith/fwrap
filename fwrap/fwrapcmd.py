@@ -10,7 +10,7 @@ import argparse
 import logging
 import textwrap
 from fwrap import fwrapper
-from fwrap.configuration import add_configure_options
+from fwrap import configuration
 
 PROJECT_FILE = 'fwrap.json'
 
@@ -20,7 +20,8 @@ logger = logging.getLogger()
 def create_cmd(opts):
     if os.path.exists(opts.wrapper_pyx) and not opts.force:
         raise ValueError('File exists: %s' % opts.wrapper_pyx)
-    fwrapper.wrap(opts.fortranfiles, opts.wrapper_name)
+    cfg = configuration.configuration_from_cmdline(opts) 
+    fwrapper.wrap(opts.fortranfiles, opts.wrapper_name, cfg)
     return 0
 
 def add_cmd(opts):
@@ -55,7 +56,7 @@ def create_argument_parser():
     create.add_argument('--versioned', action='store_true',
                         help=('allow modification of generated wrappers, and employ '
                               'VCS to manage changes (only git supported currently)'))    
-    add_configure_options(create.add_argument)
+    configuration.add_cmdline_options(create.add_argument)
     create.add_argument('wrapper_pyx')
     create.add_argument('fortranfiles', metavar='fortranfile', nargs='+')
     

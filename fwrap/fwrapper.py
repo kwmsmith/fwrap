@@ -13,11 +13,11 @@ from fwrap import gen_config as gc
 from fwrap import fc_wrap
 from fwrap import cy_wrap
 from fwrap.code import CodeBuffer, CodeBufferFixedForm, reflow_fort
-from fwrap.configuration import Configuration, add_configure_options
+from fwrap import configuration
 
 PROJNAME = 'fwproj'
 
-def wrap(sources, name, options):
+def wrap(sources, name, cfg):
     r"""Generate wrappers for sources.
 
     The core wrapping routine for fwrap.  Generates wrappers for the sources
@@ -29,6 +29,7 @@ def wrap(sources, name, options):
        wrapped.
      - *name* - (string) Name of the project and the name of the resulting
        python module
+     - *cfg* - (fwrap.configuration.Configuration)
     """
 
     # validate name
@@ -48,9 +49,6 @@ def wrap(sources, name, options):
                 source_files.append(src)
     if not source_files:
         raise ValueError("Invalid source list. %r" % (sources))
-
-    cfg = Configuration(f77binding=options.f77binding,
-                        fc_wrapper_orig_types=options.f77binding)
 
     # Parse fortran using fparser, get fortran ast.
     f_ast = parse(source_files, cfg)
@@ -175,7 +173,7 @@ Cython, & Python.
         parser.add_option('-n', '--name', dest='name',
                           help='name for the project directory and extension module '
                           '[default: %default]')
-        add_configure_options(parser.add_option)
+        configuration.add_cmdline_options(parser.add_option)
         args = None
     else:
         args = sources
@@ -193,5 +191,6 @@ Cython, & Python.
                             for j, x in enumerate(source_files)
                             if i == j or (os.path.realpath(source_bases[i]) !=
                                           os.path.realpath(source_bases[j]))]
-    wrap(source_files, parsed_options.name, parsed_options)
+    cfg = configuration.configuration_from_cmdline(parsed_options)
+    wrap(source_files, parsed_options.name, cfg)
     return 0
