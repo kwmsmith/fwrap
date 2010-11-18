@@ -20,3 +20,6 @@ def execproc_with_default(cmd, default):
     except OSError:
         return default
 
+def cwd_rev():
+    return execproc_with_default("git rev-parse HEAD", None)
+    

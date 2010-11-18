@@ -4,6 +4,7 @@
 #------------------------------------------------------------------------------
 
 from fwrap.version import get_version
+from fwrap import git
 import re
 
 #
@@ -11,7 +12,11 @@ import re
 #
 
 class Configuration:
-    keys = ['version', 'f77binding']
+    keys = ['version', 'git_head', 'wraps', 'f77binding']
+
+    wraps = ()
+    f77binding = False
+    git_head = ''
     
     def __init__(self, **kw):
         for key in self.keys:
@@ -21,11 +26,13 @@ class Configuration:
         # split one option into more options
         self.fc_wrapper_orig_types = self.f77binding
         # Auto-detected variables
-        self.version = get_version()        
+        self.version = get_version()
+        self.git_head = git.cwd_rev()
+        
 
     def serialize(self):
         # Preserves preferred order of keys
-        return [(key, getattr(self, key))
+        return [(key.replace('_', '-'), getattr(self, key))
                 for key in self.keys]
 
     def to_dict(self):
@@ -110,7 +117,7 @@ parse_filename = create_string_parser(r'.+')
 
 configuration_dom = {
     # repeat-flag, parser, default value, child-dom
-    'git-head' : (ONE, parse_sha, None, {}),
+    'git-head' : (ONE, str, '', {}),
     'version' : (ONE, parse_version, None, {}),
     'wraps' : (MANY, parse_filename, None, {
         'sha1' : (ONE, parse_sha, None, {}),
