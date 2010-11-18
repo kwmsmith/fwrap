@@ -181,9 +181,9 @@ class ProcWrapper(object):
                 ", ".join(self.arg_man.c_proto_args()))
 
     def c_mangle_define(self):
-        return '#define FORTRAN_CALLSPEC %s F_FUNC(%s,%s)' % (self.name,
-                                                              self.name.lower(),
-                                                              self.name.upper())
+        return '#define %s F_FUNC(%s,%s)' % (self.name,
+                                             self.name.lower(),
+                                             self.name.upper())
 
     def cy_prototype(self):
         args = ", ".join(self.arg_man.c_proto_args())
