@@ -100,6 +100,7 @@ def write_header(ctps, fbuf):
     buf = StringIO()
     buf.write("#ifndef %s\n" % fbuf.name.upper().replace('.','_'))
     buf.write("#define %s\n" % fbuf.name.upper().replace('.', '_'))
+    buf.write(complex_utility_code)
     write_err_codes(buf)
     for incl in get_c_preambles(ctps):
         if incl: buf.write(incl+'\n')
@@ -360,9 +361,9 @@ f2c = {
     'c_float'           : 'float',
     'c_double'          : 'double',
     'c_long_double'     : 'long double',
-    'c_float_complex'   : 'float _Complex',
-    'c_double_complex'  : 'double _Complex',
-    'c_long_double_complex' : 'long double _Complex',
+    'c_float_complex'   : 'fw_complex(float)',
+    'c_double_complex'  : 'fw_complex(double)',
+    'c_long_double_complex' : 'fw_complex(long double)',
     'c_bool'            : '_Bool',
     'c_char'            : 'char'
     }
@@ -468,3 +469,12 @@ type2enum = {
     'npy_complex64'     : 'NPY_COMPLEX64',
     'npy_complex128'    : 'NPY_COMPLEX128',
     }
+
+complex_utility_code = """\
+#if defined(__cplusplus)
+   #include <complex>
+   #define fw_complex(x) std::complex<x>
+#else
+   #define fw_complex(x) x _Complex
+#endif
+"""
