@@ -11,6 +11,7 @@ import sys
 from pprint import pprint
 from textwrap import dedent
 from fwrap.configuration import *
+from StringIO import StringIO
 
 def test_parser():
     code = dedent("""
@@ -84,3 +85,35 @@ def test_apply_dom():
                   [('git-head', '1', []),
                    ('git-head', '1', [])]) # repetead
 
+
+def test_serialize():
+    key_order = ['git-head', 'wraps', 'f77binding']
+    doc = {
+        'git-head' : '1872',
+        'wraps' : [
+            ('source_a.f90', {'sha1': '346e'}),
+            ('source_b.f90', {})
+            ],
+        'f77binding' : False
+        }
+    parse_tree = document_to_parse_tree(doc, key_order)
+    eq_(parse_tree, [
+        ('git-head', '1872', []),
+        ('wraps', 'source_a.f90', [
+            ('sha1', '346e', [])
+            ]),
+        ('wraps', 'source_b.f90', []),
+        ('f77binding', 'False', [])
+        ])
+
+    buf = StringIO()
+    serialize_inline_configuration(parse_tree, buf)
+    eq_(buf.getvalue(), dedent("""\
+        #fwrap: git-head 1872
+        #fwrap: wraps source_a.f90
+        #fwrap:     sha1 346e
+        #fwrap: wraps source_b.f90
+        #fwrap: f77binding False
+        """))
+
+    

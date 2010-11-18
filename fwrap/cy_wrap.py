@@ -8,7 +8,6 @@ from fwrap import constants
 from fwrap.code import CodeBuffer
 from fwrap.pyf_iface import _py_kw_mangler, py_kw_mangle_expression
 from fwrap.pyf_utils import c_to_cython
-from fwrap.configuration import serialize_configuration_to_pyx
 
 import re
 import warnings
@@ -51,7 +50,8 @@ def generate_cy_pyx(ast, name, buf, cfg):
     buf.putln("#cython: ccomplex=True")
     buf.putln('')
     ctx = CythonCodeGenerationContext(cfg)
-    put_configuration(buf, cfg)
+    cfg.serialize_to_pyx(buf)
+    buf.putln(' ')
     put_cymod_docstring(ast, name, buf)
     buf.putln("np.import_array()")
     buf.putln("include 'fwrap_ktp.pxi'")
@@ -98,9 +98,6 @@ For usage information see the function docstrings.
     dstring += names
 
     return dstring
-
-def put_configuration(buf, cfg):
-    serialize_configuration_to_pyx(cfg, buf)
 
 def CyArgWrapper(arg):
     import fc_wrap

@@ -20,8 +20,8 @@ logger = logging.getLogger()
 def create_cmd(opts):
     if os.path.exists(opts.wrapper_pyx) and not opts.force:
         raise ValueError('File exists: %s' % opts.wrapper_pyx)
-    cfg = configuration.configuration_from_cmdline(opts)
-    cfg.wraps = opts.fortranfiles
+    cfg = configuration.Configuration(cmdline_options=opts)
+    cfg.update()
     fwrapper.wrap(opts.fortranfiles, opts.wrapper_name, cfg)
     return 0
 

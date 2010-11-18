@@ -6,42 +6,54 @@
 from fwrap.version import get_version
 from fwrap import git
 import re
-
-#
-# Configuration context for fwrap
-#
+from copy import copy
 
 class Configuration:
-    keys = ['version', 'git_head', 'wraps', 'f77binding']
+    # In preferred order when serializing:
+    keys = ['version', 'git-head', 'wraps', 'f77binding']
 
-    wraps = ()
-    f77binding = False
-    git_head = ''
-    
-    def __init__(self, **kw):
-        for key in self.keys:
-            if key in kw.keys():
-                setattr(self, key, kw[key])
-        # Aliases -- useful if we in the future *may*
+    def __init__(self, document=None, cmdline_options=None):
+        if document is None:
+            document = apply_dom([])
+        if cmdline_options is not None:
+            document.update(_document_from_cmdline_options(cmdline_options))
+
+        assert set(self.keys) == set(document.keys())
+
+        # Most options are looked up in document via __getattr__
+        self.document = document
+
+        # Non-persistent aliases -- useful if we in the future *may*
         # split one option into more options
         self.fc_wrapper_orig_types = self.f77binding
-        # Auto-detected variables
-        self.version = get_version()
-        self.git_head = git.cwd_rev()
-        
 
-    def serialize(self):
-        # Preserves preferred order of keys
-        return [(key.replace('_', '-'), getattr(self, key))
-                for key in self.keys]
+        # Write-protect ourself
+        self.__setattr__ = self._setattr
 
-    def to_dict(self):
-        return dict(self.to_list)
-    
+    def __getattr__(self, attrname):
+        return self.document[attrname.replace('_', '-')]
+
+    def _setattr(self, attrname, value):
+        raise NotImplementedError()
+
     def __nonzero__(self):
+        # sometimes, during refactoring, ctx appears where a bool
+        # did originally
         1/0
 
-default_cfg = Configuration(f77binding=False)
+    #
+    # User-facing methods
+    #
+    def update(self):
+        """
+        Updates information that can be acquired from the environment
+        """
+        self.document['version'] = get_version()
+        self.document['git-head'] = git.cwd_rev()
+
+    def serialize_to_pyx(self, buf):
+        parse_tree = document_to_parse_tree(self.document, self.keys)
+        serialize_inline_configuration(parse_tree, buf)
 
 def add_cmdline_options(add_option):
     # Add configuration options. add_option is a callback,
@@ -54,9 +66,10 @@ def add_cmdline_options(add_option):
                help='dummy development configuration option')
     
 
-def configuration_from_cmdline(options):
-    return Configuration(f77binding=options.f77binding)
-
+def _document_from_cmdline_options(options):
+    return {
+        'f77binding' : options.f77binding
+         }
 
 #
 # Configuration section parsing etc.
@@ -66,8 +79,7 @@ def configuration_from_cmdline(options):
 # a dictionary, and then one can validate the acquired dictionary with
 # a DOM
 #
-# TODO: Switch to ordered list instead of unordered dict for keys
-#
+
 class ValidationError(ValueError):
     pass
 class ParseError(ValueError):
@@ -149,6 +161,26 @@ def apply_dom(tree, dom=configuration_dom):
             assert False
     return result
 
+
+#TODO: ordered_keys must be on many levels, traverse DOM structure
+#      instead
+def document_to_parse_tree(doc, ordered_keys):
+    assert set(doc.keys()) == set(ordered_keys)
+    result = []
+    for key in ordered_keys:
+        entry = doc[key]
+        if isinstance(entry, list):
+            for value, attrs in entry:
+                subtree = document_to_parse_tree(attrs, attrs.keys())
+                result.append((key, value, subtree))
+        else:
+            if entry is None:
+                value = ''
+            else:
+                value = str(entry)
+            result.append((key, value, []))
+    return result
+
 #
 # Parsing
 #
@@ -195,20 +227,12 @@ def parse_inline_configuration(s):
         pass
     return result
 
-#
-# Serializing
-#
 INDENT_STR = '    '
 
-def _serialize_entries(entries, buf, indent=0):
-    for key, value in entries:
-        if value in ('', None):
-            buf.write('#fwrap: %s%s\n' % (INDENT_STR * indent, key))
-        else:
-            buf.write('#fwrap: %s%s %s\n' % (INDENT_STR * indent, key, value))
-        if False:_serialize_entries(node.children.iteritems(), buf, indent + 1)
-
-def serialize_configuration_to_pyx(cfg, buf):
-    entries = cfg.serialize()
-    _serialize_entries(entries, buf)
+def serialize_inline_configuration(parse_tree, buf, indent=0):
+    for key, value, children in parse_tree:
+        buf.write('#fwrap: %s%s %s\n' % (INDENT_STR * indent, key, value))
+        serialize_inline_configuration(children, buf, indent + 1)        
         
+default_cfg = Configuration()
+default_cfg.update()
