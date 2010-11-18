@@ -155,7 +155,7 @@ def apply_dom(tree, dom=configuration_dom):
     # Parse tree and give it meaning according to DOM
     for key, value, children in tree:
         if key not in dom.keys():
-            raise ValidationError('Unknown fwrap configuration key: %s' % key)
+            raise ValidationError('Unknown Fwrap configuration key: %s' % key)
         nodetype, value_parser, default, child_dom = dom[key]
         try:
             typed_value = value_parser(value)
@@ -211,7 +211,7 @@ def document_to_parse_tree(doc, ordered_keys):
 #
 # Parsing
 #
-fwrap_section_re = re.compile(r'^#fwrap:(.+)$', re.MULTILINE)
+fwrap_section_re = re.compile(r'^# Fwrap:(.+)$', re.MULTILINE)
 config_line_re = re.compile(r' (\s*)([\w-]+)(.*)$')
 
 def _parse_node(it, parent_indent, result):
@@ -258,7 +258,7 @@ INDENT_STR = '    '
 
 def serialize_inline_configuration(parse_tree, buf, indent=0):
     for key, value, children in parse_tree:
-        buf.write('#fwrap: %s%s %s\n' % (INDENT_STR * indent, key, value))
+        buf.write('# Fwrap: %s%s %s\n' % (INDENT_STR * indent, key, value))
         serialize_inline_configuration(children, buf, indent + 1)        
 
 #
