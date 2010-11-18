@@ -14,7 +14,7 @@ def valid_fort_name(name):
     return vfn_matcher(name)
 
 def _py_kw_mangler(name):
-    # mangles name if it's a Python or Cython keyword.
+    # mangles name if it is reserved in some way
     kwds = (
         # Python keywords
         'and', 'del', 'from', 'not', 'while', 'as', 'elif', 'global', 'or',
@@ -23,7 +23,9 @@ def _py_kw_mangler(name):
         'finally', 'is', 'return', 'def', 'for', 'lambda', 'try',
         # Cython keywords
         'include', 'ctypedef', 'cdef', 'cpdef',
-        'cimport', 'by'
+        'cimport', 'by',
+        # We always cimport numpy as np
+        'np'
         )
     if name.lower() in kwds:
         return "%s__" % name
