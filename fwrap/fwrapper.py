@@ -13,7 +13,7 @@ from fwrap import gen_config as gc
 from fwrap import fc_wrap
 from fwrap import cy_wrap
 from fwrap.code import CodeBuffer, CodeBufferFixedForm, reflow_fort
-from fwrap.configuration import Configuration
+from fwrap.configuration import Configuration, add_configure_options
 
 PROJNAME = 'fwproj'
 
@@ -175,9 +175,7 @@ Cython, & Python.
         parser.add_option('-n', '--name', dest='name',
                           help='name for the project directory and extension module '
                           '[default: %default]')
-        parser.add_option('--f77binding', action='store_true',
-                          help='avoid iso_c_binding and use older f2py-style '
-                          'wrapping instead')
+        add_configure_options(parser.add_option)
         args = None
     else:
         args = sources
