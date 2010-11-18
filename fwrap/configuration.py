@@ -109,10 +109,25 @@ class Configuration:
         self.document['version'] = get_version()
         self.document['git-head'] = git.cwd_rev()
 
+    def add_wrapped_file(self, filename):
+        sha1 = sha1_of_file(filename)
+        self.document['wraps'].append((filename, {'sha1': sha1}))
+
     def serialize_to_pyx(self, buf):
         parse_tree = document_to_parse_tree(self.document, self.keys)
         serialize_inline_configuration(parse_tree, buf)
 
+
+#
+# Utils
+#
+
+def sha1_of_file(filename):
+    import hashlib
+    h = hashlib.sha1()
+    with file(filename) as f:
+        h.update(f.read())
+    return h.hexdigest()    
 
 
 #

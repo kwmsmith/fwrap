@@ -22,6 +22,8 @@ def create_cmd(opts):
         raise ValueError('File exists: %s' % opts.wrapper_pyx)
     cfg = configuration.Configuration(cmdline_options=opts)
     cfg.update()
+    for filename in opts.fortranfiles:
+        cfg.add_wrapped_file(filename)
     fwrapper.wrap(opts.fortranfiles, opts.wrapper_name, cfg)
     return 0
 
