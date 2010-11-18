@@ -8,6 +8,64 @@ from fwrap import git
 import re
 from copy import copy
 
+#
+# Configuration of configuration options
+#
+ATTR = object() # single attribute (e.g., git-head)
+LIST_ITEM = object() # repeated multiple times to form list (e.g., wraps)
+
+def create_string_parser(regex):
+    regex_obj = re.compile(regex)
+    def parse(value):
+        if regex_obj.match(value) is None:
+            raise ValueError()
+        return value
+    return parse
+
+def parse_bool(value):
+    if value == 'True':
+        return True
+    elif value == 'False':
+        return False
+    else:
+        raise ValueError()
+    
+parse_sha_or_nothing = create_string_parser(r'^[0-9a-f]*$')
+parse_version = create_string_parser(r'^\w+$')
+parse_filename = create_string_parser(r'^.+$')
+
+configuration_dom = {
+    # repeat-flag, parser, default value, child-dom
+    'git-head' : (ATTR, parse_sha_or_nothing, '', {}),
+    'version' : (ATTR, parse_version, None, {}),
+    'wraps' : (LIST_ITEM, parse_filename, None, {
+        'sha1' : (ATTR, parse_sha_or_nothing, None, {}),
+        # TODO: Exclude and include filters.
+        }),
+    'f77binding' : (ATTR, parse_bool, False, {})
+    }
+
+
+def add_cmdline_options(add_option):
+    # Add configuration options. add_option is a callback,
+    # and might either be add_option from optparse or
+    # add_argument from argparse.
+    add_option('--f77binding', action='store_true',
+               help='avoid iso_c_binding and use older f2py-style '
+               'wrapping instead')
+    add_option('--dummy', action='store_true',
+               help='dummy development configuration option')
+    
+
+def _document_from_cmdline_options(options):
+    return {
+        'f77binding' : options.f77binding
+         }
+
+#
+# Main Configuration class, backed by serializable document structure
+#
+
 class Configuration:
     # In preferred order when serializing:
     keys = ['version', 'git-head', 'wraps', 'f77binding']
@@ -55,21 +113,7 @@ class Configuration:
         parse_tree = document_to_parse_tree(self.document, self.keys)
         serialize_inline_configuration(parse_tree, buf)
 
-def add_cmdline_options(add_option):
-    # Add configuration options. add_option is a callback,
-    # and might either be add_option from optparse or
-    # add_argument from argparse.
-    add_option('--f77binding', action='store_true',
-               help='avoid iso_c_binding and use older f2py-style '
-               'wrapping instead')
-    add_option('--dummy', action='store_true',
-               help='dummy development configuration option')
-    
 
-def _document_from_cmdline_options(options):
-    return {
-        'f77binding' : options.f77binding
-         }
 
 #
 # Configuration section parsing etc.
@@ -80,47 +124,15 @@ def _document_from_cmdline_options(options):
 # a DOM
 #
 
+#
+# Validation and turn raw parse tree into more friendly typed tree
+#
+
+
 class ValidationError(ValueError):
     pass
 class ParseError(ValueError):
     pass
-
-#
-# Validation and turn raw parse tree into more friendly typed tree
-#
-ATTR = object() # single attribute (e.g., git-head)
-LIST_ITEM = object() # repeated multiple times to form list (e.g., wraps)
-
-def create_string_parser(regex):
-    regex_obj = re.compile(regex)
-    def parse(value):
-        if regex_obj.match(value) is None:
-            raise ValueError()
-        return value
-    return parse
-
-def parse_bool(value):
-    if value == 'True':
-        return True
-    elif value == 'False':
-        return False
-    else:
-        raise ValueError()
-    
-parse_sha_or_nothing = create_string_parser(r'^[0-9a-f]*$')
-parse_version = create_string_parser(r'^\w+$')
-parse_filename = create_string_parser(r'^.+$')
-
-configuration_dom = {
-    # repeat-flag, parser, default value, child-dom
-    'git-head' : (ATTR, parse_sha_or_nothing, '', {}),
-    'version' : (ATTR, parse_version, None, {}),
-    'wraps' : (LIST_ITEM, parse_filename, None, {
-        'sha1' : (ATTR, parse_sha_or_nothing, None, {}),
-        # TODO: Exclude and include filters.
-        }),
-    'f77binding' : (ATTR, parse_bool, False, {})
-    }
 
 def apply_dom(tree, dom=configuration_dom):
     encountered = set()
@@ -233,6 +245,9 @@ def serialize_inline_configuration(parse_tree, buf, indent=0):
     for key, value, children in parse_tree:
         buf.write('#fwrap: %s%s %s\n' % (INDENT_STR * indent, key, value))
         serialize_inline_configuration(children, buf, indent + 1)        
-        
+
+#
+# Global vars
+#
 default_cfg = Configuration()
 default_cfg.update()
