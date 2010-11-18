@@ -30,31 +30,18 @@ def generate_fc_pxd(ast, fc_header_name, buf):
         buf.putln(proc.cy_prototype())
     buf.dedent()
 
-def generate_fc_h(ast, ktp_header_name, buf, cfg):
+def generate_fc_h(ast, ktp_header_name, buf):
     buf.putln('#include "%s"' % ktp_header_name)
     buf.putln('')
-    if cfg.f77binding:
-        import f77_config
-        buf.write(f77_config.name_mangling_utility_code)
-        buf.putln('')
     for proc in ast:
-        buf.putln(proc.c_prototype(cfg))
-    if cfg.f77binding:
-        buf.putln('')
-        buf.putln('#if !defined(NO_FORTRAN_MANGLING)')
-        for proc in ast:
-            buf.putln(proc.c_mangle_define())
-        buf.putln('#endif')
+        buf.putln(proc.c_prototype())
 
-def generate_interface(proc, buf, cfg, gmn=constants.KTP_MOD_NAME):
-    if cfg.f77binding:
-        buf.putln('external %s' % proc.name)
-    else:
+def generate_interface(proc, buf, gmn=constants.KTP_MOD_NAME):
         buf.putln('interface')
         buf.indent()
-        buf.putln(proc.proc_declaration(cfg))
+        buf.putln(proc.proc_declaration())
         buf.indent()
-        proc.proc_preamble(gmn, buf, cfg)
+        proc.proc_preamble(gmn, buf)
         buf.dedent()
         buf.putln(proc.proc_end())
         buf.dedent()
@@ -100,59 +87,49 @@ class ProcWrapper(object):
     def proc_end(self):
         return "end subroutine %s" % self.name
 
-    def proc_preamble(self, ktp_mod, buf, cfg):
-        if not cfg.f77binding:
-            buf.putln('use %s' % ktp_mod)
+    def proc_preamble(self, ktp_mod, buf):
+        buf.putln('use %s' % ktp_mod)
         buf.putln('implicit none')
-        if cfg.f77binding:
-            for line in constants.get_fortran_constants_utility_code(f77=True):
-                buf.putln(line)
-            buf.putln("character C_NULL_CHAR")
-            buf.putln("parameter (C_NULL_CHAR = '\\0')")
-        for declaration in (self.arg_declarations(cfg) +
-                            self.param_declarations(cfg)):
+        for declaration in (self.arg_declarations() +
+                            self.param_declarations()):
             buf.putln(declaration)
 
-    def generate_wrapper(self, buf, cfg, gmn=constants.KTP_MOD_NAME):
-        buf.putln(self.proc_declaration(cfg))
+    def generate_wrapper(self, buf, gmn=constants.KTP_MOD_NAME):
+        buf.putln(self.proc_declaration())
         buf.indent()
-        self.proc_preamble(gmn, buf, cfg)
-        generate_interface(self.wrapped, buf, cfg, gmn)
-        self.temp_declarations(buf, cfg)
-        self.pre_call_code(buf, cfg)
+        self.proc_preamble(gmn, buf)
+        generate_interface(self.wrapped, buf, gmn)
+        self.temp_declarations(buf)
+        self.pre_call_code(buf)
         self.proc_call(buf)
-        self.post_call_code(buf, cfg)
+        self.post_call_code(buf)
         buf.dedent()
         buf.putln(self.proc_end())
 
-    def proc_declaration(self, cfg):
-        if not cfg.f77binding:
-            return 'subroutine %s(%s) bind(c, name="%s")' % \
-                   (self.name, ', '.join(self.extern_arg_list()),
-                    self.name)
-        else:
-            return 'subroutine %s(%s) ' % \
-                   (self.name, ', '.join(self.extern_arg_list()))
+    def proc_declaration(self):
+        return 'subroutine %s(%s) bind(c, name="%s")' % \
+                (self.name, ', '.join(self.extern_arg_list()),
+                        self.name)
 
-    def temp_declarations(self, buf, cfg):
-        for declaration in self.arg_man.temp_declarations(cfg):
+    def temp_declarations(self, buf):
+        for declaration in self.arg_man.temp_declarations():
             buf.putln(declaration)
 
     def extern_arg_list(self):
         return self.arg_man.extern_arg_list()
 
-    def arg_declarations(self, cfg):
-        return self.arg_man.arg_declarations(cfg)
+    def arg_declarations(self):
+        return self.arg_man.arg_declarations()
 
-    def param_declarations(self, cfg):
-        return self.arg_man.param_declarations(cfg)
+    def param_declarations(self):
+        return self.arg_man.param_declarations()
 
-    def pre_call_code(self, buf, cfg):
-        for line in self.arg_man.pre_call_code(cfg):
+    def pre_call_code(self, buf):
+        for line in self.arg_man.pre_call_code():
             buf.putln(line)
 
-    def post_call_code(self, buf, cfg):
-        for line in self.arg_man.post_call_code(cfg):
+    def post_call_code(self, buf):
+        for line in self.arg_man.post_call_code():
             buf.putln(line)
 
     def proc_call(self, buf):
@@ -166,20 +143,8 @@ class ProcWrapper(object):
     def call_arg_list(self):
         return self.arg_man.call_arg_list()
 
-    def c_prototype(self, cfg):
-        if not cfg.f77binding:
-            return "%s;" % self.cy_prototype()
-        else:
-            return "%s F_FUNC(%s,%s)(%s);" % (
-                self.arg_man.c_proto_return_type(),
-                self.name.lower(),
-                self.name.upper(),
-                ", ".join(self.arg_man.c_proto_args()))
-
-    def c_mangle_define(self):
-        return '#define %s F_FUNC(%s,%s)' % (self.name,
-                                             self.name.lower(),
-                                             self.name.upper())
+    def c_prototype(self):
+        return "%s;" % self.cy_prototype()
 
     def cy_prototype(self):
         args = ", ".join(self.arg_man.c_proto_args())
@@ -265,60 +230,53 @@ class ArgWrapperManager(object):
     def c_proto_return_type(self):
         return 'void'
 
-    def param_declarations(self, cfg):
+    def param_declarations(self):
         proc_arg_man = self.proc.arg_man
         decls = []
         for o in proc_arg_man.order_declarations():
             if isinstance(o, pyf.Parameter):
-                decls.append(o.declaration(cfg))
+                decls.append(o.declaration())
         return decls
 
-    def arg_declarations(self, cfg):
+    def arg_declarations(self):
         decls = []
         for argw in self.arg_wrappers:
-            decls.extend(argw.extern_declarations(cfg))
+            decls.extend(argw.extern_declarations())
         return decls
 
     def __return_spec_declaration(self):
         #XXX: demeter ???
         return self.return_arg_wrapper.extern_arg.declaration()
 
-    def temp_declarations(self, cfg):
+    def temp_declarations(self):
         #XXX: demeter ???
         decls = []
         for argw in self.arg_wrappers:
-            decls.extend(argw.intern_declarations(cfg))
+            decls.extend(argw.intern_declarations())
         return decls
 
-    def assign_err_flag(self, value, cfg):
-        if cfg.f77binding:
-            value = str(constants.ERR_CODES[value])
-        return "%s = %s" % (constants.ERR_NAME, value)
+    def init_err(self):
+        return "%s = FW_INIT_ERR__" % constants.ERR_NAME
 
     def no_err(self):
-        if cfg.f77binding:
-            return "%s = %d" % (
-                constants.ERR_NAME,
-                constants.ERR_CODES['FW_NO_ERR__'])
-        else:
-            return "%s = FW_NO_ERR__" % constants.ERR_NAME
+        return "%s = FW_NO_ERR__" % constants.ERR_NAME
 
-    def pre_call_code(self, cfg):
-        all_pcc = [self.assign_err_flag('FW_INIT_ERR__', cfg)]
+    def pre_call_code(self):
+        all_pcc = [self.init_err()]
         for argw in self.arg_wrappers:
             pcc = argw.pre_call_code()
             if pcc:
                 all_pcc.extend(pcc)
         return all_pcc
 
-    def post_call_code(self, cfg):
+    def post_call_code(self):
         all_pcc = []
         wpprs = self.arg_wrappers[:]
         for argw in wpprs:
             pcc = argw.post_call_code()
             if pcc:
                 all_pcc.extend(pcc)
-        all_pcc += [self.assign_err_flag('FW_NO_ERR__', cfg)]
+        all_pcc += [self.no_err()]
         return all_pcc
 
     def _return_var_name(self):
@@ -345,8 +303,6 @@ def ArgWrapperFactory(arg):
         return ArrayArgWrapper(arg)
     elif arg.dtype.type == 'logical':
         return LogicalWrapper(arg)
-    elif arg.intent == 'hide':
-        return HideArgWrapper(arg)
     elif arg.dtype.type == 'character':
         return CharArgWrapper(arg)
     else:
@@ -384,6 +340,8 @@ class ArgWrapper(ArgWrapperBase):
         self.name = arg.name
         self.ktp = arg.ktp
         self.intent = arg.intent
+        self.init_code = arg.init_code
+        self.hide_in_wrapper = arg.hide_in_wrapper
         self._set_intern_name()
         self._set_intern_vars()
         self._set_extern_args()
@@ -401,20 +359,18 @@ class ArgWrapper(ArgWrapperBase):
     def extern_arg_list(self):
         return [extern_arg.name for extern_arg in self.extern_args]
 
-    def extern_declarations(self, cfg):
-        return [extern_arg.declaration(cfg)
-                for extern_arg in self.extern_args]
+    def extern_declarations(self):
+        return [extern_arg.declaration() for extern_arg in self.extern_args]
 
     def c_declarations(self):
-        return [extern_arg.c_declaration()
-                for extern_arg in self.extern_args]
+        return [extern_arg.c_declaration() for extern_arg in self.extern_args]
 
     def c_types(self):
         return [extern_arg.c_type() for extern_arg in self.extern_args]
 
-    def intern_declarations(self, cfg):
+    def intern_declarations(self):
         if self.intern_var:
-            return [self.intern_var.declaration(cfg)]
+            return [self.intern_var.declaration()]
         else:
             return []
 
@@ -439,69 +395,37 @@ class ErrStrArgWrapper(ArgWrapperBase):
     def extern_arg_list(self):
         return [self.name]
 
-    def extern_declarations(self, cfg):
-        x = self.arg.declaration(cfg)
-        if cfg.f77binding:
-            x = x.replace(constants.ERRSTR_LEN,
-                          str(constants.FORT_MAX_ARG_NAME_LEN))
-        return [x]
+    def extern_declarations(self):
+        return [self.arg.declaration()]
 
-    def intern_declarations(self, cfg):
+    def intern_declarations(self):
         return []
 
     def all_dtypes(self):
         return [self.arg.dtype]
 
 
-class HideArgWrapper(ArgWrapperBase):
-
-    def __init__(self, arg):
-        self._orig_arg = arg
-        self._extern_arg = None
-        self._intern_var = \
-                pyf.Var(name=arg.name, dtype=arg.dtype, dimension=None)
-        self.value = arg.value
-        assert self.value is not None
-        self.intern_name = self._intern_var.name
-
-    def extern_arg_list(self):
-        return []
-
-    def extern_declarations(self, cfg):
-        return []
-
-    def intern_declarations(self, cfg):
-        return [self._intern_var.declaration(cfg)]
-
-    def pre_call_code(self):
-        return ["%s = (%s)" % (self._intern_var.name, self.value)]
-
-
 class ArrayArgWrapper(ArgWrapper):
 
     is_array = True
-    shape_pattern = '%s_shape__'
 
     def _set_extern_args(self):
         self._arr_dims = []
         self.ndims = len(self.orig_arg.dimension)
-
-        self.shape_arg = pyf.Argument(name=self.shape_pattern % self.name,
-                                      dtype=pyf.dim_dtype,
-                                      intent='in',
-                                      dimension=[str(self.ndims)])
-        
-        self._dimension_exprs = ['%s(%d)' % (self.shape_arg.name, i)
-                                 for i in range(1, self.ndims + 1)]
+        for idx in range(self.ndims):
+            self._arr_dims.append(
+                    pyf.Argument(name='%s_d%d' % (self.name, idx+1),
+                                 dtype=pyf.dim_dtype, intent='in'))
+        dim_names = [dim.name for dim in self._arr_dims]
         self.extern_arg = pyf.Argument(
                                 name=self.name,
                                 dtype=self.dtype,
                                 intent=self.intent,
-                                dimension=self._dimension_exprs)
-        self.extern_args = [self.shape_arg, self.extern_arg]
+                                dimension=dim_names)
+        self.extern_args = self._arr_dims + [self.extern_arg]
 
     def pre_call_code(self):
-        dims = pyf.Dimension(self._dimension_exprs)
+        dims = pyf.Dimension([dim.name for dim in self._arr_dims])
         ckstr = _dim_test(self.orig_arg.dimension, dims)
         if ckstr:
             return _err_test_block(
