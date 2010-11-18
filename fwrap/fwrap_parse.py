@@ -16,42 +16,25 @@ def generate_ast(fsrcs):
             if not is_proc(proc):
                 # we ignore non-top-level procedures until modules are supported.
                 continue
-        _process_node(block, ast, language)
-    return ast
 
-def _process_node(node, ast, language):
-    # ast: Output list of function/subroutine nodes
-    if not hasattr(node, 'content'):
-        return
-    children = node.content
-    if len(children) == 0:
-        return
-    for child in children:
-        # For processing .pyf files, simply skip the initial
-        # wrapping pythonmodule and interface nodes
-        # TODO: Multiple pythonmodule in one .pyf?
-        if child.blocktype in ('pythonmodule', 'interface'):
-            _process_node(child, ast)
-        elif not is_proc(child):
-            # we ignore non-top-level procedures until modules are supported.
-            pass
-        else:
-            args = _get_args(child)
-            params = _get_params(child)
-            if child.blocktype == 'subroutine':
+            args = _get_args(proc)
+            params = _get_params(proc)
+
+            if proc.blocktype == 'subroutine':
                 ast.append(pyf.Subroutine(
-                                name=child.name,
+                                name=proc.name,
                                 args=args,
                                 params=params,
                                 language=language))
             elif proc.blocktype == 'function':
                 ast.append(pyf.Function(
-                                name=child.name,
+                                name=proc.name,
                                 args=args,
                                 params=params,
-                                return_arg=_get_ret_arg(child),
+                                return_arg=_get_ret_arg(proc),
                                 language=language))
     return ast
+
 
 def is_proc(proc):
     return proc.blocktype in ('subroutine', 'function')
@@ -151,22 +134,25 @@ def _get_dtype(typedecl):
         raise RuntimeError(
                 "only intrinsic types supported ATM... [%s]" % str(typedecl))
     length, kind = typedecl.selector
+    return create_dtype(typedecl.name, length, kind)
+
+def create_dtype(name, length, kind):
     if not kind and not length:
-        return name2default[typedecl.name]
-    if length and kind and typedecl.name != 'character':
+        return name2default[name]
+    if length and kind and name != 'character':
         raise RuntimeError("both length and kind specified for "
                                "non-character intrinsic type: "
                                "length: %s kind: %s" % (length, kind))
-    if typedecl.name == 'character':
+    if name == 'character':
         if length == '*':
-            fw_ktp = '%s_xX' % (typedecl.name)
+            fw_ktp = '%s_xX' % (name)
         else:
-            fw_ktp = '%s_x%s' % (typedecl.name, length)
+            fw_ktp = '%s_x%s' % (name, length)
         return pyf.CharacterType(fw_ktp=fw_ktp,
                         len=length, kind=kind)
     if length and not kind:
-        return name2type[typedecl.name](fw_ktp="%s_x%s" %
-                (typedecl.name, length),
+        return name2type[name](fw_ktp="%s_x%s" %
+                (name, length),
                 length=length)
     try:
         int(kind)
@@ -174,7 +160,7 @@ def _get_dtype(typedecl):
         raise RuntimeError(
                 "only integer constant kind "
                     "parameters supported ATM, given '%s'" % kind)
-    if typedecl.name == 'doubleprecision':
+    if name == 'doubleprecision':
         return pyf.default_dbl
-    return name2type[typedecl.name](fw_ktp="%s_%s" %
-            (typedecl.name, kind), kind=kind)
+    return name2type[name](fw_ktp="%s_%s" %
+            (name, kind), kind=kind)
