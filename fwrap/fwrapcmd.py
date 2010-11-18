@@ -9,29 +9,32 @@ import os, sys
 import argparse
 import logging
 import textwrap
+from fwrap import fwrapper
+from fwrap.configuration import add_configure_options
 
 PROJECT_FILE = 'fwrap.json'
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger()
 
-def init_cmd(ctx):
+def create_cmd(opts):
+    if os.path.exists(opts.wrapper_pyx) and not opts.force:
+        raise ValueError('File exists: %s' % opts.wrapper_pyx)
+    fwrapper.wrap(opts.fortranfiles, opts.wrapper_name)
     return 0
 
-def add_cmd(ctx):
+def add_cmd(opts):
+    raise NotImplementedError()
+
+def update_cmd(opts):
+    raise NotImplementedError()
+
+def status_cmd(opts):
+    
     return 0
 
-def update_cmd(ctx):
-    return 0
 
-def status_cmd(ctx):
-    if ctx.project_root is None:
-        return no_project_response(ctx)
-
-    return 0
-
-
-def no_project_response(ctx):
+def no_project_response(opts):
     print textwrap.fill('Please run "fwrap init"; can not find project '
                         'file %s in this directory or any parent directory.' %
                         PROJECT_FILE)
@@ -43,21 +46,19 @@ def create_argument_parser():
     subparsers = parser.add_subparsers(title='commands')
 
     #
-    # init command
+    # create command
     #
-    init = subparsers.add_parser('init')
-    init.set_defaults(func=init_cmd)
-    mode_group = init.add_mutually_exclusive_group(required=True)
-    mode_group.add_argument('--temporary', action='store_true',
-                            help=('generated wrappers are temporary build artifacts,'
-                                  'and can not be manually modified'))
-    mode_group.add_argument('--versioned', action='store_true',
-                            help=('allow modification of generated wrappers, and employ '
-                                  'VCS to manage changes (only git supported currently)'))
-
-    init.add_argument('--no-buildsys', action='store_true',
-                      help='do not set up a build system for the project')
-
+    create = subparsers.add_parser('create')
+    create.set_defaults(func=create_cmd)
+    create.add_argument('-f', '--force', action='store_true',
+                        help=('overwrite existing wrapper'))    
+    create.add_argument('--versioned', action='store_true',
+                        help=('allow modification of generated wrappers, and employ '
+                              'VCS to manage changes (only git supported currently)'))    
+    add_configure_options(create.add_argument)
+    create.add_argument('wrapper_pyx')
+    create.add_argument('fortranfiles', metavar='fortranfile', nargs='+')
+    
     #
     # add command
     #
@@ -77,20 +78,15 @@ def create_argument_parser():
 
     status = subparsers.add_parser('status')
     status.set_defaults(func=status_cmd)
+    status.add_argument('wrapper_pyx')
 
     return parser
     
 def fwrap_main(args):
     argparser = create_argument_parser()
-    ctx = argparser.parse_args(args)
-    ctx.cwd = os.getcwd()
-    cwdlist = ctx.cwd.split(os.sep)
-    while cwdlist:
-        path = os.sep.join(cwdlist)
-        if os.path.exists(os.path.join(path, PROJECT_FILE)):
-            ctx.project_root = path
-            break
-        cwdlist.pop()
-    else:
-        ctx.project_root = None
-    return ctx.func(ctx)
+    opts = argparser.parse_args(args)
+    if opts.wrapper_pyx is not None:
+        if not opts.wrapper_pyx.endswith('.pyx'):
+            raise ValueError('Cython wrapper file name must end in .pyx')
+        opts.wrapper_name = opts.wrapper_pyx[:-4]
+    return opts.func(opts)
