@@ -191,6 +191,6 @@ Cython, & Python.
                             for j, x in enumerate(source_files)
                             if i == j or (os.path.realpath(source_bases[i]) !=
                                           os.path.realpath(source_bases[j]))]
-    cfg = configuration.configuration_from_cmdline(parsed_options)
+    cfg = configuration.Configuration(cmdline_options=parsed_options)
     wrap(source_files, parsed_options.name, cfg)
     return 0
