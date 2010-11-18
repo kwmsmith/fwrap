@@ -83,12 +83,13 @@ def generate(fort_ast, name, cfg):
     cython_ast = cy_wrap.wrap_fc(c_ast)
 
     # Generate files and write them out
-    generators = ( (generate_type_specs,(c_ast,name)),
-                   (generate_fc_f,(c_ast,name,cfg)),
+    generators = [ (generate_fc_f,(c_ast,name,cfg)),
                    (generate_fc_h,(c_ast,name,cfg)),
                    (generate_fc_pxd,(c_ast,name)),
                    (generate_cy_pxd,(cython_ast,name)),
-                   (generate_cy_pyx,(cython_ast,name,cfg)) )
+                   (generate_cy_pyx,(cython_ast,name,cfg)) ]
+    if not cfg.f77binding:
+        generators.append((generate_type_specs,(c_ast,name)))
 
     for (generator,args) in generators:
         file_name, buf = generator(*args)
