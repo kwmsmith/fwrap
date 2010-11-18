@@ -367,8 +367,7 @@ class Parameter(_NamedType):
         return deps.union(self.expr.names) - intrinsics
 
     def declaration(self, cfg):
-        orig = cfg.fc_wrapper_orig_types
-        decl = super(Parameter, self).declaration(orig)
+        decl = super(Parameter, self).declaration(cfg)
         return "%s = %s" % (decl, self.expr.expr_str)
 
 class Dim(object):
