@@ -34,7 +34,7 @@ def generate_fc_h(ast, ktp_header_name, buf, cfg):
     buf.putln('#include "%s"' % ktp_header_name)
     buf.putln('')
     buf.putln('#if !defined(FORTRAN_CALLSPEC)')
-    buf.putln('#define FORTRAN_CALLSPEC __stdcall')
+    buf.putln('#define FORTRAN_CALLSPEC')
     buf.putln('#endif')
     buf.putln('')
     if cfg.f77binding:
