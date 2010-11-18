@@ -228,7 +228,7 @@ class _CyCharArg(_CyArgWrapper):
 
     def intern_declarations(self, ctx):
         ret = ['cdef %s %s' % (self.cy_dtype_name, self.intern_name),
-                'cdef fwi_npy_intp_t %s' % self.intern_len_name]
+                'cdef fw_shape_t %s' % self.intern_len_name]
         if self.arg.intent in ('out', 'inout', None):
             ret.append('cdef char *%s' % self.intern_buf_name)
         return ret
@@ -504,7 +504,7 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
 
     def intern_declarations(self, ctx):
         ret = super(CyCharArrayArgWrapper, self).intern_declarations(ctx)
-        return ret + ["cdef fwi_npy_intp_t %s[%d]" %
+        return ret + ["cdef fw_shape_t %s[%d]" %
                 (self.shape_name, self.arg.ndims+1)]
 
     def pre_call_code(self, ctx):
@@ -513,7 +513,7 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
                     "%(shape)s[i+1] = %(name)s.shape[i]\n"
                 "%(name)s.dtype = 'b'\n"
                 "%(intern)s = %(name)s\n"
-                "%(shape)s[0] = <fwi_npy_intp_t>"
+                "%(shape)s[0] = <fw_shape_t>"
                     "(%(name)s.shape[0]/%(shape)s[1])")
         D = {"odtype" : self.odtype_name,
              "ndim" : self.arg.ndims,
