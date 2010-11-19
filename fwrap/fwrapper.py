@@ -14,6 +14,10 @@ from fwrap import fc_wrap
 from fwrap import cy_wrap
 from fwrap.code import CodeBuffer, CodeBufferFixedForm, reflow_fort
 from fwrap import configuration
+from fwrap.constants import (TYPE_SPECS_SRC, CY_PXD_TMPL, CY_PYX_TMPL,
+                             FC_PXD_TMPL, FC_F_TMPL, FC_F_TMPL_F77,
+                             FC_HDR_TMPL)
+
 
 PROJNAME = 'fwproj'
 
@@ -86,17 +90,23 @@ def generate(fort_ast, name, cfg):
     cython_ast = cy_wrap.wrap_fc(c_ast)
 
     # Generate files and write them out
-    generators = [ (generate_fc_f,(c_ast,name,cfg)),
-                   (generate_fc_h,(c_ast,name,cfg)),
-                   (generate_fc_pxd,(c_ast,name)),
-                   (generate_cy_pxd,(cython_ast,name)),
-                   (generate_cy_pyx,(cython_ast,name,cfg)) ]
+    generators = [ (generate_fc_f, (c_ast, name, cfg),
+                    (FC_F_TMPL_F77 if cfg.f77binding else FC_F_TMPL) % name ),
+                   (generate_fc_h, (c_ast, name, cfg), FC_HDR_TMPL % name),
+                   (generate_fc_pxd,(c_ast, name), FC_PXD_TMPL % name),
+                   (generate_cy_pxd,(cython_ast, name), CY_PXD_TMPL % name),
+                   (generate_cy_pyx,(cython_ast, name, cfg), CY_PYX_TMPL % name) ]
     if not cfg.f77binding:
-        generators.append((generate_type_specs,(c_ast,name)))
+        generators.append((generate_type_specs, (c_ast,name), constants.TYPE_SPECS_SRC))
+
+    created_files = [file_name
+                     for generator, args, file_name in generators]
+    created_files.sort()
+    cfg.auxiliary[:] = [(f, {}) for f in created_files if f != (CY_PYX_TMPL % name)]
 
     created_files = []
-    for (generator,args) in generators:
-        file_name, buf = generator(*args)
+    for (generator, args, file_name) in generators:
+        buf = generator(*args)
         write_to_dir(os.getcwd(), file_name, buf)
         created_files.append(file_name)
     return created_files
@@ -114,33 +124,27 @@ def write_to_dir(dir, file_name, buf):
 def generate_type_specs(f_ast, name):
     buf = CodeBuffer()
     gc.generate_type_specs(f_ast, buf)
-    return constants.TYPE_SPECS_SRC, buf
+    return buf
 
 def generate_cy_pxd(cy_ast, name):
     buf = CodeBuffer()
     fc_pxd_name = (constants.FC_PXD_TMPL % name).split('.')[0]
     cy_wrap.generate_cy_pxd(cy_ast, fc_pxd_name, buf)
-    return constants.CY_PXD_TMPL % name, buf
+    return buf
 
 def generate_cy_pyx(cy_ast, name, cfg):
     buf = CodeBuffer()
     cy_wrap.generate_cy_pyx(cy_ast, name, buf, cfg)
-    return constants.CY_PYX_TMPL % name, buf
+    return buf
 
 def generate_fc_pxd(fc_ast, name):
     buf = CodeBuffer()
     fc_header_name = constants.FC_HDR_TMPL % name
     fc_wrap.generate_fc_pxd(fc_ast, fc_header_name, buf)
-    return constants.FC_PXD_TMPL % name, buf
+    return buf
 
 def generate_fc_f(fc_ast, name, cfg):
-    if not cfg.f77binding:
-        buf = CodeBuffer()
-        outfile = constants.FC_F_TMPL % name
-    else:
-        buf = CodeBufferFixedForm()
-        outfile = constants.FC_F_TMPL_F77 % name
-        
+    buf = CodeBuffer() if not cfg.f77binding else CodeBufferFixedForm()        
     for proc in fc_ast:
         proc.generate_wrapper(buf, cfg)
         
@@ -149,13 +153,13 @@ def generate_fc_f(fc_ast, name, cfg):
         ret_buf.putlines(reflow_fort(buf.getvalue()))
     else:
         ret_buf = buf
-        
-    return outfile, ret_buf
+
+    return ret_buf
 
 def generate_fc_h(fc_ast, name, cfg):
     buf = CodeBuffer()
     fc_wrap.generate_fc_h(fc_ast, constants.KTP_HEADER_SRC, buf, cfg)
-    return constants.FC_HDR_TMPL % name, buf
+    return buf
 
 def fwrapper(use_cmdline, sources=None, **options):
     """

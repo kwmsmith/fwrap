@@ -42,7 +42,8 @@ configuration_dom = {
         'sha1' : (ATTR, r'^[0-9a-f]*$', None, {}),
         # TODO: Exclude and include filters.
         }),
-    'f77binding' : (ATTR, parse_bool, False, {})
+    'f77binding' : (ATTR, parse_bool, False, {}),
+    'auxiliary' : (LIST_ITEM, r'^.+$', None, {}),
     }
 
 
@@ -68,7 +69,7 @@ def _document_from_cmdline_options(options):
 
 class Configuration:
     # In preferred order when serializing:
-    keys = ['version', 'vcs', 'wraps', 'f77binding']
+    keys = ['version', 'vcs', 'wraps', 'f77binding', 'auxiliary']
 
     @staticmethod
     def create_from_file(filename):
