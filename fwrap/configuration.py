@@ -120,6 +120,9 @@ class Configuration:
     #
     # User-facing methods
     #
+    def copy(self):
+        return deepcopy(self)
+    
     def update_version(self):
         self.document['version'] = get_version()
 

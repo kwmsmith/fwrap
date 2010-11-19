@@ -13,6 +13,7 @@ import glob
 from fwrap import fwrapper
 from fwrap import configuration
 from fwrap import git
+from fwrap.configuration import Configuration
 
 PROJECT_FILE = 'fwrap.json'
 
@@ -22,7 +23,7 @@ logger = logging.getLogger()
 def create_cmd(opts):
     if os.path.exists(opts.wrapper_pyx) and not opts.force:
         raise ValueError('File exists: %s' % opts.wrapper_pyx)
-    cfg = configuration.Configuration(cmdline_options=opts)
+    cfg = Configuration(cmdline_options=opts)
     cfg.update_version()
     cfg.set_versioned_mode(opts.versioned)
     # Ensure that tree is clean, as we want to auto-commit
@@ -54,7 +55,7 @@ def create_cmd(opts):
     return 0
 
 def print_file_status(filename):
-    file_cfg = configuration.Configuration.create_from_file(filename)
+    file_cfg = Configuration.create_from_file(filename)
     if file_cfg.version in (None, ''):
         return # not an Fwrapped file
     
@@ -95,6 +96,19 @@ def status_cmd(opts):
     return 1 if needs_update else 0
 
 
+def mergepyf_cmd(opts):
+    for f in [opts.wrapper_pyx, opts.pyf]:
+        if not os.path.exists(f):
+            raise ValueError('No such file: %s' % f)
+    raise NotImplementedError('todo')
+    orig_cfg = Configuration.create_from_file(opts.wrapper_pyx)
+    cfg = orig_cfg.copy()
+    cfg.update_version()
+    if cfg.vcs == None:
+        raise ValueError('Not in versioned mode')
+    created_files, wrapped_functions = wrap
+    
+
 def update_cmd(opts):
     if not git.is_tracked(opts.wrapper_pyx):
         raise RuntimeError('Not tracked by VCS, aborting: %s' % opts.wrapper_pyx)
@@ -134,6 +148,14 @@ def create_argument_parser():
     update = subparsers.add_parser('update')
     update.set_defaults(func=update_cmd)
     update.add_argument('wrapper_pyx')
+
+    #
+    # mergepyf command
+    #
+    mergepyf = subparsers.add_parser('mergepyf')
+    mergepyf.set_defaults(func=mergepyf)
+    mergepyf.add_argument('wrapper_pyx')
+    mergepyf.add_argument('pyf')
 
     #
     # status command
