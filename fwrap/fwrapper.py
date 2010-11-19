@@ -21,7 +21,7 @@ from fwrap.constants import (TYPE_SPECS_SRC, CY_PXD_TMPL, CY_PYX_TMPL,
 
 PROJNAME = 'fwproj'
 
-def wrap(sources, name, cfg):
+def wrap(sources, name, cfg, output_directory=None):
     r"""Generate wrappers for sources.
 
     The core wrapping routine for fwrap.  Generates wrappers for the sources
@@ -34,6 +34,8 @@ def wrap(sources, name, cfg):
      - *name* - (string) Name of the project and the name of the resulting
        python module
      - *cfg* - (fwrap.configuration.Configuration)
+     - *output_directory* - (string) Output files to this directory. The
+                            generated contents is not changed
     """
 
     # validate name
@@ -58,7 +60,7 @@ def wrap(sources, name, cfg):
     f_ast = parse(source_files, cfg)
 
     # Generate wrapper files
-    created_files = generate(f_ast, name, cfg)
+    created_files = generate(f_ast, name, cfg, output_directory)
 
     return created_files
     
@@ -78,15 +80,19 @@ def parse(source_files, cfg):
     pyf_iface.check_tree(ast, cfg)
     return ast
 
-def generate(fort_ast, name, cfg):
+def generate(fort_ast, name, cfg, output_directory=None):
     r"""Given a fortran abstract syntax tree ast, generate wrapper files
 
     :Input:
      - *fort_ast* - (`fparser.ProgramBlock`) Abstract syntax tree from parser
      - *name* - (string) Name of the library module
+     - *output_directory* - (string) Output files to this directory. The
+                            generated contents is not changed
 
      Raises `Exception.IOError` if writing the generated code fails.
     """
+    if output_directory is None:
+        output_directory = os.getcwd()
 
     # Generate wrapping abstract syntax trees
     # logger.info("Generating abstract syntax tress for c and cython.")
@@ -112,7 +118,7 @@ def generate(fort_ast, name, cfg):
     created_files = []
     for (generator, args, file_name) in generators:
         buf = generator(*args)
-        write_to_dir(os.getcwd(), file_name, buf)
+        write_to_dir(output_directory, file_name, buf)
         created_files.append(file_name)
 
     routine_names = [routine.name for routine in c_ast]

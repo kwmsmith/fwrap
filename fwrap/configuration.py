@@ -153,6 +153,13 @@ class Configuration:
         parse_tree = document_to_parse_tree(self.document, self.keys)
         serialize_inline_configuration(parse_tree, buf)
 
+    def get_source_files(self):
+        return [fname for fname, attrs in self.wraps]
+
+    def git_head(self):
+        if self.vcs[0] != 'git':
+            raise RuntimeError('Not in git mode')
+        return self.vcs[1]['head']        
 
 #
 # Utils

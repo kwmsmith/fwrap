@@ -10,6 +10,8 @@ import argparse
 import logging
 import textwrap
 import glob
+import tempfile
+import shutil
 from fwrap import fwrapper
 from fwrap import configuration
 from fwrap import git
@@ -46,7 +48,7 @@ def create_cmd(opts):
         # pointer to point to the commit just made. Simply search/replace
         # the file to make the change and commit again
         current_rev = git.cwd_rev()
-        configuration.replace_in_file('head %s' % cfg.vcs[1]['head'],
+        configuration.replace_in_file('head %s' % cfg.git_head(),
                                       'head %s' % current_rev,
                                       opts.wrapper_pyx,
                                       expected_count=1)
@@ -112,8 +114,8 @@ def mergepyf_cmd(opts):
     # (assumed to be explicitly excluded by the user). In order to do
     # this, first parse wrapped Fortran files to find routines present
     # in total.
-    source_files = [fname for fname, attrs in cfg.wraps]
-    routines_in_fortran= set(fwrapper.find_routine_names(source_files, cfg))
+    routines_in_fortran= set(fwrapper.find_routine_names(
+        cfg.get_source_files(), cfg))
     
     # Now find names present in pyf file.
     # TODO: Fix, this ends up parsing twice
@@ -131,13 +133,36 @@ def mergepyf_cmd(opts):
         opts.message = orig_msg
     
 
-def update_cmd(opts, cfg=None, skip_head_commit=False):
+def update_cmd(opts, cfg=None, skip_head_commit=False,
+               branch_prefix='_fwrap'):
+    if cfg is None:
+        cfg = Configuration.create_from_file(opts.wrapper_pyx)
+    any_changed = any(needs_update
+                      for f, needs_update in cfg.wrapped_files_status())
+    if not any_changed:
+        print 'Already up to date'
+        return 0
+    else:
+        print 'Needs update'
+
     if not git.is_tracked(opts.wrapper_pyx):
         raise RuntimeError('Not tracked by VCS, aborting: %s' % opts.wrapper_pyx)
     if not git.clean_index_and_workdir():
         raise RuntimeError('VCS state not clean, aborting')
-    if cfg is None:
-        cfg = Configuration.create_from_file(opts.wrapped_pyx)
+
+    # First, generate wrappers (since Fortran files have changed
+    # on *this* tree). But generate them into a temporary location.
+    tmp_dir = tempfile.mkdtemp(prefix='fwrap-')
+    try:
+        fwrapper.wrap(cfg.get_source_files(),
+                      opts.wrapper_name,
+                      cfg,
+                      output_directory=tmp_dir)
+        temp_branch = git.create_temporary_branch(cfg.git_head(), branch_prefix)
+        git.checkout(temp_branch)
+    finally:
+        shutil.rmtree(tmp_dir)
+    
     
     
 def no_project_response(opts):

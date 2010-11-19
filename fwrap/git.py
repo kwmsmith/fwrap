@@ -6,7 +6,7 @@
 # Simple wrapper around command-line git
 from subprocess import Popen, PIPE
 
-def execproc(cmd):
+def execproc(cmd, get_err=False):
     assert isinstance(cmd, (list, tuple))
     pp = Popen(cmd, stdout=PIPE, stderr=PIPE)
     retcode = pp.wait()
@@ -14,7 +14,18 @@ def execproc(cmd):
         raise RuntimeError('Return code %d: %s' % (retcode, ' '.join(cmd)))
     result = pp.stdout.read().strip()
     err = pp.stderr.read()
-    return result
+    if get_err:
+        return result, err
+    else:
+        return result
+
+def execproc_canfail(cmd):
+    assert isinstance(cmd, (list, tuple))
+    pp = Popen(cmd, stdout=PIPE, stderr=PIPE)
+    retcode = pp.wait()
+    result = pp.stdout.read().strip()
+    err = pp.stderr.read()
+    return retcode, result, err
 
 def execproc_with_default(cmd, default):
     try:
@@ -53,3 +64,18 @@ def add(files):
 
 def commit(message):
     execproc(['git', 'commit', '-m', message])
+
+def create_temporary_branch(start_point, prefix):
+    # TODO: Ensure/make this work on localized systems
+    # Should probably use lower-level tool...
+    for suffix in [''] + ['_%d' % i for i in range(2, 100)]:
+        branch_name = prefix + suffix
+        ret, out, err = execproc_canfail(['git', 'branch', branch_name, start_point])
+        if ret == 0:
+            return branch_name
+        elif 'already exists' not in err:
+            raise Exception('git error: %s' % err)
+    raise Exception('Too many branches start with %s (delete some?)' % prefix)
+
+def checkout(branch):
+    execproc(['git', 'checkout', branch])
