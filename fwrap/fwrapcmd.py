@@ -33,7 +33,8 @@ def create_cmd(opts):
     for filename in opts.fortranfiles:
         cfg.add_wrapped_file(filename)
     # Create wrapper files
-    created_files = fwrapper.wrap(opts.fortranfiles, opts.wrapper_name, cfg)
+    created_files, routine_names = fwrapper.wrap(opts.fortranfiles, opts.wrapper_name,
+                                                 cfg)
     # Commit
     if opts.versioned:
         if opts.message is None:
@@ -100,20 +101,44 @@ def mergepyf_cmd(opts):
     for f in [opts.wrapper_pyx, opts.pyf]:
         if not os.path.exists(f):
             raise ValueError('No such file: %s' % f)
-    raise NotImplementedError('todo')
     orig_cfg = Configuration.create_from_file(opts.wrapper_pyx)
     cfg = orig_cfg.copy()
     cfg.update_version()
-    if cfg.vcs == None:
-        raise ValueError('Not in versioned mode')
-    created_files, wrapped_functions = wrap
+    versioned = (cfg.vcs != 'none')
+    if not versioned:
+        raise NotImplementedError()
+    
+    # We want to compile a list of the routines not present in the pyf
+    # (assumed to be explicitly excluded by the user). In order to do
+    # this, first parse wrapped Fortran files to find routines present
+    # in total.
+    source_files = [fname for fname, attrs in cfg.wraps]
+    routines_in_fortran= set(fwrapper.find_routine_names(source_files, cfg))
+    
+    # Now find names present in pyf file.
+    # TODO: Fix, this ends up parsing twice
+    routines_in_pyf = set(fwrapper.find_routine_names([opts.pyf], cfg))
+    excluded_by_pyf = routines_in_fortran - routines_in_pyf
+    cfg.exclude.extend([(routine, {})
+                        for routine in excluded_by_pyf])
+
+    if len(excluded_by_pyf) > 0:
+        # Start with removing routines not present in pyf to keep
+        # our history much cleaner
+        orig_msg = opts.message
+        opts.message = 'FWRAP Removing functions not present in %s' % opts.pyf
+        update_cmd(opts, cfg, skip_head_commit=True)
+        opts.message = orig_msg
     
 
-def update_cmd(opts):
+def update_cmd(opts, cfg=None, skip_head_commit=False):
     if not git.is_tracked(opts.wrapper_pyx):
         raise RuntimeError('Not tracked by VCS, aborting: %s' % opts.wrapper_pyx)
     if not git.clean_index_and_workdir():
         raise RuntimeError('VCS state not clean, aborting')
+    if cfg is None:
+        cfg = Configuration.create_from_file(opts.wrapped_pyx)
+    
     
 def no_project_response(opts):
     print textwrap.fill('Please run "fwrap init"; can not find project '
@@ -153,7 +178,7 @@ def create_argument_parser():
     # mergepyf command
     #
     mergepyf = subparsers.add_parser('mergepyf')
-    mergepyf.set_defaults(func=mergepyf)
+    mergepyf.set_defaults(func=mergepyf_cmd)
     mergepyf.add_argument('wrapper_pyx')
     mergepyf.add_argument('pyf')
 

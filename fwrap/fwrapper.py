@@ -63,6 +63,10 @@ def wrap(sources, name, cfg):
     return created_files
     
 
+def filter_ast(ast, cfg):
+    excludes = cfg.exclude
+    return [routine for routine in ast if routine.name not in excludes]
+
 def parse(source_files, cfg):
     r"""Parse fortran code returning parse tree
 
@@ -86,6 +90,7 @@ def generate(fort_ast, name, cfg):
 
     # Generate wrapping abstract syntax trees
     # logger.info("Generating abstract syntax tress for c and cython.")
+    fort_ast = filter_ast(fort_ast, cfg)
     c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
     cython_ast = cy_wrap.wrap_fc(c_ast)
 
@@ -109,7 +114,20 @@ def generate(fort_ast, name, cfg):
         buf = generator(*args)
         write_to_dir(os.getcwd(), file_name, buf)
         created_files.append(file_name)
-    return created_files
+
+    routine_names = [routine.name for routine in c_ast]
+        
+    return created_files, routine_names
+
+def find_routine_names(source_files, cfg):
+    r"""Returns subroutines/functions available in the given source files
+
+    Routines excluded by the given configuration is not included
+    in the list.
+    """
+    from fwrap import fwrap_parse, pyf_iface
+    fort_ast = fwrap_parse.generate_ast(source_files)
+    return [routine.name for routine in fort_ast]
 
 def write_to_dir(dir, file_name, buf):
     fh = open(os.path.join(dir, file_name), 'w')

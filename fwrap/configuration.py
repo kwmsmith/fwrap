@@ -7,7 +7,7 @@ from fwrap.version import get_version
 from fwrap import git
 import re
 from StringIO import StringIO
-from copy import copy
+from copy import copy, deepcopy
 
 #
 # Configuration of configuration options
@@ -40,8 +40,8 @@ configuration_dom = {
     'version' : (ATTR, r'^[0-9.]+(dev_[0-9a-f]+)?$', None, {}),
     'wraps' : (LIST_ITEM, r'^.+$', None, {
         'sha1' : (ATTR, r'^[0-9a-f]*$', None, {}),
-        # TODO: Exclude and include filters.
         }),
+    'exclude' : (LIST_ITEM, r'^[a-zA-Z0-9_]+$', None, {}),
     'f77binding' : (ATTR, parse_bool, False, {}),
     'auxiliary' : (LIST_ITEM, r'^.+$', None, {}),
     }
@@ -69,7 +69,7 @@ def _document_from_cmdline_options(options):
 
 class Configuration:
     # In preferred order when serializing:
-    keys = ['version', 'vcs', 'wraps', 'f77binding', 'auxiliary']
+    keys = ['version', 'vcs', 'wraps', 'exclude', 'f77binding', 'auxiliary']
 
     @staticmethod
     def create_from_file(filename):
@@ -121,7 +121,8 @@ class Configuration:
     # User-facing methods
     #
     def copy(self):
-        return deepcopy(self)
+        doc_copy = deepcopy(self.document)
+        return Configuration(doc_copy)
     
     def update_version(self):
         self.document['version'] = get_version()
