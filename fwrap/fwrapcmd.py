@@ -29,9 +29,6 @@ def create_cmd(opts):
     fwrapper.wrap(opts.fortranfiles, opts.wrapper_name, cfg)
     return 0
 
-def add_cmd(opts):
-    raise NotImplementedError()
-
 def print_file_status(filename):
     file_cfg = configuration.Configuration.create_from_file(filename)
     if file_cfg.version in (None, ''):
@@ -105,13 +102,6 @@ def create_argument_parser():
     create.add_argument('wrapper_pyx')
     create.add_argument('fortranfiles', metavar='fortranfile', nargs='+')
     
-    #
-    # add command
-    #
-    add = subparsers.add_parser('add')
-    add.set_defaults(func=add_cmd)
-
-
     #
     # update command
     #
