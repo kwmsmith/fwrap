@@ -41,8 +41,14 @@ def generate_fc_h(ast, ktp_header_name, buf, cfg):
         import f77_config
         buf.write(f77_config.name_mangling_utility_code)
         buf.putln('')
+    buf.putln('#if defined(__cplusplus)')
+    buf.putln('extern "C" {')    
+    buf.putln('#endif')
     for proc in ast:
         buf.putln(proc.c_prototype(cfg))
+    buf.putln('#if defined(__cplusplus)')
+    buf.putln('} /* extern "C" */')
+    buf.putln('#endif')
     if cfg.f77binding:
         buf.putln('')
         buf.putln('#if !defined(NO_FORTRAN_MANGLING)')
