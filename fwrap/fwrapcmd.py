@@ -9,6 +9,7 @@ import os, sys
 import argparse
 import logging
 import textwrap
+import glob
 from fwrap import fwrapper
 from fwrap import configuration
 
@@ -33,9 +34,47 @@ def add_cmd(opts):
 def update_cmd(opts):
     raise NotImplementedError()
 
-def status_cmd(opts):
+
+def print_file_status(filename):
+    file_cfg = configuration.Configuration.create_from_file(filename)
+    if file_cfg.version in (None, ''):
+        return # not an Fwrapped file
     
-    return 0
+    def status_label(has_changed):
+        return 
+    status_report = file_cfg.wrapped_files_status()
+    any_changed = any(needs_update for f, needs_update in status_report)
+    print '%s (%s):' % (filename,
+                        'needs update, please run "fwrap update %s"' % filename
+                        if any_changed else 'up to date')
+    for wrapped_file, needs_update in status_report:
+        print '    %s%s' % (wrapped_file,
+                            ' (changed)' if needs_update else '')
+    return any_changed
+
+def status_cmd(opts):
+    if len(opts.paths) == 0:
+        if opts.recursive:
+            opts.paths = ['.']
+        else:
+            opts.paths = glob.glob('*.pyx')
+    for path in opts.paths:
+        if not os.path.exists(path):
+            raise ValueError('No such file or directory: %s' % path)
+        if not opts.recursive and not os.path.isfile(path):
+            raise ValueError('Please specify --recursive to query a directory')
+    needs_update = False
+    if opts.recursive:
+        for path in opts.paths:
+            for dirpath, dirnames, filenames in os.walk(path):
+                for filename in filenames:
+                    if filename.endswith('.pyx'):
+                        needs_update = needs_update or print_file_status(filename)
+    else:
+        for filename in opts.paths:
+            if os.path.isfile(filename) and filename.endswith('.pyx'):
+                needs_update = needs_update or print_file_status(filename)
+    return 1 if needs_update else 0
 
 
 def no_project_response(opts):
@@ -82,14 +121,16 @@ def create_argument_parser():
 
     status = subparsers.add_parser('status')
     status.set_defaults(func=status_cmd)
-    status.add_argument('wrapper_pyx')
+    status.add_argument('-r', '--recursive', action='store_true',
+                        help='Recurse subdirectories')
+    status.add_argument('paths', metavar='path', nargs='*')
 
     return parser
     
 def fwrap_main(args):
     argparser = create_argument_parser()
     opts = argparser.parse_args(args)
-    if opts.wrapper_pyx is not None:
+    if hasattr(opts, 'wrapper_pyx'):
         if not opts.wrapper_pyx.endswith('.pyx'):
             raise ValueError('Cython wrapper file name must end in .pyx')
         opts.wrapper_name = opts.wrapper_pyx[:-4]

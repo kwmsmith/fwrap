@@ -6,6 +6,7 @@
 from fwrap.version import get_version
 from fwrap import git
 import re
+from StringIO import StringIO
 from copy import copy
 
 #
@@ -31,7 +32,7 @@ def parse_bool(value):
         raise ValueError()
     
 parse_sha_or_nothing = create_string_parser(r'^[0-9a-f]*$')
-parse_version = create_string_parser(r'^\w+$')
+parse_version = create_string_parser(r'^[0-9.]+(dev_[0-9a-f]+)?$')
 parse_filename = create_string_parser(r'^.+$')
 
 configuration_dom = {
@@ -70,6 +71,14 @@ class Configuration:
     # In preferred order when serializing:
     keys = ['version', 'git-head', 'wraps', 'f77binding']
 
+    @staticmethod
+    def create_from_file(filename):
+        with file(filename, 'r') as f:
+            contents = f.read()
+        parse_tree = parse_inline_configuration(contents)
+        document = apply_dom(parse_tree)
+        return Configuration(document)
+
     def __init__(self, document=None, cmdline_options=None):
         if document is None:
             document = apply_dom([])
@@ -88,9 +97,6 @@ class Configuration:
         # Write-protect ourself
         self.__setattr__ = self._setattr
 
-    def __getattr__(self, attrname):
-        return self.document[attrname.replace('_', '-')]
-
     def _setattr(self, attrname, value):
         raise NotImplementedError()
 
@@ -98,6 +104,18 @@ class Configuration:
         # sometimes, during refactoring, ctx appears where a bool
         # did originally
         1/0
+
+    def __getattr__(self, attrname):
+        if attrname.startswith('_'):
+            raise AttributeError("has no attribute '%s'" % attrname)
+        return self.document[attrname.replace('_', '-')]
+
+    def __str__(self):
+        objrepr = object.__repr__(self)
+        buf = StringIO()
+        buf.write('Fwrap configuration object:\n')
+        serialized = self.serialize_to_pyx(buf)
+        return buf.getvalue()
 
     #
     # User-facing methods
@@ -112,6 +130,14 @@ class Configuration:
     def add_wrapped_file(self, filename):
         sha1 = sha1_of_file(filename)
         self.document['wraps'].append((filename, {'sha1': sha1}))
+
+    def wrapped_files_status(self):
+        """
+        Returns a report [(filename, needs_update), ...] of all
+        wrapped files.
+        """
+        return [(filename, sha1_of_file(filename) != attrs['sha1'])
+                for filename, attrs in self.wraps]
 
     def serialize_to_pyx(self, buf):
         parse_tree = document_to_parse_tree(self.document, self.keys)
