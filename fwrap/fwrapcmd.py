@@ -12,6 +12,7 @@ import textwrap
 import glob
 from fwrap import fwrapper
 from fwrap import configuration
+from fwrap import git
 
 PROJECT_FILE = 'fwrap.json'
 
@@ -30,10 +31,6 @@ def create_cmd(opts):
 
 def add_cmd(opts):
     raise NotImplementedError()
-
-def update_cmd(opts):
-    raise NotImplementedError()
-
 
 def print_file_status(filename):
     file_cfg = configuration.Configuration.create_from_file(filename)
@@ -77,6 +74,12 @@ def status_cmd(opts):
     return 1 if needs_update else 0
 
 
+def update_cmd(opts):
+    if not git.is_tracked(opts.wrapper_pyx):
+        raise RuntimeError('Not tracked by VCS, aborting: %s' % opts.wrapper_pyx)
+    if not git.clean_index_and_workdir():
+        raise RuntimeError('VCS state not clean, aborting')
+
 def no_project_response(opts):
     print textwrap.fill('Please run "fwrap init"; can not find project '
                         'file %s in this directory or any parent directory.' %
@@ -114,6 +117,7 @@ def create_argument_parser():
     #
     update = subparsers.add_parser('update')
     update.set_defaults(func=update_cmd)
+    update.add_argument('wrapper_pyx')
 
     #
     # status command
