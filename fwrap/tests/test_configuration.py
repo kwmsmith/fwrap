@@ -53,14 +53,17 @@ def test_apply_dom():
         # Remove top-level keys we don't use in the test
         return dict((key, value)
                     for key, value in x.iteritems()
-                    if key in ('git-head', 'wraps', 'f77binding'))
+                    if key in ('vcs', 'wraps', 'f77binding'))
     
     parse_tree = [
-        ('git-head', '1872', []),
+        ('vcs', 'git', [
+            ('head', '1872', [])
+            ]),
         ('wraps', 'source_a.f90', [
             ('sha1', '346e', [])
             ]),
         ('wraps', 'source_b.f90', []),
+        ('f77binding', 'True', []),
         ]
     try:
         typed_tree = filter_tree(apply_dom(parse_tree))
@@ -68,12 +71,12 @@ def test_apply_dom():
         ok_(False)
 
     eq_(typed_tree, {
-        'git-head' : '1872',
+        'vcs' : ('git', {'head' : '1872'}),
         'wraps' : [
             ('source_a.f90', {'sha1': '346e'}),
             ('source_b.f90', {'sha1': None})
             ],
-        'f77binding' : False
+        'f77binding' : True
         })
 
     parse_tree[0] = ('git-head', 'not-a-sha', [])
@@ -87,9 +90,9 @@ def test_apply_dom():
 
 
 def test_serialize():
-    key_order = ['git-head', 'wraps', 'f77binding']
+    key_order = ['vcs', 'wraps', 'f77binding']
     doc = {
-        'git-head' : '1872',
+        'vcs' : ('git', {'head' : '1872'}),
         'wraps' : [
             ('source_a.f90', {'sha1': '346e'}),
             ('source_b.f90', {})
@@ -98,7 +101,9 @@ def test_serialize():
         }
     parse_tree = document_to_parse_tree(doc, key_order)
     eq_(parse_tree, [
-        ('git-head', '1872', []),
+        ('vcs', 'git', [
+            ('head', '1872', [])
+            ]),
         ('wraps', 'source_a.f90', [
             ('sha1', '346e', [])
             ]),
@@ -109,7 +114,8 @@ def test_serialize():
     buf = StringIO()
     serialize_inline_configuration(parse_tree, buf)
     eq_(buf.getvalue(), dedent("""\
-        # Fwrap: git-head 1872
+        # Fwrap: vcs git
+        # Fwrap:     head 1872
         # Fwrap: wraps source_a.f90
         # Fwrap:     sha1 346e
         # Fwrap: wraps source_b.f90

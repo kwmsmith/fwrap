@@ -14,6 +14,7 @@ from copy import copy
 #
 ATTR = object() # single attribute (e.g., git-head)
 LIST_ITEM = object() # repeated multiple times to form list (e.g., wraps)
+NODE = object()
 
 def create_string_parser(regex):
     regex_obj = re.compile(regex)
@@ -32,8 +33,10 @@ def parse_bool(value):
         raise ValueError()
     
 configuration_dom = {
-    # repeat-flag, parser, default value, child-dom
-    'git-head' : (ATTR, r'^[0-9a-f]*$', '', {}),
+    # nodetype, parser/regex, default-value, child-dom
+    'vcs' : (NODE, r'none|git', 'none', {
+        'head' : (ATTR, r'^[0-9a-f]*$', '', {}),
+        }),
     'version' : (ATTR, r'^[0-9.]+(dev_[0-9a-f]+)?$', None, {}),
     'wraps' : (LIST_ITEM, r'^.+$', None, {
         'sha1' : (ATTR, r'^[0-9a-f]*$', None, {}),
@@ -65,7 +68,7 @@ def _document_from_cmdline_options(options):
 
 class Configuration:
     # In preferred order when serializing:
-    keys = ['version', 'git-head', 'wraps', 'f77binding']
+    keys = ['version', 'vcs', 'wraps', 'f77binding']
 
     @staticmethod
     def create_from_file(filename):
@@ -116,12 +119,18 @@ class Configuration:
     #
     # User-facing methods
     #
-    def update(self):
-        """
-        Updates information that can be acquired from the environment
-        """
+    def update_version(self):
         self.document['version'] = get_version()
-        self.document['git-head'] = git.cwd_rev()
+
+    def set_versioned_mode(self, is_versioned):
+        if is_versioned:
+            try:
+                rev = git.cwd_rev()
+            except:
+                raise RuntimeError('Only git supported for now, this is not a git repository')
+            self.document['vcs'] = ('git', {'head': rev})
+        else:
+            self.document['vcs'] = ('none', {'head': None})
 
     def add_wrapped_file(self, filename):
         sha1 = sha1_of_file(filename)
@@ -189,13 +198,15 @@ def apply_dom(tree, dom=configuration_dom):
             if key in encountered or len(children) > 0:
                 raise ValidationError('"%s" should only have one entry without children' % key)
             result[key] = typed_value
-        elif nodetype == LIST_ITEM:
-            lst = result.get(key, None)
-            if lst is None:
-                lst = result[key] = []
-
+        elif nodetype in (LIST_ITEM, NODE):
             children_typed_tree = apply_dom(children, child_dom)
-            lst.append((value, children_typed_tree))
+            if nodetype == NODE:
+                result[key] = (typed_value, children_typed_tree)
+            elif nodetype == LIST_ITEM:
+                lst = result.get(key, None)
+                if lst is None:
+                    lst = result[key] = []
+                lst.append((value, children_typed_tree))
         else:
             assert False
         encountered.add(key)
@@ -205,6 +216,8 @@ def apply_dom(tree, dom=configuration_dom):
         nodetype, value_parser, default, child_dom = dom[key]
         if nodetype == ATTR:
             result[key] = default
+        elif nodetype == NODE:
+            result[key] = (default, {})
         elif nodetype == LIST_ITEM:
             assert default is None
             result[key] = []
@@ -213,18 +226,22 @@ def apply_dom(tree, dom=configuration_dom):
     return result
 
 
-#TODO: ordered_keys must be on many levels, traverse DOM structure
-#      instead
 def document_to_parse_tree(doc, ordered_keys):
+    #TODO: ordered_keys must be on many levels,
+    #      traverse DOM structure instead to serialize
     assert set(doc.keys()) == set(ordered_keys)
     result = []
     for key in ordered_keys:
         entry = doc[key]
-        if isinstance(entry, list):
+        if isinstance(entry, list): # list-item
             for value, attrs in entry:
                 subtree = document_to_parse_tree(attrs, attrs.keys())
                 result.append((key, value, subtree))
-        else:
+        elif isinstance(entry, tuple): # node
+            value, attrs = entry
+            subtree = document_to_parse_tree(attrs, attrs.keys())
+            result.append((key, value, subtree))
+        else: # attr
             if entry is None:
                 value = ''
             else:
@@ -289,4 +306,4 @@ def serialize_inline_configuration(parse_tree, buf, indent=0):
 # Global vars
 #
 default_cfg = Configuration()
-default_cfg.update()
+default_cfg.update_version()
