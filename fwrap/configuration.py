@@ -31,16 +31,12 @@ def parse_bool(value):
     else:
         raise ValueError()
     
-parse_sha_or_nothing = create_string_parser(r'^[0-9a-f]*$')
-parse_version = create_string_parser(r'^[0-9.]+(dev_[0-9a-f]+)?$')
-parse_filename = create_string_parser(r'^.+$')
-
 configuration_dom = {
     # repeat-flag, parser, default value, child-dom
-    'git-head' : (ATTR, parse_sha_or_nothing, '', {}),
-    'version' : (ATTR, parse_version, None, {}),
-    'wraps' : (LIST_ITEM, parse_filename, None, {
-        'sha1' : (ATTR, parse_sha_or_nothing, None, {}),
+    'git-head' : (ATTR, r'^[0-9a-f]*$', '', {}),
+    'version' : (ATTR, r'^[0-9.]+(dev_[0-9a-f]+)?$', None, {}),
+    'wraps' : (LIST_ITEM, r'^.+$', None, {
+        'sha1' : (ATTR, r'^[0-9a-f]*$', None, {}),
         # TODO: Exclude and include filters.
         }),
     'f77binding' : (ATTR, parse_bool, False, {})
@@ -183,6 +179,8 @@ def apply_dom(tree, dom=configuration_dom):
         if key not in dom.keys():
             raise ValidationError('Unknown Fwrap configuration key: %s' % key)
         nodetype, value_parser, default, child_dom = dom[key]
+        if isinstance(value_parser, str):
+            value_parser = create_string_parser(value_parser)
         try:
             typed_value = value_parser(value)
         except ValueError:
