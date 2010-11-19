@@ -46,3 +46,10 @@ def clean_index_and_workdir():
         if index not in ('?', ' ') or work not in ('?', ' '):
             return False
     return True
+
+def add(files):
+    assert not isinstance(files, str)
+    execproc(['git', 'add'] + list(files))
+
+def commit(message):
+    execproc(['git', 'commit', '-m', message])

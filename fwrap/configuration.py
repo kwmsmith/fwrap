@@ -160,6 +160,17 @@ def sha1_of_file(filename):
         h.update(f.read())
     return h.hexdigest()    
 
+def replace_in_file(regex_pattern, replacement, filename,
+                    expected_count=None):
+    with file(filename) as f:
+        contents = f.read()
+    contents, n = re.subn(regex_pattern, replacement, contents)
+    if expected_count is not None and n != expected_count:
+        raise Exception('%d replacements expected but %d possible, not changing %s' % (
+            expected_count, n, filename))
+    with file(filename, 'w') as f:
+        f.write(contents)
+    return n
 
 #
 # Configuration section parsing etc.

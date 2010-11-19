@@ -54,7 +54,10 @@ def wrap(sources, name, cfg):
     f_ast = parse(source_files, cfg)
 
     # Generate wrapper files
-    generate(f_ast, name, cfg)
+    created_files = generate(f_ast, name, cfg)
+
+    return created_files
+    
 
 def parse(source_files, cfg):
     r"""Parse fortran code returning parse tree
@@ -91,9 +94,12 @@ def generate(fort_ast, name, cfg):
     if not cfg.f77binding:
         generators.append((generate_type_specs,(c_ast,name)))
 
+    created_files = []
     for (generator,args) in generators:
         file_name, buf = generator(*args)
         write_to_dir(os.getcwd(), file_name, buf)
+        created_files.append(file_name)
+    return created_files
 
 def write_to_dir(dir, file_name, buf):
     fh = open(os.path.join(dir, file_name), 'w')

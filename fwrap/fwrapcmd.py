@@ -25,9 +25,32 @@ def create_cmd(opts):
     cfg = configuration.Configuration(cmdline_options=opts)
     cfg.update_version()
     cfg.set_versioned_mode(opts.versioned)
+    # Ensure that tree is clean, as we want to auto-commit
+    if opts.versioned and not git.clean_index_and_workdir():
+        raise RuntimeError('VCS state not clean, aborting')
+    # Add wrapped files to configurtion
     for filename in opts.fortranfiles:
         cfg.add_wrapped_file(filename)
-    fwrapper.wrap(opts.fortranfiles, opts.wrapper_name, cfg)
+    # Create wrapper files
+    created_files = fwrapper.wrap(opts.fortranfiles, opts.wrapper_name, cfg)
+    # Commit
+    if opts.versioned:
+        if opts.message is None:
+            opts.message = 'FWRAP Created wrapper %s' % opts.wrapper_pyx
+        git.add(created_files)
+        git.commit('%s\n\nFiles wrapped:\n%s' %
+                   (opts.message, '\n'.join(opts.fortranfiles)))
+        # That's it for content. However, we need to update the head
+        # pointer to point to the commit just made. Simply search/replace
+        # the file to make the change and commit again
+        current_rev = git.cwd_rev()
+        configuration.replace_in_file('head %s' % cfg.vcs[1]['head'],
+                                      'head %s' % current_rev,
+                                      opts.wrapper_pyx,
+                                      expected_count=1)
+        git.add([opts.wrapper_pyx])
+        git.commit('FWRAP Head record update in %s' % opts.wrapper_pyx)
+        
     return 0
 
 def print_file_status(filename):
@@ -77,7 +100,7 @@ def update_cmd(opts):
         raise RuntimeError('Not tracked by VCS, aborting: %s' % opts.wrapper_pyx)
     if not git.clean_index_and_workdir():
         raise RuntimeError('VCS state not clean, aborting')
-
+    
 def no_project_response(opts):
     print textwrap.fill('Please run "fwrap init"; can not find project '
                         'file %s in this directory or any parent directory.' %
@@ -99,6 +122,8 @@ def create_argument_parser():
     create.add_argument('--versioned', action='store_true',
                         help=('allow modification of generated wrappers, and employ '
                               'VCS to manage changes (only git supported currently)'))    
+    create.add_argument('-m', '--message',
+                        help=('commit log message'))
     configuration.add_cmdline_options(create.add_argument)
     create.add_argument('wrapper_pyx')
     create.add_argument('fortranfiles', metavar='fortranfile', nargs='+')
