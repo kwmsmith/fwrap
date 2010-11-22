@@ -28,6 +28,9 @@ record_update_re = re.compile(r'.*head record update.*', re.IGNORECASE)
 def get_head_record_update_commit(rev):
     children = git.children_of_commit(rev)
     if len(children) == 1:
+        # TODO: Speed up by only querying up to parents of
+        # wanted commit (i.e. git show --raw --format=format:%P rev,
+        # then git rev-list --children HEAD ^parent1 ^parent2
         child_rev = children[0]
         if record_update_re.match(git.get_commit_title(child_rev)):
             return child_rev
@@ -164,9 +167,11 @@ def mergepyf_cmd(opts):
     
 
 def update_cmd(opts, cfg=None, skip_head_commit=False,
-               branch_prefix='_fwrap'):
+               branch_prefix='_fwrap', message=None):
     if cfg is None:
         cfg = Configuration.create_from_file(opts.wrapper_pyx)
+
+    cfg.git_head() # fail if not in git mode
 
     pyx_dir, pyx_basename = os.path.split(opts.wrapper_pyx)
 
@@ -195,36 +200,35 @@ def update_cmd(opts, cfg=None, skip_head_commit=False,
             rev = get_head_record_update_commit(cfg.git_head())
             temp_branch = git.create_temporary_branch(rev, branch_prefix)
             git.checkout(temp_branch)
-            to_add = []
             for f in glob(os.path.join(tmp_dir, '*')):
-                f_base = os.path.basename(f)
-                to_add.append(f_base)
-                if os.path.exists(f_base):
-                    os.unlink(f_base)
-                shutil.move(f, cwd)
+                shutil.copy(f, cwd)
     finally:
         shutil.rmtree(tmp_dir)
     # Commit
-    git.add(to_add)
+    if message is None:
+        message = opts.message
+        if message is None:
+            message = 'Updated wrapper %s' % pyx_basename
     commit_wrapper(cfg, pyx_dir,
-                   'Updated wrapper %s' % pyx_basename,
-                  s kip_head_commit=skip_head_commit)
+                   message,
+                   skip_head_commit=skip_head_commit)
     # Leave the rest to user
     print dedent('''\
        Branch "{temp_branch}" created and wrapper updated. Please:
 
          a) Merge in any manual changes to the wrapper, e.g.,
-                git merge {orig_branch}    
+         
+                git merge {orig_branch}
+
+            PS! Please do not rebase at this step. Otherwise you may
+            make it impossible to do "fwrap update" in the future.
             
          b) Once everything is working, merge back and delete the
-            temporary branch. PS! Please do not rebase at this
-            step. Otherwise you may make it impossible to do "fwrap
-            update" in the future.
+            temporary branch. 
             
                 git checkout {orig_branch}
                 git merge {temp_branch}
                 git branch -d {temp_branch}
-                
     '''.format(**locals()))
     
 def no_project_response(opts):
@@ -259,6 +263,8 @@ def create_argument_parser():
     #
     update = subparsers.add_parser('update')
     update.set_defaults(func=update_cmd)
+    update.add_argument('-m', '--message',
+                        help=('commit log message'))
     update.add_argument('wrapper_pyx')
 
     #
@@ -267,6 +273,8 @@ def create_argument_parser():
     mergepyf = subparsers.add_parser('mergepyf')
     mergepyf.set_defaults(func=mergepyf_cmd)
     mergepyf.add_argument('wrapper_pyx')
+    mergepyf.add_argument('-m', '--message',
+                        help=('commit log message'))
     mergepyf.add_argument('pyf')
 
     #
