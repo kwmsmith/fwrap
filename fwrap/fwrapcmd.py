@@ -9,18 +9,57 @@ import os, sys
 import argparse
 import logging
 import textwrap
-import glob
+from glob import glob
 import tempfile
 import shutil
+import re
+from warnings import warn
+from textwrap import dedent
 from fwrap import fwrapper
 from fwrap import configuration
 from fwrap import git
 from fwrap.configuration import Configuration
 
-PROJECT_FILE = 'fwrap.json'
-
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger()
+
+record_update_re = re.compile(r'.*head record update.*', re.IGNORECASE)
+
+def get_head_record_update_commit(rev):
+    children = git.children_of_commit(rev)
+    if len(children) == 1:
+        child_rev = children[0]
+        if record_update_re.match(git.get_commit_title(child_rev)):
+            return child_rev
+        
+    warn('Using rev %s directly, not child' % rev)
+    return rev
+    
+
+def commit_wrapper(cfg, path, message, skip_head_commit=False):
+    pyx_basename = cfg.get_pyx_basename()
+    auxiliary_basenames = cfg.get_auxiliary_files()
+    recorded_rev = cfg.git_head()
+    message = 'FWRAP %s' % message
+    with working_directory(path):
+        git.add([pyx_basename] + auxiliary_basenames)
+        git.commit(message)
+        # That's it for content. However, we need to update the head
+        # pointer to point to the commit just made. Simply search/replace
+        # the file to make the change and commit again
+        if not skip_head_commit:
+            new_rev = git.cwd_rev()
+            configuration.replace_in_file('head %s' % recorded_rev,
+                                          'head %s' % new_rev,
+                                          pyx_basename,
+                                          expected_count=1)
+            git.add([pyx_basename])
+            git.commit('FWRAP Head record update in %s' % pyx_basename)
+
+    head = git.cwd_rev()
+    cfg.set_vcs('git', head=head)
+    return head
+        
 
 def create_cmd(opts):
     if os.path.exists(opts.wrapper_pyx) and not opts.force:
@@ -39,22 +78,13 @@ def create_cmd(opts):
                                                  cfg)
     # Commit
     if opts.versioned:
-        if opts.message is None:
-            opts.message = 'FWRAP Created wrapper %s' % opts.wrapper_pyx
-        git.add(created_files)
-        git.commit('%s\n\nFiles wrapped:\n%s' %
-                   (opts.message, '\n'.join(opts.fortranfiles)))
-        # That's it for content. However, we need to update the head
-        # pointer to point to the commit just made. Simply search/replace
-        # the file to make the change and commit again
-        current_rev = git.cwd_rev()
-        configuration.replace_in_file('head %s' % cfg.git_head(),
-                                      'head %s' % current_rev,
-                                      opts.wrapper_pyx,
-                                      expected_count=1)
-        git.add([opts.wrapper_pyx])
-        git.commit('FWRAP Head record update in %s' % opts.wrapper_pyx)
+        message = opts.message
+        if message is None:
+            message = 'Created wrapper %s' % os.path.basename(opts.wrapper_pyx)
+        message = ('%s\n\nFiles wrapped:\n%s' %
+                   (message, '\n'.join(opts.fortranfiles)))
         
+        commit_wrapper(cfg, os.getcwd(),  message)
     return 0
 
 def print_file_status(filename):
@@ -79,7 +109,7 @@ def status_cmd(opts):
         if opts.recursive:
             opts.paths = ['.']
         else:
-            opts.paths = glob.glob('*.pyx')
+            opts.paths = glob('*.pyx')
     for path in opts.paths:
         if not os.path.exists(path):
             raise ValueError('No such file or directory: %s' % path)
@@ -128,7 +158,7 @@ def mergepyf_cmd(opts):
         # Start with removing routines not present in pyf to keep
         # our history much cleaner
         orig_msg = opts.message
-        opts.message = 'FWRAP Removing functions not present in %s' % opts.pyf
+        opts.message = 'Removing functions not present in %s' % opts.pyf
         update_cmd(opts, cfg, skip_head_commit=True)
         opts.message = orig_msg
     
@@ -137,18 +167,16 @@ def update_cmd(opts, cfg=None, skip_head_commit=False,
                branch_prefix='_fwrap'):
     if cfg is None:
         cfg = Configuration.create_from_file(opts.wrapper_pyx)
-    any_changed = any(needs_update
-                      for f, needs_update in cfg.wrapped_files_status())
-    if not any_changed:
-        print 'Already up to date'
-        return 0
-    else:
-        print 'Needs update'
 
-    if not git.is_tracked(opts.wrapper_pyx):
-        raise RuntimeError('Not tracked by VCS, aborting: %s' % opts.wrapper_pyx)
-    if not git.clean_index_and_workdir():
-        raise RuntimeError('VCS state not clean, aborting')
+    pyx_dir, pyx_basename = os.path.split(opts.wrapper_pyx)
+
+    with working_directory(pyx_dir):
+        if not git.is_tracked(pyx_basename):
+            raise RuntimeError('Not tracked by VCS, aborting: %s' % opts.wrapper_pyx)
+        if not git.clean_index_and_workdir():
+            raise RuntimeError('VCS state not clean, aborting')
+
+    orig_branch = git.current_branch()
 
     # First, generate wrappers (since Fortran files have changed
     # on *this* tree). But generate them into a temporary location.
@@ -158,12 +186,46 @@ def update_cmd(opts, cfg=None, skip_head_commit=False,
                       opts.wrapper_name,
                       cfg,
                       output_directory=tmp_dir)
-        temp_branch = git.create_temporary_branch(cfg.git_head(), branch_prefix)
-        git.checkout(temp_branch)
+        # Then, create and check out _fwrap branch used for merging, and
+        # copy files in
+        with working_directory(pyx_dir):
+            cwd = os.getcwd()
+            # Try to base on the following head record update commit,
+            # otherwise use the commit itself
+            rev = get_head_record_update_commit(cfg.git_head())
+            temp_branch = git.create_temporary_branch(rev, branch_prefix)
+            git.checkout(temp_branch)
+            to_add = []
+            for f in glob(os.path.join(tmp_dir, '*')):
+                f_base = os.path.basename(f)
+                to_add.append(f_base)
+                if os.path.exists(f_base):
+                    os.unlink(f_base)
+                shutil.move(f, cwd)
     finally:
         shutil.rmtree(tmp_dir)
-    
-    
+    # Commit
+    git.add(to_add)
+    commit_wrapper(cfg, pyx_dir,
+                   'Updated wrapper %s' % pyx_basename,
+                  s kip_head_commit=skip_head_commit)
+    # Leave the rest to user
+    print dedent('''\
+       Branch "{temp_branch}" created and wrapper updated. Please:
+
+         a) Merge in any manual changes to the wrapper, e.g.,
+                git merge {orig_branch}    
+            
+         b) Once everything is working, merge back and delete the
+            temporary branch. PS! Please do not rebase at this
+            step. Otherwise you may make it impossible to do "fwrap
+            update" in the future.
+            
+                git checkout {orig_branch}
+                git merge {temp_branch}
+                git branch -d {temp_branch}
+                
+    '''.format(**locals()))
     
 def no_project_response(opts):
     print textwrap.fill('Please run "fwrap init"; can not find project '
@@ -225,5 +287,46 @@ def fwrap_main(args):
     if hasattr(opts, 'wrapper_pyx'):
         if not opts.wrapper_pyx.endswith('.pyx'):
             raise ValueError('Cython wrapper file name must end in .pyx')
-        opts.wrapper_name = opts.wrapper_pyx[:-4]
+        opts.wrapper_name = os.path.basename(opts.wrapper_pyx)[:-4]
     return opts.func(opts)
+
+
+class working_directory(object):
+    """
+    Context manager to temporarily change current working directory
+
+    Example:
+    
+    with working_directory('/tmp'):
+        assertEqual(os.path.basename(os.getcwd()), 'tmp')
+    """
+
+    def __init__(self, dirname, create=False):
+        self.dirname = os.path.realpath(
+            os.path.expandvars(os.path.expanduser(dirname)))
+        if not os.path.isdir(self.dirname):
+            if create:
+                os.makedirs(self.dirname)
+            else:
+                raise ValueError("Is not a directory: %s" % self.dirname)
+        self._oldcwd = os.getcwd()
+
+    def __enter__(self):
+        os.chdir(self.dirname)
+        return self.dirname
+
+    def __exit__(self, exc, value, tb):
+        if os.getcwd() != self.dirname:
+            import warnings
+            warnings.warn('Want to exit "%s" by changing to "%s" as we exit the context manager, '
+                          'but the directory was changed to "%s" in the meantime. '
+                          'Proceeding anyway.' % (
+                self.dirname, self._oldcwd, os.getcwd())
+                )
+        os.chdir(self._oldcwd)
+
+    def __call__(self, path):
+        if os.path.isabs(path):
+            return os.path.realpath(path)
+        else:
+            return os.path.realpath(os.path.join(self.dirname, path))

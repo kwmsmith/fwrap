@@ -36,7 +36,10 @@ def execproc_with_default(cmd, default):
 
 def cwd_rev():
     return execproc_with_default(['git', 'rev-parse', 'HEAD'], None)
-    
+
+def current_branch():
+    return execproc(['git', 'rev-parse', '--symbolic-full-name',
+                     '--abbrev-ref', 'HEAD'])
 
 def status(files=()):
     result = execproc(['git', 'status', '--porcelain'] + list(files))
@@ -79,3 +82,16 @@ def create_temporary_branch(start_point, prefix):
 
 def checkout(branch):
     execproc(['git', 'checkout', branch])
+
+def children_of_commit(rev):
+    lines = execproc(['git', 'rev-list', '--children', 'HEAD']).split('\n')
+    for line in lines:
+        items = line.split()
+        # items = [parent, child, child, ...]
+        if items[0] == rev:
+            return items[1:]
+    raise Exception('Commit not found: %s' % rev)
+
+def get_commit_title(rev):
+    lines = execproc(['git', 'show', '--raw', '--format=format:%s', rev]).split('\n')
+    return lines[0]

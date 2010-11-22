@@ -6,6 +6,7 @@
 from fwrap.version import get_version
 from fwrap import git
 import re
+import os
 from StringIO import StringIO
 from copy import copy, deepcopy
 
@@ -73,13 +74,17 @@ class Configuration:
 
     @staticmethod
     def create_from_file(filename):
+        basename = os.path.basename(filename)
+        if not basename.endswith('.pyx'):
+            raise ValueError('need a pyx file')
+        wrapper_name = basename[:-4]
         with file(filename, 'r') as f:
             contents = f.read()
         parse_tree = parse_inline_configuration(contents)
         document = apply_dom(parse_tree)
-        return Configuration(document)
+        return Configuration(wrapper_name, document)
 
-    def __init__(self, document=None, cmdline_options=None):
+    def __init__(self, name, document=None, cmdline_options=None):
         if document is None:
             document = apply_dom([])
         if cmdline_options is not None:
@@ -89,6 +94,9 @@ class Configuration:
 
         # Most options are looked up in document via __getattr__
         self.document = document
+        
+        # Name comes from filename and not document
+        self.name = name
 
         # Non-persistent aliases -- useful if we in the future *may*
         # split one option into more options
@@ -156,10 +164,24 @@ class Configuration:
     def get_source_files(self):
         return [fname for fname, attrs in self.wraps]
 
+    def get_auxiliary_files(self):
+        return [fname for fname, attrs in self.auxiliary]
+
     def git_head(self):
         if self.vcs[0] != 'git':
             raise RuntimeError('Not in git mode')
-        return self.vcs[1]['head']        
+        return self.vcs[1]['head']
+
+    def set_vcs(self, vcs, **kw):
+        if vcs not in ('git', 'none'):
+            raise NotImplementedError()
+        for key in kw.keys():
+            if not key in ('head',):
+                raise TypeError('argument %s not understood' % key)
+        self.document['vcs'] = (vcs, kw)
+
+    def get_pyx_basename(self):
+        return '%s.pyx' % self.name
 
 #
 # Utils
@@ -328,5 +350,5 @@ def serialize_inline_configuration(parse_tree, buf, indent=0):
 #
 # Global vars
 #
-default_cfg = Configuration()
+default_cfg = Configuration('<default>')
 default_cfg.update_version()
