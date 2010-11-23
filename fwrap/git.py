@@ -9,11 +9,11 @@ from subprocess import Popen, PIPE
 def execproc(cmd, get_err=False):
     assert isinstance(cmd, (list, tuple))
     pp = Popen(cmd, stdout=PIPE, stderr=PIPE)
+    result = pp.stdout.read().strip()
+    err = pp.stderr.read()
     retcode = pp.wait()
     if retcode != 0:
         raise RuntimeError('Return code %d: %s' % (retcode, ' '.join(cmd)))
-    result = pp.stdout.read().strip()
-    err = pp.stderr.read()
     if get_err:
         return result, err
     else:

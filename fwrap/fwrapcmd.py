@@ -20,12 +20,21 @@ from fwrap import configuration
 from fwrap import git
 from fwrap.configuration import Configuration
 
+BRANCH_PREFIX = '_fwrap'
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger()
 
 record_update_re = re.compile(r'.*head record update.*', re.IGNORECASE)
 
+def check_in_directory_of(mainfile):
+    path, base = os.path.split(mainfile)
+    if os.path.realpath(path) != os.getcwd():
+        raise NotImplementedError('Please change to the directory of %s' % mainfile)
+
 def get_head_record_update_commit(rev):
+    # Try to base on the following head record update commit,
+    # otherwise use the commit itself
     children = git.children_of_commit(rev)
     if len(children) == 1:
         # TODO: Speed up by only querying up to parents of
@@ -39,35 +48,32 @@ def get_head_record_update_commit(rev):
     return rev
     
 
-def commit_wrapper(cfg, path, message, skip_head_commit=False):
+def commit_wrapper(cfg, message, skip_head_commit=False):
     pyx_basename = cfg.get_pyx_basename()
     auxiliary_basenames = cfg.get_auxiliary_files()
     recorded_rev = cfg.git_head()
     message = 'FWRAP %s' % message
-    with working_directory(path):
-        git.add([pyx_basename] + auxiliary_basenames)
-        git.commit(message)
-        # That's it for content. However, we need to update the head
-        # pointer to point to the commit just made. Simply search/replace
-        # the file to make the change and commit again
-        if not skip_head_commit:
-            new_rev = git.cwd_rev()
-            configuration.replace_in_file('head %s' % recorded_rev,
-                                          'head %s' % new_rev,
-                                          pyx_basename,
-                                          expected_count=1)
-            git.add([pyx_basename])
-            git.commit('FWRAP Head record update in %s' % pyx_basename)
-
+    git.add([pyx_basename] + auxiliary_basenames)
+    git.commit(message)
+    # That's it for content. However, we need to update the head
+    # pointer to point to the commit just made. Simply search/replace
+    # the file to make the change and commit again
+    if not skip_head_commit:
+        new_rev = git.cwd_rev()
+        configuration.replace_in_file('head %s' % recorded_rev,
+                                      'head %s' % new_rev,
+                                      pyx_basename,
+                                      expected_count=1)
+        git.add([pyx_basename])
+        git.commit('FWRAP Head record update in %s' % pyx_basename)
     head = git.cwd_rev()
-    cfg.set_vcs('git', head=head)
-    return head
-        
+    return head        
 
 def create_cmd(opts):
     if os.path.exists(opts.wrapper_pyx) and not opts.force:
         raise ValueError('File exists: %s' % opts.wrapper_pyx)
-    cfg = Configuration(cmdline_options=opts)
+    check_in_directory_of(opts.wrapper_pyx)
+    cfg = Configuration(opts.wrapper_pyx, cmdline_options=opts)
     cfg.update_version()
     cfg.set_versioned_mode(opts.versioned)
     # Ensure that tree is clean, as we want to auto-commit
@@ -77,7 +83,7 @@ def create_cmd(opts):
     for filename in opts.fortranfiles:
         cfg.add_wrapped_file(filename)
     # Create wrapper files
-    created_files, routine_names = fwrapper.wrap(opts.fortranfiles, opts.wrapper_name,
+    created_files, routine_names = fwrapper.wrap(opts.fortranfiles, cfg.wrapper_name,
                                                  cfg)
     # Commit
     if opts.versioned:
@@ -87,8 +93,15 @@ def create_cmd(opts):
         message = ('%s\n\nFiles wrapped:\n%s' %
                    (message, '\n'.join(opts.fortranfiles)))
         
-        commit_wrapper(cfg, os.getcwd(),  message)
+        commit_wrapper(cfg, message)
     return 0
+
+def checkout_new_branch_from_last_fwrap(cfg):
+    rev = cfg.git_head()
+    rev = get_head_record_update_commit(rev)
+    temp_branch = git.create_temporary_branch(rev, BRANCH_PREFIX)
+    git.checkout(temp_branch)
+    return temp_branch
 
 def print_file_status(filename):
     file_cfg = Configuration.create_from_file(filename)
@@ -133,86 +146,94 @@ def status_cmd(opts):
 
 
 def mergepyf_cmd(opts):
+    check_in_directory_of(opts.wrapper_pyx)
     for f in [opts.wrapper_pyx, opts.pyf]:
         if not os.path.exists(f):
             raise ValueError('No such file: %s' % f)
     orig_cfg = Configuration.create_from_file(opts.wrapper_pyx)
+    orig_branch = git.current_branch()
     cfg = orig_cfg.copy()
     cfg.update_version()
-    versioned = (cfg.vcs != 'none')
-    if not versioned:
-        raise NotImplementedError()
-    
-    # We want to compile a list of the routines not present in the pyf
-    # (assumed to be explicitly excluded by the user). In order to do
-    # this, first parse wrapped Fortran files to find routines present
-    # in total.
-    routines_in_fortran= set(fwrapper.find_routine_names(
-        cfg.get_source_files(), cfg))
-    
-    # Now find names present in pyf file.
-    # TODO: Fix, this ends up parsing twice
-    routines_in_pyf = set(fwrapper.find_routine_names([opts.pyf], cfg))
-    excluded_by_pyf = routines_in_fortran - routines_in_pyf
-    cfg.exclude.extend([(routine, {})
-                        for routine in excluded_by_pyf])
-
-    if len(excluded_by_pyf) > 0:
-        # Start with removing routines not present in pyf to keep
-        # our history much cleaner
-        orig_msg = opts.message
-        opts.message = 'Removing functions not present in %s' % opts.pyf
-        update_cmd(opts, cfg, skip_head_commit=True)
-        opts.message = orig_msg
-    
-
-def update_cmd(opts, cfg=None, skip_head_commit=False,
-               branch_prefix='_fwrap', message=None):
-    if cfg is None:
-        cfg = Configuration.create_from_file(opts.wrapper_pyx)
-
     cfg.git_head() # fail if not in git mode
+    
+    # Find routine names present in Fortran files that are not
+    # present in pyf file, and set them as manually excluded.
+    # Below we commit removal of this functions as a seperate commit,
+    # to keep the history much cleaner.
+    routines_in_fortran = fwrapper.find_routine_names(
+        cfg.get_source_files(), cfg)
+    routines_in_pyf = fwrapper.find_routine_names(
+        [opts.pyf], cfg) # TODO: Reuse parse tree from this step below
+    excluded_by_pyf = set(routines_in_fortran) - set(routines_in_pyf)
+    cfg.exclude_routines(excluded_by_pyf)
+    
+    # Generate wrapper from .pyf to temporary location before
+    # switching away from the branch.
+    tmp_dir = tempfile.mkdtemp(prefix='fwrap-')
+    try:
+        created_files, routines_in_pyf = fwrapper.wrap([opts.pyf],
+                      cfg.wrapper_name,
+                      cfg,
+                      output_directory=tmp_dir)
 
-    pyx_dir, pyx_basename = os.path.split(opts.wrapper_pyx)
+        # Potentially create an update branch
+        if len(excluded_by_pyf) > 0:
+            temp_branch = update_wrapper(cfg,
+                                         skip_head_commit=True,
+                                         message='Removing routines not present in %s' % opts.pyf)
+        else:
+            temp_branch = checkout_new_branch_from_last_fwrap(cfg)
+        
+        # Copy in generated wrapper based on pyf file
+        for f in glob(os.path.join(tmp_dir, '*')):
+            shutil.copy(f, '.')
+    finally:
+        shutil.rmtree(tmp_dir)
 
-    with working_directory(pyx_dir):
-        if not git.is_tracked(pyx_basename):
-            raise RuntimeError('Not tracked by VCS, aborting: %s' % opts.wrapper_pyx)
-        if not git.clean_index_and_workdir():
-            raise RuntimeError('VCS state not clean, aborting')
+    message = opts.message
+    if message is None:
+        message = 'Creating wrapper based on pyf file: %s' % opts.pyf
+    commit_wrapper(cfg, message)
+    print_help_after_update(orig_branch, temp_branch)
 
-    orig_branch = git.current_branch()
+def update_wrapper(cfg, skip_head_commit, message):
+    if not git.is_tracked(cfg.get_pyx_filename()):
+        raise RuntimeError('Not tracked by VCS, aborting: %s' % cfg.get_pyx_basename())
+    if not git.clean_index_and_workdir():
+        raise RuntimeError('VCS state not clean, aborting')
 
     # First, generate wrappers (since Fortran files have changed
     # on *this* tree). But generate them into a temporary location.
     tmp_dir = tempfile.mkdtemp(prefix='fwrap-')
     try:
         fwrapper.wrap(cfg.get_source_files(),
-                      opts.wrapper_name,
+                      cfg.wrapper_name,
                       cfg,
                       output_directory=tmp_dir)
         # Then, create and check out _fwrap branch used for merging, and
         # copy files in
-        with working_directory(pyx_dir):
-            cwd = os.getcwd()
-            # Try to base on the following head record update commit,
-            # otherwise use the commit itself
-            rev = get_head_record_update_commit(cfg.git_head())
-            temp_branch = git.create_temporary_branch(rev, branch_prefix)
-            git.checkout(temp_branch)
-            for f in glob(os.path.join(tmp_dir, '*')):
-                shutil.copy(f, cwd)
+        temp_branch = checkout_new_branch_from_last_fwrap(cfg)
+        for f in glob(os.path.join(tmp_dir, '*')):
+            shutil.copy(f, '.')
     finally:
-        shutil.rmtree(tmp_dir)
+        print 'tmp_dir', tmp_dir
+        #shutil.rmtree(tmp_dir)
     # Commit
     if message is None:
-        message = opts.message
-        if message is None:
-            message = 'Updated wrapper %s' % pyx_basename
-    commit_wrapper(cfg, pyx_dir,
-                   message,
-                   skip_head_commit=skip_head_commit)
-    # Leave the rest to user
+        message = 'Updated wrapper %s' % cfg.get_pyx_basename()
+    commit_wrapper(cfg, message, skip_head_commit=skip_head_commit)
+    return temp_branch
+
+def update_cmd(opts):
+    cfg = Configuration.create_from_file(opts.wrapper_pyx)
+    cfg.git_head() # fail if not in git mode
+    check_in_directory_of(opts.wrapper_pyx)
+    orig_branch = git.current_branch()
+    temp_branch = update_wrapper(cfg, False, opts.message)
+    print_help_after_update(orig_branch, temp_branch)
+
+def print_help_after_update(orig_branch, temp_branch):
+    # Print help text
     print dedent('''\
        Branch "{temp_branch}" created and wrapper updated. Please:
 
@@ -295,46 +316,6 @@ def fwrap_main(args):
     if hasattr(opts, 'wrapper_pyx'):
         if not opts.wrapper_pyx.endswith('.pyx'):
             raise ValueError('Cython wrapper file name must end in .pyx')
-        opts.wrapper_name = os.path.basename(opts.wrapper_pyx)[:-4]
+
     return opts.func(opts)
 
-
-class working_directory(object):
-    """
-    Context manager to temporarily change current working directory
-
-    Example:
-    
-    with working_directory('/tmp'):
-        assertEqual(os.path.basename(os.getcwd()), 'tmp')
-    """
-
-    def __init__(self, dirname, create=False):
-        self.dirname = os.path.realpath(
-            os.path.expandvars(os.path.expanduser(dirname)))
-        if not os.path.isdir(self.dirname):
-            if create:
-                os.makedirs(self.dirname)
-            else:
-                raise ValueError("Is not a directory: %s" % self.dirname)
-        self._oldcwd = os.getcwd()
-
-    def __enter__(self):
-        os.chdir(self.dirname)
-        return self.dirname
-
-    def __exit__(self, exc, value, tb):
-        if os.getcwd() != self.dirname:
-            import warnings
-            warnings.warn('Want to exit "%s" by changing to "%s" as we exit the context manager, '
-                          'but the directory was changed to "%s" in the meantime. '
-                          'Proceeding anyway.' % (
-                self.dirname, self._oldcwd, os.getcwd())
-                )
-        os.chdir(self._oldcwd)
-
-    def __call__(self, path):
-        if os.path.isabs(path):
-            return os.path.realpath(path)
-        else:
-            return os.path.realpath(os.path.join(self.dirname, path))

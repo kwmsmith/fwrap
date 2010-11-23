@@ -66,8 +66,7 @@ def wrap(sources, name, cfg, output_directory=None):
     
 
 def filter_ast(ast, cfg):
-    excludes = cfg.exclude
-    return [routine for routine in ast if routine.name not in excludes]
+    return [routine for routine in ast if cfg.is_routine_included(routine.name)]
 
 def parse(source_files, cfg):
     r"""Parse fortran code returning parse tree
@@ -97,6 +96,7 @@ def generate(fort_ast, name, cfg, output_directory=None):
     # Generate wrapping abstract syntax trees
     # logger.info("Generating abstract syntax tress for c and cython.")
     fort_ast = filter_ast(fort_ast, cfg)
+    routine_names = [sub.name for sub in fort_ast]
     c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
     cython_ast = cy_wrap.wrap_fc(c_ast)
 
@@ -121,8 +121,6 @@ def generate(fort_ast, name, cfg, output_directory=None):
         write_to_dir(output_directory, file_name, buf)
         created_files.append(file_name)
 
-    routine_names = [routine.name for routine in c_ast]
-        
     return created_files, routine_names
 
 def find_routine_names(source_files, cfg):
@@ -226,6 +224,7 @@ Cython, & Python.
                             for j, x in enumerate(source_files)
                             if i == j or (os.path.realpath(source_bases[i]) !=
                                           os.path.realpath(source_bases[j]))]
-    cfg = configuration.Configuration(cmdline_options=parsed_options)
+    cfg = configuration.Configuration(parsed_options.name + '.pyx',
+                                      cmdline_options=parsed_options)
     wrap(source_files, parsed_options.name, cfg)
     return 0

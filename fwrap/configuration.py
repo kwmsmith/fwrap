@@ -74,17 +74,13 @@ class Configuration:
 
     @staticmethod
     def create_from_file(filename):
-        basename = os.path.basename(filename)
-        if not basename.endswith('.pyx'):
-            raise ValueError('need a pyx file')
-        wrapper_name = basename[:-4]
         with file(filename, 'r') as f:
             contents = f.read()
         parse_tree = parse_inline_configuration(contents)
         document = apply_dom(parse_tree)
-        return Configuration(wrapper_name, document)
+        return Configuration(filename, document)
 
-    def __init__(self, name, document=None, cmdline_options=None):
+    def __init__(self, pyx_filename, document=None, cmdline_options=None):
         if document is None:
             document = apply_dom([])
         if cmdline_options is not None:
@@ -96,7 +92,12 @@ class Configuration:
         self.document = document
         
         # Name comes from filename and not document
-        self.name = name
+        if pyx_filename is not None: # allow default_cfg
+            if not pyx_filename.endswith('.pyx'):
+                raise ValueError('need a pyx file')
+            path, basename = os.path.split(pyx_filename)
+            self.wrapper_name = basename[:-4]
+            self.wrapper_path = os.path.realpath(path)
 
         # Non-persistent aliases -- useful if we in the future *may*
         # split one option into more options
@@ -130,7 +131,7 @@ class Configuration:
     #
     def copy(self):
         doc_copy = deepcopy(self.document)
-        return Configuration(doc_copy)
+        return Configuration(self.get_pyx_filename(), doc_copy)
     
     def update_version(self):
         self.document['version'] = get_version()
@@ -164,6 +165,12 @@ class Configuration:
     def get_source_files(self):
         return [fname for fname, attrs in self.wraps]
 
+    def is_routine_included(self, routine_name):
+        for ex_name, ex_attr in self.exclude:
+            if routine_name == ex_name:
+                return False
+        return True
+
     def get_auxiliary_files(self):
         return [fname for fname, attrs in self.auxiliary]
 
@@ -181,7 +188,20 @@ class Configuration:
         self.document['vcs'] = (vcs, kw)
 
     def get_pyx_basename(self):
-        return '%s.pyx' % self.name
+        return '%s.pyx' % self.wrapper_name
+
+    def get_pyx_filename(self):
+        return os.path.join(self.wrapper_path, self.get_pyx_basename())
+
+    def get_wrapper_path(self):
+        return self.wrapper_path
+
+    def exclude_routines(self, routines):
+        routines = list(routines)
+        routines.sort()
+        self.exclude.extend([(routine, {})
+                             for routine in routines])
+
 
 #
 # Utils
@@ -350,5 +370,5 @@ def serialize_inline_configuration(parse_tree, buf, indent=0):
 #
 # Global vars
 #
-default_cfg = Configuration('<default>')
+default_cfg = Configuration(None)
 default_cfg.update_version()
