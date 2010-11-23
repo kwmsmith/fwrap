@@ -47,6 +47,8 @@ def gen_cdef_extern_decls(buf):
         buf.putlines(dtype.cdef_extern_decls)
 
 def generate_cy_pyx(ast, name, buf, cfg):
+    from fwrap.deduplicator import cy_deduplify
+    ast = cy_deduplify(ast, cfg)
     ctx = CythonCodeGenerationContext(cfg)
     buf.putln("#cython: ccomplex=True")
     buf.putln('')
