@@ -48,8 +48,8 @@ def gen_cdef_extern_decls(buf):
 
 def generate_cy_pyx(ast, name, buf, cfg):
     from fwrap.deduplicator import cy_deduplify
-    ast = cy_deduplify(ast, cfg)
     ctx = CythonCodeGenerationContext(cfg)
+    ast = cy_deduplify(ast, cfg)    
     buf.putln("#cython: ccomplex=True")
     buf.putln('')
     buf.putln('# Fwrap configuration:')
@@ -112,8 +112,13 @@ def CyArgWrapper(arg):
         return _CyCharArg(arg)
     return _CyArgWrapper(arg)
 
+class _CyArgWrapperBase(object):
+    def equal_up_to_type(self, other_arg):
+        if type(other_arg) is not type(self):
+            return False
+        return self.arg.equal_up_to_type(other_arg.arg)    
 
-class _CyArgWrapper(object):
+class _CyArgWrapper(_CyArgWrapperBase):
 
     is_array = False
 
@@ -204,7 +209,6 @@ class _CyArgWrapper(object):
         if self.arg.intent not in ('out', 'inout', None):
             return []
         return self._gen_dstring()
-
 
 class _CyCharArg(_CyArgWrapper):
 
@@ -303,7 +307,7 @@ class _CyCharArg(_CyArgWrapper):
             return super(_CyCharArg, self).in_dstring()
 
 
-class _CyErrStrArg(object):
+class _CyErrStrArg(_CyArgWrapperBase):
     hide_in_wrapper = False
 
     def __init__(self, arg):
@@ -366,7 +370,7 @@ def CyArrayArgWrapper(arg):
     return _CyArrayArgWrapper(arg)
 
 
-class _CyArrayArgWrapper(object):
+class _CyArrayArgWrapper(_CyArgWrapperBase):
 
     is_array = True
     hide_in_wrapper = False

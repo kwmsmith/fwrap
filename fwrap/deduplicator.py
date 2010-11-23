@@ -4,10 +4,12 @@
 #------------------------------------------------------------------------------
 
 #
-# Currently only deduplicates Cython pyx files
+# Currently only deduplicates contents of Cython pyx files
 #
 
 import re
+from fwrap import cy_wrap
+
 
 class UnableToMergeError(Exception):
     pass
@@ -17,6 +19,7 @@ def cy_deduplify(cy_ast, cfg):
     procnames = name_to_proc.keys()
     groups = find_candidate_groups_by_name(procnames)
 
+    print cy_ast
     for names_in_group in groups:
         procs = [name_to_proc[name] for name in names_in_group]
         try:
@@ -26,19 +29,29 @@ def cy_deduplify(cy_ast, cfg):
         # Insert the created template at the position
         # of the *first* routine, and remove the other
         # routines
-        to_sub = group[0]
-        to_remove = group[1:]
+        to_sub = names_in_group[0]
+        to_remove = names_in_group[1:]
         cy_ast = [(template_node if node.name == to_sub else node)
                   for node in cy_ast
                   if node.name not in to_remove]
-                  
+    print cy_ast
     return cy_ast
 
 def cy_create_template(procs):
     """Make an attempt to merge the given procedures into a template
     """
-    raise UnableToMergeError
-
+    arg_lists = [proc.arg_mgr.args for proc in procs]
+    n = len(arg_lists[0])
+    if any(len(lst) != n for lst in arg_lists[1:]):
+        # Different number of arguments
+        raise UnableToMergeError()
+    for matched_args in zip(*arg_lists):
+        arg0 = matched_args[0]
+        for arg in matched_args[1:]:
+            if not arg0.equal_up_to_type(arg):
+                raise UnableToMergeError()
+    print [x.name for x in procs]
+    return procs[0]
 
 blas_re = re.compile(r'^([sdcz])([a-z0-9_]+)$')
 
