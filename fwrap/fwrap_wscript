@@ -10,6 +10,7 @@ def options(opt):
     opt.add_option('--name', action='store', default='fwproj')
     opt.add_option('--outdir', action='store', default='fwproj')
     opt.add_option('--f77binding', action='store_true', default=False)
+    opt.add_option('--detect-templates', action='store_true', default=False)
     opt.load('compiler_c')
     opt.load('compiler_fc')
     opt.load('python')
@@ -40,8 +41,8 @@ def configure(conf):
 
     conf.env['FW_PROJ_NAME'] = conf.options.name
     conf.env['FW_F77_BINDING'] = conf.options.f77binding
-    if conf.options.f77binding:
-        conf.env['FWRAPPER_OPTS'] = '--f77binding'
+    conf.env['FW_DETECT_TEMPLATES'] = conf.options.detect_templates
+    conf.env['FWRAPPER_OPTS'] = ''
 
     conf.add_os_flags('INCLUDES')
     conf.add_os_flags('LIB')
@@ -51,22 +52,39 @@ def configure(conf):
 
 def build(bld):
     want_f77 = bld.env['FW_F77_BINDING']
+    detect_templates = bld.env['FW_DETECT_TEMPLATES']
 
     wrapper = '%s_fc.%s' % (bld.env['FW_PROJ_NAME'],
                             'f' if want_f77 else 'f90')
     cy_src = '%s.pyx' % bld.env['FW_PROJ_NAME']
+    cy_in_src = '%s.in' % cy_src if detect_templates else cy_src
 
     if want_f77:
         type_specs = []
     else:
         type_specs = ['fwrap_type_specs.in']
 
+    flags = []
+    if want_f77:
+        flags.append('--f77binding')
+    if detect_templates:
+        flags.append('--detect-templates')
+
     bld(
         name = 'fwrapper',
-        rule = '${PYTHON} ${FWRAPPER} --name=%s ${FWRAPPER_OPTS} ${SRC}' % bld.env['FW_PROJ_NAME'],
+        rule = '${PYTHON} ${FWRAPPER} --name=%s %s ${FWRAPPER_OPTS} ${SRC}' % (
+            bld.env['FW_PROJ_NAME'], ' '.join(flags)),
         source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90', 'src/*.pyf']),
-        target = type_specs + [wrapper, cy_src],
+        target = type_specs + [wrapper, cy_in_src],
         )
+
+    if detect_templates:
+        bld(
+            name = 'tempita',
+            rule = run_tempita,
+            source = [cy_in_src],
+            target = [cy_src]
+            )
 
     if not want_f77:
         bld(
@@ -167,6 +185,11 @@ TaskGen.declare_chain(
         reentrant = True,
         after = 'modmap',
         )
+
+
+#
+# Typemaps
+#
 
 @TaskGen.feature('typemap')
 @TaskGen.after('process_source')
@@ -356,6 +379,17 @@ def task_generate_typemap_f77binding(task):
     from fwrap.f77_config import get_f77_ctps
     ctps = get_f77_ctps()
     gen_type_map_files(ctps, task.outputs, write_f90_mod=False)
+
+#
+# Templates
+#
+def run_tempita(task):
+    import tempita
+    assert len(task.inputs) == len(task.outputs) == 1
+    tmpl = task.inputs[0].read()
+    result = tempita.sub(tmpl)
+    task.outputs[0].write(result)
+
 
 
 # vim:ft=python

@@ -44,6 +44,7 @@ configuration_dom = {
         }),
     'exclude' : (LIST_ITEM, r'^[a-zA-Z0-9_]+$', None, {}),
     'f77binding' : (ATTR, parse_bool, False, {}),
+    'detect-templates' : (ATTR, parse_bool, False, {}),
     'auxiliary' : (LIST_ITEM, r'^.+$', None, {}),
     }
 
@@ -55,13 +56,17 @@ def add_cmdline_options(add_option):
     add_option('--f77binding', action='store_true',
                help='avoid iso_c_binding and use older f2py-style '
                'wrapping instead')
+    add_option('--detect-templates', action='store_true',
+               help='detect procs repeated with different types '
+               'and output .pyx.in Tempita template instead of .pyx')
     add_option('--dummy', action='store_true',
                help='dummy development configuration option')
     
 
 def _document_from_cmdline_options(options):
     return {
-        'f77binding' : options.f77binding
+        'f77binding' : options.f77binding,
+        'detect-templates' : options.detect_templates,
          }
 
 #
@@ -70,7 +75,8 @@ def _document_from_cmdline_options(options):
 
 class Configuration:
     # In preferred order when serializing:
-    keys = ['version', 'vcs', 'wraps', 'exclude', 'f77binding', 'auxiliary']
+    keys = ['version', 'vcs', 'wraps', 'exclude', 'f77binding', 'detect-templates',
+            'auxiliary']
 
     @staticmethod
     def create_from_file(filename):
@@ -86,7 +92,7 @@ class Configuration:
         if cmdline_options is not None:
             document.update(_document_from_cmdline_options(cmdline_options))
 
-        assert set(self.keys) == set(document.keys())
+        assert set(self.keys) == set(document.keys()), (self.keys, document.keys())
 
         # Most options are looked up in document via __getattr__
         self.document = document
