@@ -110,10 +110,10 @@ class TemplatedCyArrayArg(cy_wrap._CyArrayArgWrapper):
     def __init__(self, args, template_mgr):
         cy_wrap._CyArrayArgWrapper.__init__(self, args[0].arg)
 
-        self.ktp = template_mgr.get_code_for_values(
-            arg.ktp for arg in args)
-        self.py_type_name = template_mgr.get_code_for_values(
-            arg.py_type_name for arg in args)
+        for merge_attr in ('ktp', 'py_type_name', 'npy_enum'):
+            values = [getattr(arg, merge_attr) for arg in args]
+            code = template_mgr.get_code_for_values(values, merge_attr)
+            setattr(self, merge_attr, code)
 
 #        self.args = args
 #        self.template_mgr = template_mgr
@@ -145,14 +145,15 @@ class TemplatedProcedure(cy_wrap.ProcWrapper):
 
         self.procs = procs
         self.names = [proc.name for proc in procs]
-        self.template_mgr.add_variable(self.names, 'procname')
-        self.name = self.template_mgr.get_variable_code('procname')
+        self.name = self.template_mgr.get_code_for_values(self.names, 'procname')
         
         merged_args = [get_templated_cy_arg_wrapper(matched_args,
                                                      self.template_mgr)
                        for matched_args in
                        zip(*[proc.arg_mgr.args for proc in procs])]
         self.arg_mgr = cy_wrap.CyArgWrapperManager(merged_args)
+        self.wrapped_name = self.template_mgr.get_code_for_values(
+            (proc.wrapped_name for proc in procs), 'wrapped')
 
     def generate_wrapper(self, ctx, buf):
         self.template_mgr.put_start_loop(buf)

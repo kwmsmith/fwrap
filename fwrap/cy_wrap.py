@@ -401,6 +401,7 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
         # deduplicator.TemplatedCyArrayArg
         self.ktp = self.arg.ktp
         self.py_type_name = py_type_name_from_type(self.ktp)
+        self.npy_enum = self.arg.dtype.npy_enum
 
     def extern_declarations(self):
         default_value = 'None' if self.explicit_out_array else None
@@ -434,7 +435,7 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
         # contiguous.
         d = {'intern' : self.intern_name,
              'extern' : self.extern_name,
-             'dtenum' : self.arg.dtype.npy_enum,
+             'dtenum' : self.npy_enum,
              'ndim' : self.arg.ndims}
         lines = []
 
@@ -646,6 +647,7 @@ class ProcWrapper(object):
         self.wrapped = wrapped
         self.name = _py_kw_mangler(self.wrapped.wrapped_name())
         self.arg_mgr = CyArgWrapperManager.from_fwrapped_proc(wrapped)
+        self.wrapped_name = self.wrapped.name
 
     def get_names(self):
         # A template proc can provide more than one name
@@ -682,7 +684,7 @@ class ProcWrapper(object):
 
     def proc_call(self, ctx):
         proc_call = "%(call_name)s(%(call_arg_list)s)" % {
-                'call_name' : self.wrapped.name,
+                'call_name' : self.wrapped_name,
                 'call_arg_list' : ', '.join(self.arg_mgr.call_arg_list(ctx))}
         return proc_call
 
