@@ -65,5 +65,27 @@ subroutine zfoo(n, b, c)
   c = real(b)
 end subroutine
 
+!
+! Test both that keyword conflict/name mangling works, and
+! single, non-array argument
+!
 
-! TODO: Template [sdcz]lass :-)
+subroutine slass(x)
+  real, intent(inout) :: x
+  x = x * 2
+end subroutine
+
+subroutine dlass(x)
+  double precision, intent(inout) :: x
+  x = x * 2
+end subroutine
+
+subroutine class(x)
+  complex, intent(inout) :: x
+  x = x * 2
+end subroutine
+
+subroutine zlass(x)
+  double complex, intent(inout) :: x
+  x = x * 2
+end subroutine

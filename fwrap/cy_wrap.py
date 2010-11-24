@@ -119,8 +119,6 @@ def CyArgWrapper(arg):
 
 class _CyArgWrapperBase(object):
     def equal_up_to_type(self, other_arg):
-        if type(other_arg) is not type(self):
-            return False
         return self.arg.equal_up_to_type(other_arg.arg)    
 
 class _CyArgWrapper(_CyArgWrapperBase):
@@ -356,7 +354,7 @@ class _CyErrStrArg(_CyArgWrapperBase):
 
 
 class _CyCmplxArg(_CyArgWrapper):
-
+    # TODO Is this class needed?
     def __init__(self, arg):
         super(_CyCmplxArg, self).__init__(arg)
         self.intern_name = 'fw_%s' % self.arg.name
@@ -646,7 +644,8 @@ class ProcWrapper(object):
 
     def __init__(self, wrapped):
         self.wrapped = wrapped
-        self.name = _py_kw_mangler(self.wrapped.wrapped_name())
+        self.unmangled_name = self.wrapped.wrapped_name()
+        self.name = _py_kw_mangler(self.unmangled_name)
         self.arg_mgr = CyArgWrapperManager.from_fwrapped_proc(wrapped)
         self.wrapped_name = self.wrapped.name
 

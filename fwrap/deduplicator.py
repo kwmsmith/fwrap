@@ -9,6 +9,7 @@
 
 import re
 from fwrap import cy_wrap
+from warnings import warn
 
 #
 # Utilities
@@ -29,11 +30,9 @@ class UnableToMergeError(Exception):
     pass
 
 def cy_deduplify(cy_ast, cfg):
-    name_to_proc = dict((proc.name, proc) for proc in cy_ast)
+    name_to_proc = dict((proc.unmangled_name, proc) for proc in cy_ast)
     procnames = name_to_proc.keys()
     groups = find_candidate_groups_by_name(procnames)
-
-    print cy_ast
     for names_in_group in groups:
         procs = [name_to_proc[name] for name in names_in_group]
         try:
@@ -45,10 +44,9 @@ def cy_deduplify(cy_ast, cfg):
         # routines
         to_sub = names_in_group[0]
         to_remove = names_in_group[1:]
-        cy_ast = [(template_node if node.name == to_sub else node)
+        cy_ast = [(template_node if node.unmangled_name == to_sub else node)
                   for node in cy_ast
-                  if node.name not in to_remove]
-    print cy_ast
+                  if node.unmangled_name not in to_remove]
     return cy_ast
 
 def cy_create_template(procs, cfg):
@@ -106,36 +104,38 @@ def find_candidate_groups_by_name(names):
 # Template ast nodes for pyx files
 #
 
+def merge_attributes(target_obj, source_objs, attribute_names,
+                     template_mgr):
+    for merge_attr in attribute_names:
+        values = [getattr(obj, merge_attr) for obj in source_objs]
+        if all_equal(values):
+            setattr(target_obj, merge_attr, values[0])
+        else:
+            code = template_mgr.get_code_for_values(values, merge_attr)
+            setattr(target_obj, merge_attr, code)
+
 class TemplatedCyArrayArg(cy_wrap._CyArrayArgWrapper):
+    merge_attr_names = ['intern_name', 'extern_name',
+                        'ktp', 'py_type_name', 'npy_enum']
     def __init__(self, args, template_mgr):
         cy_wrap._CyArrayArgWrapper.__init__(self, args[0].arg)
+        merge_attributes(self, args, self.merge_attr_names, template_mgr)
 
-        for merge_attr in ('ktp', 'py_type_name', 'npy_enum'):
-            values = [getattr(arg, merge_attr) for arg in args]
-            code = template_mgr.get_code_for_values(values, merge_attr)
-            setattr(self, merge_attr, code)
-
-#        self.args = args
-#        self.template_mgr = template_mgr
-        
-        # If names are not all the same we must use a template for it
-        # TODO: Just assume this for now
-##         if 0:
-##             names = [arg.name for arg in args]
-##             if all(names[0] == x for x in names[1:]):
-##                 self.name = names[0]
-##             else:
-##                 self.name = template_mgr.get_variable_code(
-##                     template_mgr.add_variable(names))
+class TemplatedCyArg(cy_wrap._CyArgWrapper):
+    merge_attr_names = ['intern_name', 'name', 'cy_dtype_name']
+    def __init__(self, args, template_mgr):
+        cy_wrap._CyArgWrapper.__init__(self, args[0].arg)
+        merge_attributes(self, args, self.merge_attr_names, template_mgr)
 
 def get_templated_cy_arg_wrapper(args, template_mgr):
-    assert all_same(type(x) for x in args)
     cls = type(args[0])
-    if cls is cy_wrap._CyArrayArgWrapper:
+    if cls == cy_wrap._CyArrayArgWrapper:
         return TemplatedCyArrayArg(args, template_mgr)
+    elif cls in (cy_wrap._CyArgWrapper, cy_wrap._CyCmplxArg):
+        return TemplatedCyArg(args, template_mgr)
     else:
-        print 'warning'
-        return args[0]
+        warn('Not implemented: Template merging of arguments of type %s' % cls.__name__)
+        raise UnableToMergeError()
 
 class TemplatedProcedure(cy_wrap.ProcWrapper):
 
