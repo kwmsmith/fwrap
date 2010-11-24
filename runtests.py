@@ -7,6 +7,16 @@ WITH_CYTHON = True
 TEST_DIRS = ['compile', 'errors', 'run', 'pyregr']
 TEST_RUN_DIRS = ['run', 'pyregr']
 
+flags_re = re.compile(r'^(!|C)\s+configure-flags:(.*)$', re.MULTILINE)
+
+def parse_testcase_flag_sets(filename):
+    with file(filename) as f:
+        contents = f.read()
+    result = []
+    for m in flags_re.finditer(contents):
+        result.append(m.group(2).split())
+    return result
+
 class FwrapTestBuilder(object):
     def __init__(self, rootdir, workdir, selectors, exclude_selectors,
                  cleanup_workdir, cleanup_sharedlibs, verbosity=0,
@@ -55,15 +65,17 @@ class FwrapTestBuilder(object):
                 test_class = FwrapRunTestCase
             else:
                 test_class = FwrapCompileTestCase
-            suite.addTest(self.build_test(test_class, path, workdir, filename))
+            flag_sets = parse_testcase_flag_sets(os.path.join(path, filename))
+            for extra_flags in flag_sets:
+                suite.addTest(self.build_test(test_class, path, workdir, filename, extra_flags))
         return suite
 
-    def build_test(self, test_class, path, workdir, filename):
+    def build_test(self, test_class, path, workdir, filename, extra_flags):
         return test_class(path, workdir, filename,
                 cleanup_workdir=self.cleanup_workdir,
                 cleanup_sharedlibs=self.cleanup_sharedlibs,
                 verbosity=self.verbosity,
-                configure_flags=self.configure_flags)
+                configure_flags=self.configure_flags + extra_flags)
 
 class _devnull(object):
 

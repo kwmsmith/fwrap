@@ -17,6 +17,7 @@ FC_F_TMPL_F77 = "%s_fc.f"
 
 CY_PXD_TMPL = "%s.pxd"
 CY_PYX_TMPL = "%s.pyx"
+CY_PYX_IN_TMPL = "%s.pyx.in"
 
 GENCONFIG_SRC = "genconfig.f90"
 TYPE_SPECS_SRC = "fwrap_type_specs.in"

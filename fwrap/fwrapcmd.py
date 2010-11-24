@@ -121,6 +121,7 @@ def print_file_status(filename):
     return any_changed
 
 def status_cmd(opts):
+    print 'TODO: Not yet .pyx.in-aware'
     if len(opts.paths) == 0:
         if opts.recursive:
             opts.paths = ['.']
@@ -314,8 +315,9 @@ def fwrap_main(args):
     argparser = create_argument_parser()
     opts = argparser.parse_args(args)
     if hasattr(opts, 'wrapper_pyx'):
-        if not opts.wrapper_pyx.endswith('.pyx'):
-            raise ValueError('Cython wrapper file name must end in .pyx')
+        if (not opts.wrapper_pyx.endswith('.pyx') and
+            not opts.wrapper_pyx.endswith('.pyx.in')):
+            raise ValueError('Cython wrapper file name must end in .pyx or .pyx.in')
 
     return opts.func(opts)
 

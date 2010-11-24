@@ -8,6 +8,7 @@
 import os, sys, shutil
 import subprocess
 from optparse import OptionParser, OptionGroup
+import fwrap.configuration
 
 PROJECT_OUTDIR = 'fwproj'
 PROJECT_NAME = PROJECT_OUTDIR
@@ -117,9 +118,7 @@ def fwrapc(argv):
             help='name for the extension module [default %default]')
     configure_opts.add_option("--outdir",
                               help='directory for the intermediate files [default %default]')
-    configure_opts.add_option('--f77binding', action='store_true',
-                              help='avoid iso_c_binding and use older f2py-style '
-                              'wrapping instead')
+    fwrap.configuration.add_cmdline_options(configure_opts.add_option)
     parser.add_option_group(configure_opts)
 
     conf_defaults = dict(name=PROJECT_NAME, outdir=PROJECT_OUTDIR)

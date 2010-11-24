@@ -426,6 +426,12 @@ class Dim(object):
     def dim_spec_str(self):
         return ":".join([sp.expr_str for sp in self.spec])
 
+    def __eq__(self, other):
+        return (self.is_assumed_shape == other.is_assumed_shape and
+                self.is_assumed_size == other.is_assumed_size and
+                self.is_explicit_shape == other.is_explicit_shape and
+                self.sizeexpr == other.sizeexpr)
+
 class Dimension(object):
 
     def __init__(self, dims):

@@ -15,8 +15,8 @@ from fwrap import cy_wrap
 from fwrap.code import CodeBuffer, CodeBufferFixedForm, reflow_fort
 from fwrap import configuration
 from fwrap.constants import (TYPE_SPECS_SRC, CY_PXD_TMPL, CY_PYX_TMPL,
-                             FC_PXD_TMPL, FC_F_TMPL, FC_F_TMPL_F77,
-                             FC_HDR_TMPL)
+                             CY_PYX_IN_TMPL, FC_PXD_TMPL, FC_F_TMPL,
+                             FC_F_TMPL_F77, FC_HDR_TMPL)
 
 
 PROJNAME = 'fwproj'
@@ -106,7 +106,8 @@ def generate(fort_ast, name, cfg, output_directory=None):
                    (generate_fc_h, (c_ast, name, cfg), FC_HDR_TMPL % name),
                    (generate_fc_pxd,(c_ast, name), FC_PXD_TMPL % name),
                    (generate_cy_pxd,(cython_ast, name), CY_PXD_TMPL % name),
-                   (generate_cy_pyx,(cython_ast, name, cfg), CY_PYX_TMPL % name) ]
+                   (generate_cy_pyx,(cython_ast, name, cfg),
+                    (CY_PYX_IN_TMPL if cfg.detect_templates else CY_PYX_TMPL) % name) ]
     if not cfg.f77binding:
         generators.append((generate_type_specs, (c_ast,name), constants.TYPE_SPECS_SRC))
 

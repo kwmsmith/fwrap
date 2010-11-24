@@ -383,7 +383,6 @@ class ArgWrapperBase(object):
     def extern_arg_list(self):
         return []
 
-
 class ArgWrapper(ArgWrapperBase):
 
     def __init__(self, arg):
@@ -429,6 +428,26 @@ class ArgWrapper(ArgWrapperBase):
         else:
             return []
 
+    def equal_up_to_type(self, other):
+        if type(self) is not type(other):
+            return False
+        if not (self.intent == other.intent and
+                self.init_code == other.init_code and
+                self.hide_in_wrapper == other.hide_in_wrapper and
+                self.check == other.check):
+            return False
+        sd = self.orig_arg.dimension
+        od = other.orig_arg.dimension
+        if sd is not None:
+            if od is None:
+                return False
+            if len(sd.dims) != len(od.dims):
+                return False
+            if sd.dims != od.dims: # pyf_iface.Dim implements __eq__
+                return False
+        return True
+                
+
 class ErrStrArgWrapper(ArgWrapperBase):
 
     def __init__(self):
@@ -463,6 +482,9 @@ class ErrStrArgWrapper(ArgWrapperBase):
     def all_dtypes(self):
         return [self.arg.dtype]
 
+    def equal_up_to_type(self, other):
+        return type(self) is type(other)
+
 
 class ArrayArgWrapper(ArgWrapper):
 
@@ -496,7 +518,6 @@ class ArrayArgWrapper(ArgWrapper):
                             'FW_ARR_DIM__',
                             self.extern_arg.name)
         return []
-
 
 class ScalarPtrWrapper(ArgWrapper):
 
