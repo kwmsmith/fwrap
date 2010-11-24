@@ -99,11 +99,15 @@ class Configuration:
         
         # Name comes from filename and not document
         if pyx_filename is not None: # allow default_cfg
-            if not pyx_filename.endswith('.pyx'):
-                raise ValueError('need a pyx file')
             path, basename = os.path.split(pyx_filename)
-            self.wrapper_name = basename[:-4]
             self.wrapper_path = os.path.realpath(path)
+            self.wrapper_basename = basename
+            for ext in ('.pyx.in', '.pyx'):
+                if basename.endswith(ext):
+                    self.wrapper_name = basename[-len(ext)]
+                    break
+            else:
+                raise ValueError('need a pyx file')
 
         # Non-persistent aliases -- useful if we in the future *may*
         # split one option into more options
@@ -194,7 +198,7 @@ class Configuration:
         self.document['vcs'] = (vcs, kw)
 
     def get_pyx_basename(self):
-        return '%s.pyx' % self.wrapper_name
+        return self.wrapper_basename
 
     def get_pyx_filename(self):
         return os.path.join(self.wrapper_path, self.get_pyx_basename())
