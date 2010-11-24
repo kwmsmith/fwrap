@@ -49,7 +49,8 @@ def gen_cdef_extern_decls(buf):
 def generate_cy_pyx(ast, name, buf, cfg):
     from fwrap.deduplicator import cy_deduplify
     ctx = CythonCodeGenerationContext(cfg)
-    ast = cy_deduplify(ast, cfg)    
+    if cfg.detect_templates:
+        ast = cy_deduplify(ast, cfg)    
     buf.putln("#cython: ccomplex=True")
     buf.putln('')
     buf.putln('# Fwrap configuration:')
