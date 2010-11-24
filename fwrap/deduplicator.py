@@ -171,26 +171,26 @@ class TemplateManager:
     var_pattern = None
     
     def __init__(self):
-        self.variables_by_name = {}
-        self.variables_by_values = {}
-        self.var_counter = 0
+        self.values_to_name = {}
+        self.name_to_values = {}
+        self.prefix_counters = {}
 
-    def get_code_for_values(self, values, varname=None):        
+    def get_code_for_values(self, values, prefix='sub'):        
         return self.get_variable_code(
-            self.add_variable(values, varname))
+            self.add_variable(values, prefix))
 
-    def add_variable(self, values, name=None):
+    def add_variable(self, values, prefix='sub'):
         values = tuple(str(x) for x in values)
-        reg_names = self.variables_by_values.setdefault(values, [])
+        name = self.values_to_name.get(values, None)
         if name is None:
-            if len(reg_names) > 0:
-                name = reg_names[0]
+            # Count number of times each prefix has been used
+            count = self.prefix_counters[prefix] = self.prefix_counters.get(prefix, 0) + 1
+            if count == 1:
+                name = prefix
             else:
-                self.var_counter += 1
-                name = 'sub%d' % self.var_counter
-        if name not in reg_names:
-            reg_names.append(name)
-        self.variables_by_name[name] = values
+                name = prefix + str(count)
+            self.values_to_name[values] = name
+            self.name_to_values[name] = values
         return name
 
     def get_variable_code(self, name):
@@ -201,20 +201,20 @@ class TempitaManager(TemplateManager):
     var_pattern = '{{%s}}'
     
     def put_start_loop(self, buf):
-        var_by_name = self.variables_by_name
+        var_by_name = self.name_to_values
         names = var_by_name.keys()
         names.sort()
+        buf.putln('{{py:')
         for name in names:
             values = var_by_name[name]
-            buf.putln('{{py: %s_values=%r}}' % (name, values))
+            buf.putln('%s_values = %s' % (name, repr(list(values))))
+        buf.putln('}}')
         if len(var_by_name) == 1:
             buf.putln('{{for %s in %s_values}}' % (names[0], names[0]))
         else:
             buf.putln('{{for %s' % ', '.join(names))
             buf.putln('       in zip(%s)}}' % ', '.join('%s_values' % name
                                                         for name in names))
-        
-
     def put_end_loop(self, buf):
         buf.putln('{{endfor}}')
 

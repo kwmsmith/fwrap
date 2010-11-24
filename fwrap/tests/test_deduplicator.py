@@ -30,14 +30,25 @@ def test_grouping():
                              [['sbar', 'dbar', 'cbar'],
                               ['sfoo', 'cfoo', 'zfoo']])
 
-def test_tempita():
-    mgr = TempitaManager()
+def test_template_manager():
+    mgr = TemplateManager()
     mgr.add_variable([1, 2, 3], 'myname')
-    eq_(mgr.get_variable_code('myname'), '{{myname}}')
     eq_(mgr.add_variable([1, 2, 3]), 'myname')
-    eq_(mgr.add_variable([1, 5, 3]), 'sub1')
+    eq_(mgr.add_variable([1, 5, 3]), 'sub')
     eq_(mgr.add_variable([1, 3, 3]), 'sub2')
-    eq_(mgr.add_variable([1, 5, 3]), 'sub1')
+    eq_(mgr.add_variable([1, 5, 3]), 'sub')
+
+    eq_(mgr.add_variable([1, 5, 3], 'pre'), 'sub')
+    eq_(mgr.add_variable([2], 'pre'), 'pre')    
+    eq_(mgr.add_variable([5], 'pre'), 'pre2')
+    eq_(mgr.add_variable([2], 'pre'), 'pre')
 
     
-
+def test_tempita_manager():
+    mgr = TempitaManager()
+    eq_(mgr.get_code_for_values([1,2,3]), '{{sub}}')
+    eq_(mgr.get_code_for_values([1,2,3]), '{{sub}}')
+    eq_(mgr.get_code_for_values([1,2,4]), '{{sub2}}')
+    eq_(mgr.get_code_for_values([1,2,4], 'pre'), '{{sub2}}')
+    eq_(mgr.get_code_for_values([1,2,4,5], 'pre'), '{{pre}}')
+    
