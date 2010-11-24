@@ -15,6 +15,8 @@ def parse_testcase_flag_sets(filename):
     result = []
     for m in flags_re.finditer(contents):
         result.append(m.group(2).split())
+    if len(result) == 0:
+        result = [[]]
     return result
 
 class FwrapTestBuilder(object):
