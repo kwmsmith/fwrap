@@ -10,6 +10,20 @@
 import re
 from fwrap import cy_wrap
 
+#
+# Utilities
+#
+unique = object()
+def all_same(iterable):
+    return reduce(lambda x, y: x if x is y else unique, iterable) is not unique
+
+def all_equal(iterable):
+    return reduce(lambda x, y: x if x == y else unique, iterable) is not unique
+
+
+#
+# Detect templates and insert them into an ast
+#
 
 class UnableToMergeError(Exception):
     pass
@@ -23,7 +37,7 @@ def cy_deduplify(cy_ast, cfg):
     for names_in_group in groups:
         procs = [name_to_proc[name] for name in names_in_group]
         try:
-            template_node = cy_create_template(procs)
+            template_node = cy_create_template(procs, cfg)
         except UnableToMergeError:
             continue
         # Insert the created template at the position
@@ -37,12 +51,11 @@ def cy_deduplify(cy_ast, cfg):
     print cy_ast
     return cy_ast
 
-def cy_create_template(procs):
+def cy_create_template(procs, cfg):
     """Make an attempt to merge the given procedures into a template
     """
     arg_lists = [proc.arg_mgr.args for proc in procs]
-    n = len(arg_lists[0])
-    if any(len(lst) != n for lst in arg_lists[1:]):
+    if not all_equal(len(lst) for lst in arg_lists):
         # Different number of arguments
         raise UnableToMergeError()
     for matched_args in zip(*arg_lists):
@@ -50,8 +63,7 @@ def cy_create_template(procs):
         for arg in matched_args[1:]:
             if not arg0.equal_up_to_type(arg):
                 raise UnableToMergeError()
-    print [x.name for x in procs]
-    return procs[0]
+    return TemplatedProcedure(procs, cfg)
 
 blas_re = re.compile(r'^([sdcz])([a-z0-9_]+)$')
 
@@ -90,3 +102,121 @@ def find_candidate_groups_by_name(names):
 
     return result
     
+#
+# Template ast nodes for pyx files
+#
+
+class TemplatedCyArrayArg(cy_wrap._CyArrayArgWrapper):
+    def __init__(self, args, template_mgr):
+        cy_wrap._CyArrayArgWrapper.__init__(self, args[0].arg)
+
+        self.ktp = template_mgr.get_code_for_values(
+            arg.ktp for arg in args)
+        self.py_type_name = template_mgr.get_code_for_values(
+            arg.py_type_name for arg in args)
+
+#        self.args = args
+#        self.template_mgr = template_mgr
+        
+        # If names are not all the same we must use a template for it
+        # TODO: Just assume this for now
+##         if 0:
+##             names = [arg.name for arg in args]
+##             if all(names[0] == x for x in names[1:]):
+##                 self.name = names[0]
+##             else:
+##                 self.name = template_mgr.get_variable_code(
+##                     template_mgr.add_variable(names))
+
+def get_templated_cy_arg_wrapper(args, template_mgr):
+    assert all_same(type(x) for x in args)
+    cls = type(args[0])
+    if cls is cy_wrap._CyArrayArgWrapper:
+        return TemplatedCyArrayArg(args, template_mgr)
+    else:
+        print 'warning'
+        return args[0]
+
+class TemplatedProcedure(cy_wrap.ProcWrapper):
+
+    def __init__(self, procs, cfg):
+        cy_wrap.ProcWrapper.__init__(self, procs[0].wrapped)
+        self.template_mgr = create_template_manager(cfg)
+
+        self.procs = procs
+        self.names = [proc.name for proc in procs]
+        self.template_mgr.add_variable(self.names, 'procname')
+        self.name = self.template_mgr.get_variable_code('procname')
+        
+        merged_args = [get_templated_cy_arg_wrapper(matched_args,
+                                                     self.template_mgr)
+                       for matched_args in
+                       zip(*[proc.arg_mgr.args for proc in procs])]
+        self.arg_mgr = cy_wrap.CyArgWrapperManager(merged_args)
+
+    def generate_wrapper(self, ctx, buf):
+        self.template_mgr.put_start_loop(buf)
+        cy_wrap.ProcWrapper.generate_wrapper(self, ctx, buf)
+        self.template_mgr.put_end_loop(buf)
+
+    def get_names(self):
+        return [proc.name for proc in self.procs]
+
+#
+# Template emitting code
+#
+
+class TemplateManager:
+    var_pattern = None
+    
+    def __init__(self):
+        self.variables_by_name = {}
+        self.variables_by_values = {}
+        self.var_counter = 0
+
+    def get_code_for_values(self, values, varname=None):        
+        return self.get_variable_code(
+            self.add_variable(values, varname))
+
+    def add_variable(self, values, name=None):
+        values = tuple(str(x) for x in values)
+        reg_names = self.variables_by_values.setdefault(values, [])
+        if name is None:
+            if len(reg_names) > 0:
+                name = reg_names[0]
+            else:
+                self.var_counter += 1
+                name = 'sub%d' % self.var_counter
+        if name not in reg_names:
+            reg_names.append(name)
+        self.variables_by_name[name] = values
+        return name
+
+    def get_variable_code(self, name):
+        return self.var_pattern % name
+
+
+class TempitaManager(TemplateManager):
+    var_pattern = '{{%s}}'
+    
+    def put_start_loop(self, buf):
+        var_by_name = self.variables_by_name
+        names = var_by_name.keys()
+        names.sort()
+        for name in names:
+            values = var_by_name[name]
+            buf.putln('{{py: %s_values=%r}}' % (name, values))
+        if len(var_by_name) == 1:
+            buf.putln('{{for %s in %s_values}}' % (names[0], names[0]))
+        else:
+            buf.putln('{{for %s' % ', '.join(names))
+            buf.putln('       in zip(%s)}}' % ', '.join('%s_values' % name
+                                                        for name in names))
+        
+
+    def put_end_loop(self, buf):
+        buf.putln('{{endfor}}')
+
+
+def create_template_manager(cfg):
+    return TempitaManager()

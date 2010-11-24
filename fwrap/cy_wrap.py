@@ -88,7 +88,11 @@ For usage information see the function docstrings.
     dstring += ["Functions",
                 "---------"]
     # Functions
-    names = sorted(["%s(...)" % proc.name for proc in ast])
+    names = []
+    for proc in ast:
+        names.extend(proc.get_names())
+    names.sort()
+    names = ["%s(...)" % name for name in names]
     dstring += names
 
     dstring += [""]
@@ -376,6 +380,8 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
     hide_in_wrapper = False
 
     def __init__(self, arg):
+        from fwrap.gen_config import py_type_name_from_type
+
         self.arg = arg
         self.extern_name = _py_kw_mangler(self.arg.name)
         self.intern_name = '%s_' % self.extern_name
@@ -391,6 +397,10 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
                 dim.sizeexpr for dim in arg.orig_arg.dimension]
         if arg.hide_in_wrapper:
             raise NotImplementedError()
+        # Note: The following are set to something else in
+        # deduplicator.TemplatedCyArrayArg
+        self.ktp = self.arg.ktp
+        self.py_type_name = py_type_name_from_type(self.ktp)
 
     def extern_declarations(self):
         default_value = 'None' if self.explicit_out_array else None
@@ -398,7 +408,7 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
 
     def intern_declarations(self, ctx):
         decls = ["cdef np.ndarray[%s, ndim=%d, mode='fortran'] %s" %
-                (self.arg.ktp,
+                (self.ktp,
                  self.arg.ndims,
                  self.intern_name,)]
         if ctx.cfg.f77binding:
@@ -408,8 +418,7 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
         return decls            
 
     def _get_py_dtype_name(self):
-        from fwrap.gen_config import py_type_name_from_type
-        return py_type_name_from_type(self.arg.ktp)
+        return self.py_type_name
 
     def call_arg_list(self, ctx):
         if not ctx.cfg.f77binding:
@@ -417,7 +426,7 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
         else:
             shape_expr = self.shape_var_name
         return [shape_expr,
-                '<%s*>np.PyArray_DATA(%s)' % (self.arg.ktp, self.intern_name)]
+                '<%s*>np.PyArray_DATA(%s)' % (self.ktp, self.intern_name)]
 
     def pre_call_code(self, ctx):
         # NOTE: we can support a STRICT macro that would disable the
@@ -535,7 +544,7 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
     def call_arg_list(self, ctx):
         shapes = ["&%s[%d]" % (self.shape_name, i)
                     for i in range(self.arg.ndims+1)]
-        data = ["<%s*>%s.data" % (self.arg.ktp, self.intern_name)]
+        data = ["<%s*>%s.data" % (self.ktp, self.intern_name)]
         return shapes + data
 
     def _gen_dstring(self):
@@ -630,13 +639,17 @@ class CyArgWrapperManager(object):
             descrs.extend(arg.out_dstring())
         return descrs
 
-
+    
 class ProcWrapper(object):
 
     def __init__(self, wrapped):
         self.wrapped = wrapped
         self.name = _py_kw_mangler(self.wrapped.wrapped_name())
         self.arg_mgr = CyArgWrapperManager.from_fwrapped_proc(wrapped)
+
+    def get_names(self):
+        # A template proc can provide more than one name
+        return [self.name]
 
     def all_dtypes(self):
         return self.wrapped.all_dtypes()

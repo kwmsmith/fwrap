@@ -29,3 +29,15 @@ def test_grouping():
          'sfoo', 'zfoo', 'cfoo']),
                              [['sbar', 'dbar', 'cbar'],
                               ['sfoo', 'cfoo', 'zfoo']])
+
+def test_tempita():
+    mgr = TempitaManager()
+    mgr.add_variable([1, 2, 3], 'myname')
+    eq_(mgr.get_variable_code('myname'), '{{myname}}')
+    eq_(mgr.add_variable([1, 2, 3]), 'myname')
+    eq_(mgr.add_variable([1, 5, 3]), 'sub1')
+    eq_(mgr.add_variable([1, 3, 3]), 'sub2')
+    eq_(mgr.add_variable([1, 5, 3]), 'sub1')
+
+    
+
