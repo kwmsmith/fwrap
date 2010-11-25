@@ -7,6 +7,7 @@ from fwrap.version import get_version
 from fwrap import git
 import re
 import os
+from glob import glob
 from StringIO import StringIO
 from copy import copy, deepcopy
 
@@ -156,24 +157,24 @@ class Configuration:
         else:
             self.document['vcs'] = ('none', {'head': None})
 
-    def add_wrapped_file(self, filename):
-        sha1 = sha1_of_file(filename)
-        self.document['wraps'].append((filename, {'sha1': sha1}))
+    def add_wrapped_file(self, pattern):
+        sha1 = sha1_of_pattern(pattern)
+        self.document['wraps'].append((pattern, {'sha1': sha1}))
 
     def wrapped_files_status(self):
         """
         Returns a report [(filename, needs_update), ...] of all
         wrapped files.
         """
-        return [(filename, sha1_of_file(filename) != attrs['sha1'])
-                for filename, attrs in self.wraps]
+        return [(filename, sha1_of_pattern(filename) != attrs['sha1'])
+                for filename, attr in filenames]
 
     def serialize_to_pyx(self, buf):
         parse_tree = document_to_parse_tree(self.document, self.keys)
         serialize_inline_configuration(parse_tree, buf)
 
     def get_source_files(self):
-        return [fname for fname, attrs in self.wraps]
+        return [filename for filename, attrs in self.wraps]
 
     def is_routine_included(self, routine_name):
         for ex_name, ex_attr in self.exclude:
@@ -216,6 +217,23 @@ class Configuration:
 #
 # Utils
 #
+
+def expand_source_patterns(filenames):
+    # Expand source patterns, and then sort by base names
+    # to keep order stable between machines
+    result = sum([glob(os.path.expandvars(x)) for x in filenames], [])
+    result.sort(key=lambda x: os.path.basename(x))
+    return result
+
+def sha1_of_pattern(pattern):
+    import hashlib
+    h = hashlib.sha1()
+    print pattern
+    for filename in expand_source_patterns([pattern]):
+        with file(filename) as f:
+            h.update(f.read())
+    return h.hexdigest()    
+    
 
 def sha1_of_file(filename):
     import hashlib

@@ -82,9 +82,12 @@ def create_cmd(opts):
     # Add wrapped files to configurtion
     for filename in opts.fortranfiles:
         cfg.add_wrapped_file(filename)
-    # Create wrapper files
-    created_files, routine_names = fwrapper.wrap(opts.fortranfiles, cfg.wrapper_name,
-                                                 cfg)
+    
+    # Create wrapper files.
+    created_files, routine_names = fwrapper.wrap(
+        configuration.expand_source_patterns(opts.fortranfiles),
+        cfg.wrapper_name,
+        cfg)
     # Commit
     if opts.versioned:
         message = opts.message
