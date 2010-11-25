@@ -207,24 +207,16 @@ Cython, & Python.
         parser.add_option('-n', '--name', dest='name',
                           help='name for the project directory and extension module '
                           '[default: %default]')
+        parser.add_option('--pyf',
+                          help='merge in the manual changes in this pyf-file to '
+                          'the wrapper')
         configuration.add_cmdline_options(parser.add_option)
         args = None
     else:
         args = sources
     parsed_options, source_files = parser.parse_args(args=args)
     if not source_files:
-        parser.error("no source files")
-        
-    # Any .pyf files are assumed to override any provided Fortran
-    # files with the same name, so remove corresponding Fortran files
-    # from argument list
-    source_bases, source_exts = zip(*[os.path.splitext(x) for x in source_files])
-    for i, ext in enumerate(source_exts):
-        if ext == '.pyf':
-            source_files = [x
-                            for j, x in enumerate(source_files)
-                            if i == j or (os.path.realpath(source_bases[i]) !=
-                                          os.path.realpath(source_bases[j]))]
+        parser.error("no source files")        
     cfg = configuration.Configuration(parsed_options.name + '.pyx',
                                       cmdline_options=parsed_options)
     wrap(source_files, parsed_options.name, cfg)
