@@ -71,3 +71,16 @@
         ano(:,1:n2) = ainout(:,1:n2)
         ainout(:,1:n2) = ain(:,1:n2) + ano(:,1:n2)
       end subroutine assumed_size
+
+      subroutine double_if_A(x, y)
+        character, intent(in) :: x
+        integer, intent(inout) :: y
+        if (x .eq. 'A') then
+           y = y * 2
+        endif
+      end subroutine
+
+      subroutine emit_F(x)
+        character, intent(out) :: x
+        x = 'F'
+      end subroutine

@@ -130,7 +130,7 @@ class ProcWrapper(object):
         generate_interface(self.wrapped, buf, cfg, gmn)
         self.temp_declarations(buf, cfg)
         self.pre_call_code(buf, cfg)
-        self.proc_call(buf)
+        self.proc_call(buf, cfg)
         self.post_call_code(buf, cfg)
         buf.dedent()
         buf.putln(self.proc_end())
@@ -165,16 +165,16 @@ class ProcWrapper(object):
         for line in self.arg_man.post_call_code(cfg):
             buf.putln(line)
 
-    def proc_call(self, buf):
+    def proc_call(self, buf, cfg):
         proc_call = "%s(%s)" % (self.wrapped.name,
-                                ', '.join(self.call_arg_list()))
+                                ', '.join(self.call_arg_list(cfg)))
         if isinstance(self, SubroutineWrapper):
             buf.putln("call %s" % proc_call)
         elif isinstance(self, FunctionWrapper):
             buf.putln("%s = %s" % (self.proc_result_name(), proc_call))
 
-    def call_arg_list(self):
-        return self.arg_man.call_arg_list()
+    def call_arg_list(self, cfg):
+        return self.arg_man.call_arg_list(cfg)
 
     def c_prototype(self, cfg):
         if not cfg.f77binding:
@@ -249,12 +249,13 @@ class ArgWrapperManager(object):
         if self.isfunction:
             self.ret_arg = self.arg_wrappers[0]
 
-    def call_arg_list(self):
-        cl = [argw.intern_name for argw in self.arg_wrappers
-                if (argw.intern_name != FunctionWrapper.RETURN_ARG_NAME and
-                    argw.intern_name != constants.ERR_NAME and
-                    argw.intern_name != constants.ERRSTR_NAME and
-                    argw.intern_name != _arg_name_mangler(FunctionWrapper.RETURN_ARG_NAME))]
+    def call_arg_list(self, cfg):
+        intern_names = [argw.get_call_name(cfg) for argw in self.arg_wrappers]
+        cl = [intern_name for intern_name in intern_names
+                if (intern_name != FunctionWrapper.RETURN_ARG_NAME and
+                    intern_name != constants.ERR_NAME and
+                    intern_name != constants.ERRSTR_NAME and
+                    intern_name != _arg_name_mangler(FunctionWrapper.RETURN_ARG_NAME))]
         return cl
 
     def proc_result_name(self):
@@ -316,7 +317,7 @@ class ArgWrapperManager(object):
     def pre_call_code(self, cfg):
         all_pcc = [self.assign_err_flag('FW_INIT_ERR__', cfg)]
         for argw in self.arg_wrappers:
-            pcc = argw.pre_call_code()
+            pcc = argw.pre_call_code(cfg)
             if pcc:
                 all_pcc.extend(pcc)
         return all_pcc
@@ -365,7 +366,7 @@ class ArgWrapperBase(object):
 
     is_array = False
 
-    def pre_call_code(self):
+    def pre_call_code(self, cfg):
         return []
 
     def post_call_code(self):
@@ -377,11 +378,14 @@ class ArgWrapperBase(object):
     def c_declarations(self):
         return []
 
-    def call_arg_list(self):
+    def call_arg_list(self, cfg):
         return []
 
     def extern_arg_list(self):
         return []
+
+    def get_call_name(self, cfg):
+        return self.intern_name
 
 class ArgWrapper(ArgWrapperBase):
 
@@ -509,7 +513,7 @@ class ArrayArgWrapper(ArgWrapper):
                                 dimension=self._dimension_exprs)
         self.extern_args = [self.shape_arg, self.extern_arg]
 
-    def pre_call_code(self):
+    def pre_call_code(self, cfg):
         dims = pyf.Dimension(self._dimension_exprs)
         ckstr = _dim_test(self.orig_arg.dimension, dims)
         if ckstr:
@@ -535,10 +539,41 @@ class ScalarPtrWrapper(ArgWrapper):
                                         isvalue=True)
         self.extern_args = [self.extern_arg]
 
-    def pre_call_code(self):
-        return ['call c_f_pointer(%s, %s)' %
-                (self.extern_arg.name,
-                 self.intern_var.name)]
+    # Following methods:
+    # In the case of iso_c_binding, we take the argument as a c_ptr
+    # and then cast to the internal type using c_f_pointer.
+    # For f77binding, we declare the variable directly (with the
+    # "internal" type, using the external name).
+
+    def get_call_name(self, cfg):
+        if cfg.f77binding:
+            return self.name
+        else:
+            return self.intern_name
+
+    def pre_call_code(self, cfg):
+        if cfg.f77binding:
+            return []
+        else:
+            return ['call c_f_pointer(%s, %s)' %
+                    (self.extern_arg.name,
+                     self.intern_var.name)]
+
+    def extern_declarations(self, cfg):
+        if cfg.f77binding:
+            f77_extern_var = pyf.Var(name=self.name,
+                                     dtype=self.intern_dtype,
+                                     isptr=False)
+            return [self.len_arg.declaration(cfg),
+                    f77_extern_var.declaration(cfg)]
+        else:
+            return super(ScalarPtrWrapper, self).extern_declarations(cfg)
+
+    def intern_declarations(self, cfg):
+        if cfg.f77binding:
+            return []
+        else:
+            return super(ScalarPtrWrapper, self).intern_declarations(cfg)
 
 
 class LogicalWrapper(ScalarPtrWrapper):
@@ -581,9 +616,9 @@ class CharArgWrapper(ScalarPtrWrapper):
 
         return ck_code
 
-    def pre_call_code(self):
+    def pre_call_code(self, cfg):
         return self._err_ck_code() + \
-                super(CharArgWrapper, self).pre_call_code()
+                super(CharArgWrapper, self).pre_call_code(cfg)
 
 
 class ArrayPtrArg(ArrayArgWrapper):
@@ -609,11 +644,11 @@ class ArrayPtrArg(ArrayArgWrapper):
         return ['call c_f_pointer(%s, %s, (/ %s /))' %
                 (self.extern_arg.name, self.intern_var.name, ', '.join(dim_names))]
 
-    def _check_code(self):
-        return super(ArrayPtrArg, self).pre_call_code()
+    def _check_code(self, cfg):
+        return super(ArrayPtrArg, self).pre_call_code(cfg)
 
-    def pre_call_code(self):
-        return self._check_code() + self._pointer_call()
+    def pre_call_code(self, cfg):
+        return self._check_code(cfg) + self._pointer_call()
 
 # FIXME: uncomment when logical arrays use c_f_pointer
 # FIXME: currently this is a workaround for 4.3.3 <= gfortran version < 4.4.
@@ -646,8 +681,8 @@ class CharArrayArgWrapper(ArrayPtrArg):
         self.extern_args = [self.len_arg] + self.extern_args
 
 
-    def _check_code(self):
-        orig_check = super(CharArrayArgWrapper, self)._check_code()
+    def _check_code(self, cfg):
+        orig_check = super(CharArrayArgWrapper, self)._check_code(cfg)
         if self.is_assumed_len:
             char_ck = []
         else:

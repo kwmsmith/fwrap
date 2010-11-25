@@ -32,18 +32,24 @@ def test_results(func, args, results):
     return True
 
 __doc__ = u'''
->>> int_default(1,2) == (6, 2)
-True
->>> int_x_len(1,2,4,5,7,8,10,11) == (2, 3, 5, 9, 8, 15, 11L, 21L)
-True
->>> int_kind_x(1,2,4,5,7,8,10,11) == (2, 3, 5, 9, 8, 15, 11L, 21L)
-True
+    >>> int_default(1,2) == (6, 2)
+    True
+    >>> int_x_len(1,2,4,5,7,8,10,11) == (2, 3, 5, 9, 8, 15, 11L, 21L)
+    True
+    >>> int_kind_x(1,2,4,5,7,8,10,11) == (2, 3, 5, 9, 8, 15, 11L, 21L)
+    True
 
 
->>> init()
->>> test_results(explicit_shape, (n1, n2, ain, aout, ainout, ano), (aout_, ainout_, ano_))
-True
->>> init()
->>> test_results(assumed_size, (n1, n2, ain, aout, ainout, ano), (aout_, ainout_, ano_))
-True
+    >>> init()
+    >>> test_results(explicit_shape, (n1, n2, ain, aout, ainout, ano), (aout_, ainout_, ano_))
+    True
+    >>> init()
+    >>> test_results(assumed_size, (n1, n2, ain, aout, ainout, ano), (aout_, ainout_, ano_))
+    True
+
+    >>> double_if_a('B', 8), double_if_a('A', 8)  # TODO Python 3
+    (8, 16)
+    
+    >>> emit_f() # TODO Python 3
+    'F'
 '''
