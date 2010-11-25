@@ -105,7 +105,7 @@ class Configuration:
             self.wrapper_basename = basename
             for ext in ('.pyx.in', '.pyx'):
                 if basename.endswith(ext):
-                    self.wrapper_name = basename[-len(ext)]
+                    self.wrapper_name = basename[:-len(ext)]
                     break
             else:
                 raise ValueError('need a pyx file')
