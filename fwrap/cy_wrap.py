@@ -141,6 +141,9 @@ class _CyArgWrapper(_CyArgWrapperBase):
         self.init_code = arg.init_code
         self.check = arg.check
 
+    def set_extern_name(self, name):
+        self.name = name
+
     def _get_cy_dtype_name(self):
         return self.arg.ktp
 
@@ -391,8 +394,7 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
         from fwrap.gen_config import py_type_name_from_type
 
         self.arg = arg
-        self.extern_name = _py_kw_mangler(self.arg.name)
-        self.intern_name = '%s_' % self.extern_name
+        self.set_extern_name(_py_kw_mangler(self.arg.name))
         self.shape_var_name = '%s_shape_' % self.extern_name
         self.intent = arg.intent
 
@@ -410,6 +412,10 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
         self.ktp = self.arg.ktp
         self.py_type_name = py_type_name_from_type(self.ktp)
         self.npy_enum = self.arg.dtype.npy_enum
+
+    def set_extern_name(self, name):
+        self.extern_name = name
+        self.intern_name = '%s_' % name
 
     def extern_declarations(self):
         default_value = 'None' if (self.intent == 'out' and
@@ -575,6 +581,7 @@ class CyArgWrapperManager(object):
 
     def __init__(self, args):
         self.args = args
+        self.args_in_extern_order  = args
 
     @classmethod
     def from_fwrapped_proc(cls, fw_proc):
@@ -595,7 +602,7 @@ class CyArgWrapperManager(object):
 
     def arg_declarations(self):
         decls = []
-        for arg in self.args:
+        for arg in self.args_in_extern_order:
             decls.extend(arg.extern_declarations())
         return decls
 
@@ -607,7 +614,7 @@ class CyArgWrapperManager(object):
 
     def return_tuple_list(self):
         rtl = []
-        for arg in self.args:
+        for arg in self.args_in_extern_order:
             rtl.extend(arg.return_tuple_list())
         return rtl
 
@@ -625,13 +632,13 @@ class CyArgWrapperManager(object):
 
     def docstring_extern_arg_list(self):
         decls = []
-        for arg in self.args:
+        for arg in self.args_in_extern_order:
             decls.extend(arg.docstring_extern_arg_list())
         return decls
 
     def docstring_return_tuple_list(self):
         decls = []
-        for arg in self.args:
+        for arg in self.args_in_extern_order:
             decls.extend(arg.docstring_return_tuple_list())
         return decls
 
@@ -645,7 +652,7 @@ class CyArgWrapperManager(object):
 
     def docstring_out_descrs(self):
         descrs = []
-        for arg in self.args:
+        for arg in self.args_in_extern_order:
             descrs.extend(arg.out_dstring())
         return descrs
 
