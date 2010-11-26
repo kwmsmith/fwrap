@@ -10,7 +10,7 @@ from fwrap.pyf_iface import _py_kw_mangler, py_kw_mangle_expression
 from fwrap.pyf_utils import c_to_cython
 
 import re
-import warnings
+from warnings import warn
 
 plain_sizeexpr_re = re.compile(r'\(([a-zA-Z0-9_]+)\)')
 
@@ -118,6 +118,12 @@ def CyArgWrapper(arg):
     return _CyArgWrapper(arg)
 
 class _CyArgWrapperBase(object):
+    intent = None
+    init_code = ''
+    hide_in_wrapper = False
+    pyf_mode = False # TODO: Refactor so this is not needed
+    check = ()
+    
     def equal_up_to_type(self, other_arg):
         return self.arg.equal_up_to_type(other_arg.arg)    
 
@@ -131,6 +137,9 @@ class _CyArgWrapper(_CyArgWrapperBase):
         self.intern_name = self.name
         self.cy_dtype_name = self._get_cy_dtype_name()
         self.hide_in_wrapper = arg.hide_in_wrapper
+        self.intent = arg.intent
+        self.init_code = arg.init_code
+        self.check = arg.check
 
     def _get_cy_dtype_name(self):
         return self.arg.ktp
@@ -146,22 +155,22 @@ class _CyArgWrapper(_CyArgWrapperBase):
         string representation of possible default value (normally
         either None or 'None')
         """
-        if (self.arg.intent in ('in', 'inout', None) and
+        if (self.intent in ('in', 'inout', None) and
             not self.hide_in_wrapper):
             # In pyf files, one can insert initialization code using '= value'
             # in the declaration. For now, put it here (that is, only supports
             # literals and not expressions in the other arguments)
-            return [("%s %s" % (self.cy_dtype_name, self.name), self.arg.init_code)]
+            return [("%s %s" % (self.cy_dtype_name, self.name), self.init_code)]
         return []
 
     def docstring_extern_arg_list(self):
-        if (self.arg.intent in ("in", "inout", None) and
+        if (self.intent in ("in", "inout", None) and
             not self.hide_in_wrapper):
             return [self.name]
         return []
 
     def intern_declarations(self, ctx):
-        if self.arg.intent == 'out' or self.hide_in_wrapper:
+        if self.intent == 'out' or self.hide_in_wrapper:
             return ["cdef %s %s" % (self.cy_dtype_name, self.name)]
         return []
 
@@ -176,9 +185,9 @@ class _CyArgWrapper(_CyArgWrapperBase):
         # code (assumed to be in Cython). For hidden arguments, this
         # must be inserted here.
         lines = []
-        if self.hide_in_wrapper and self.arg.init_code is not None:
-            lines.append("%s = %s" % (self.name, self.arg.init_code))
-        for c in self.arg.check:
+        if self.hide_in_wrapper and self.init_code is not None:
+            lines.append("%s = %s" % (self.name, self.init_code))
+        for c in self.check:
             c = py_kw_mangle_expression(c)
             c = c_to_cython(c)
             lines.append("if not (%s):" % c)
@@ -188,7 +197,7 @@ class _CyArgWrapper(_CyArgWrapperBase):
     def return_tuple_list(self):
         if self.name == constants.ERR_NAME:
             return []
-        elif self.arg.intent in ('out', 'inout', None):
+        elif self.intent in ('out', 'inout', None):
             return [self.name]
         return []
 
@@ -197,19 +206,19 @@ class _CyArgWrapper(_CyArgWrapperBase):
     def _gen_dstring(self):
         dstring = ("%s : %s" %
                     (self.name, self._get_py_dtype_name()))
-        if self.arg.intent is not None:
-            dstring += ", intent %s" % (self.arg.intent)
+        if self.intent is not None:
+            dstring += ", intent %s" % (self.intent)
         return [dstring]
 
     def in_dstring(self):
-        if self.arg.intent not in ('in', 'inout', None):
+        if self.intent not in ('in', 'inout', None):
             return []
         return self._gen_dstring()
 
     def out_dstring(self):
         if self.name == constants.ERR_NAME:
             return []
-        if self.arg.intent not in ('out', 'inout', None):
+        if self.intent not in ('out', 'inout', None):
             return []
         return self._gen_dstring()
 
@@ -229,7 +238,7 @@ class _CyCharArg(_CyArgWrapper):
         return py_type_name_from_type(self.arg.ktp)
 
     def extern_declarations(self):
-        if self.arg.intent in ('in', 'inout', None):
+        if self.intent in ('in', 'inout', None):
             return [("%s %s" % (self.cy_dtype_name, self.name), None)]
         elif self.is_assumed_size():
             return [('%s %s' % (self.cy_dtype_name, self.name), None)]
@@ -238,7 +247,7 @@ class _CyCharArg(_CyArgWrapper):
     def intern_declarations(self, ctx):
         ret = ['cdef %s %s' % (self.cy_dtype_name, self.intern_name),
                 'cdef fw_shape_t %s' % self.intern_len_name]
-        if self.arg.intent in ('out', 'inout', None):
+        if self.intent in ('out', 'inout', None):
             ret.append('cdef char *%s' % self.intern_buf_name)
         return ret
 
@@ -272,11 +281,11 @@ class _CyCharArg(_CyArgWrapper):
        return ret
 
     def pre_call_code(self, ctx):
-        if self.arg.intent == 'in':
+        if self.intent == 'in':
             return self._in_pre_call_code()
-        elif self.arg.intent == 'out':
+        elif self.intent == 'out':
             return self._out_pre_call_code()
-        elif self.arg.intent in ('inout', None):
+        elif self.intent in ('inout', None):
             return self._inout_pre_call_code()
 
     def _fromstringandsize_call(self):
@@ -284,14 +293,14 @@ class _CyCharArg(_CyArgWrapper):
                     (self.intern_name, self.intern_len_name)
 
     def call_arg_list(self, ctx):
-        if self.arg.intent == 'in':
+        if self.intent == 'in':
             return ['&%s' % self.intern_len_name,
                     '<char*>%s' % self.intern_name]
         else:
             return ['&%s' % self.intern_len_name, self.intern_buf_name]
 
     def return_tuple_list(self):
-        if self.arg.intent in ('out', 'inout', None):
+        if self.intent in ('out', 'inout', None):
             return [self.intern_name]
         return []
 
@@ -299,8 +308,8 @@ class _CyCharArg(_CyArgWrapper):
         dstring = ["%s : %s" %
                     (self.name, self._get_py_dtype_name())]
         dstring.append("len %s" % self.get_len())
-        if self.arg.intent is not None:
-            dstring.append("intent %s" % (self.arg.intent))
+        if self.intent is not None:
+            dstring.append("intent %s" % (self.intent))
         return [", ".join(dstring)]
 
     def in_dstring(self):
@@ -385,14 +394,14 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
         self.extern_name = _py_kw_mangler(self.arg.name)
         self.intern_name = '%s_' % self.extern_name
         self.shape_var_name = '%s_shape_' % self.extern_name
+        self.intent = arg.intent
 
         # In the special case of explicit-shape intent(out) arrays,
         # find the expressions for constructing the output argument
-        self.explicit_out_array = (arg.intent == 'out' and
-                                   all(dim.is_explicit_shape
-                                       for dim in arg.orig_arg.dimension))
-        if self.explicit_out_array:
-            self.explicit_out_array_sizeexprs = [
+        self.is_explicit_array = all(dim.is_explicit_shape
+                                     for dim in arg.orig_arg.dimension)
+        if self.is_explicit_array:
+            self.explicit_array_sizeexprs = [
                 dim.sizeexpr for dim in arg.orig_arg.dimension]
         if arg.hide_in_wrapper:
             raise NotImplementedError()
@@ -403,7 +412,8 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
         self.npy_enum = self.arg.dtype.npy_enum
 
     def extern_declarations(self):
-        default_value = 'None' if self.explicit_out_array else None
+        default_value = 'None' if (self.intent == 'out' and
+                                   self.is_explicit_array) else None
         return [('object %s' % self.extern_name, default_value)]
 
     def intern_declarations(self, ctx):
@@ -438,10 +448,10 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
              'ndim' : self.arg.ndims}
         lines = []
 
-        allocate_outs = self.explicit_out_array
+        allocate_outs = self.is_explicit_array and self.intent == 'out'
         if allocate_outs:
-            sizeexprs = list(self.explicit_out_array_sizeexprs)
-            if ctx.language != 'pyf':
+            sizeexprs = list(self.explicit_array_sizeexprs)
+            if not self.pyf_mode:
                 # With .pyf, C expressions can be used directly
                 # Otherwise, only very simplest cases supported.
                 # TODO: Fix this up (compile Fortran-side function to give
@@ -449,7 +459,7 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
                 for i, expr in enumerate(sizeexprs):
                     m = plain_sizeexpr_re.match(expr)
                     if not m:
-                        warnings.warn(
+                        warn(
                             'Cannot automatically allocate explicit-shape intent(out) array '
                             'as expression is too complicated: %s' % expr)
                         allocate_outs = False
@@ -475,7 +485,7 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
         return []
 
     def return_tuple_list(self):
-        if self.arg.intent in ('out', 'inout', None):
+        if self.intent in ('out', 'inout', None):
             return [self.intern_name]
         return []
 
@@ -487,15 +497,15 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
                          self._get_py_dtype_name(),
                          ndims,
                          dims.attrspec))
-        if self.arg.intent is not None:
-            dstring += ", intent %s" % (self.arg.intent)
+        if self.intent is not None:
+            dstring += ", intent %s" % (self.intent)
         return [dstring]
 
     def in_dstring(self):
         return self._gen_dstring()
 
     def out_dstring(self):
-        if self.arg.intent not in ("out", "inout", None):
+        if self.intent not in ("out", "inout", None):
             return []
         return self._gen_dstring()
 
@@ -503,7 +513,7 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
         return [self.extern_name]
 
     def docstring_return_tuple_list(self):
-        if self.arg.intent in ('out', 'inout', None):
+        if self.intent in ('out', 'inout', None):
             return [self.extern_name]
         return []
 
@@ -556,7 +566,7 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
         dstring.append("len %s" % dtype_len)
         dstring.append("%dD array" % ndims)
         dstring.append(dims.attrspec)
-        if self.arg.intent is not None:
+        if self.intent is not None:
             dstring.append("intent %s" % self.arg.intent)
         return [", ".join(dstring)]
 

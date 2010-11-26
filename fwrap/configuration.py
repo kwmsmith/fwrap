@@ -174,7 +174,8 @@ class Configuration:
         serialize_inline_configuration(parse_tree, buf)
 
     def get_source_files(self):
-        return [filename for filename, attrs in self.wraps]
+        patterns = [filename for filename, attrs in self.wraps]
+        return expand_source_patterns(patterns)
 
     def is_routine_included(self, routine_name):
         for ex_name, ex_attr in self.exclude:

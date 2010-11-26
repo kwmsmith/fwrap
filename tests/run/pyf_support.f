@@ -1,7 +1,7 @@
 
         subroutine testone(m_hidden, m, n, arr)
-            ! Assert that m_hidden == m + 1.
-            ! Then do arr = arange(m*n).reshape(m, n)
+C       Assert that m_hidden == m + 1.
+C       Then do arr = arange(m*n).reshape(m, n)
             integer :: m_hidden, m, n, i, j, idx
             real*8 :: arr(1:m_hidden, 1:n)
             if (m_hidden /= m + 1) then

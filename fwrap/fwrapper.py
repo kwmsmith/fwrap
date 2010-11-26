@@ -21,7 +21,7 @@ from fwrap.constants import (TYPE_SPECS_SRC, CY_PXD_TMPL, CY_PYX_TMPL,
 
 PROJNAME = 'fwproj'
 
-def wrap(sources, name, cfg, output_directory=None):
+def wrap(sources, name, cfg, output_directory=None, pyf_to_merge=None):
     r"""Generate wrappers for sources.
 
     The core wrapping routine for fwrap.  Generates wrappers for the sources
@@ -60,7 +60,8 @@ def wrap(sources, name, cfg, output_directory=None):
     f_ast = parse(source_files, cfg)
 
     # Generate wrapper files
-    created_files = generate(f_ast, name, cfg, output_directory)
+    created_files = generate(f_ast, name, cfg, output_directory,
+                             pyf_to_merge=pyf_to_merge)
 
     return created_files
     
@@ -79,7 +80,8 @@ def parse(source_files, cfg):
     pyf_iface.check_tree(ast, cfg)
     return ast
 
-def generate(fort_ast, name, cfg, output_directory=None):
+def generate(fort_ast, name, cfg, output_directory=None,
+             pyf_to_merge=None):
     r"""Given a fortran abstract syntax tree ast, generate wrapper files
 
     :Input:
@@ -99,6 +101,15 @@ def generate(fort_ast, name, cfg, output_directory=None):
     routine_names = [sub.name for sub in fort_ast]
     c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
     cython_ast = cy_wrap.wrap_fc(c_ast)
+
+    if pyf_to_merge is not None:
+        # TODO: refactor
+        pyf_ast = parse([pyf_to_merge], cfg)
+        pyf_ast = fc_wrap.wrap_pyf_iface(pyf_ast)
+        pyf_ast = cy_wrap.wrap_fc(pyf_ast)
+        import mergepyf
+        mergepyf.mergepyf_ast_inplace(cython_ast, pyf_ast)
+        
 
     # Generate files and write them out
     generators = [ (generate_fc_f, (c_ast, name, cfg),
@@ -219,5 +230,6 @@ Cython, & Python.
         parser.error("no source files")        
     cfg = configuration.Configuration(parsed_options.name + '.pyx',
                                       cmdline_options=parsed_options)
-    wrap(source_files, parsed_options.name, cfg)
+    wrap(source_files, parsed_options.name, cfg,
+         pyf_to_merge=parsed_options.pyf)
     return 0
