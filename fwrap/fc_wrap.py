@@ -573,7 +573,7 @@ class FcScalarPtrArg(FcArg):
         if cfg.f77binding:
             return []
         else:
-            return super(FcScalarPtr, self).intern_declarations(cfg)
+            return super(FcScalarPtrArg, self).intern_declarations(cfg)
 
 
 class FcLogicalArg(FcScalarPtrArg):
