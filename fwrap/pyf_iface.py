@@ -117,6 +117,9 @@ class Dtype(object):
                 self.fw_ktp == other.fw_ktp and
                 self.odecl == other.odecl and
                 self.type == other.type)
+
+    def __ne__(self, other):
+        return not self == other
                 
     def type_spec(self):
         return '%s(kind=%s)' % (self.type, self.fw_ktp)
@@ -437,6 +440,9 @@ class Dim(object):
                 self.is_explicit_shape == other.is_explicit_shape and
                 self.sizeexpr == other.sizeexpr)
 
+    def __ne__(self, other):
+        return not self == other
+                
 class Dimension(object):
 
     def __init__(self, dims):
@@ -457,6 +463,14 @@ class Dimension(object):
             dimlist.append(dim.dim_spec_str())
         self.attrspec = "dimension(%s)" % (", ".join(dimlist))
 
+    def __eq__(self, other):
+        if not isinstance(other, Dimension):
+            return False
+        return self.dims == other.dims
+
+    def __ne__(self, other):
+        return not self == other
+                
     def __len__(self):
         return len(self.dims)
 
