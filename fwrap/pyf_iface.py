@@ -443,6 +443,9 @@ class Dim(object):
     def __ne__(self, other):
         return not self == other
                 
+    def __repr__(self):
+        return '<Dim: %s>' % self.sizeexpr
+
 class Dimension(object):
 
     def __init__(self, dims):
@@ -476,6 +479,9 @@ class Dimension(object):
 
     def __iter__(self):
         return iter(self.dims)
+
+    def __repr__(self):
+        return '<Dimension: %s>' % repr(self.dims)
 
 
 class Var(_NamedType):

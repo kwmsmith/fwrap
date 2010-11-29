@@ -140,3 +140,9 @@ class AstNode(object):
 
     def __repr__(self):
         return self.describe()
+
+    def equal_attributes(self, other, attributes):
+        for attrname in attributes:
+            if getattr(self, attrname) != getattr(other, attrname):
+                return False
+        return True
