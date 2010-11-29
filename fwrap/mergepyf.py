@@ -13,7 +13,7 @@ def mergepyf_ast_inplace(cython_ast, cython_ast_from_pyf):
             for proc in cython_ast]
 
 callstatement_re = re.compile(r'.*\(\*f2py_func\)\s*\((.*)\).*')
-callstatement_arg_re = re.compile(r'\s*(&)?\s*([a-zA-Z0-9_]+)\s*')
+callstatement_arg_re = re.compile(r'\s*(&)?\s*([a-zA-Z0-9_]+)(\s*\+\s*([a-zA-Z0-9_]+))?\s*')
 
 def mergepyf_proc_inplace(proc, pyf_proc):
     proc.merge_comments = []
@@ -27,7 +27,7 @@ def mergepyf_proc_inplace(proc, pyf_proc):
         proc.merge_comments.append('callstatement: %s' % callstat)
         # Hard part: Match up arguments with possible reorderings
         # and renames.
-        pyf_arg_names = [arg.name for arg in pyf_proc.arg_mgr.args]
+        pyf_arg_names = [arg.get_extern_name() for arg in pyf_proc.arg_mgr.args]
         arg_permutation = []
 
         m = callstatement_re.match(callstat)
@@ -40,6 +40,7 @@ def mergepyf_proc_inplace(proc, pyf_proc):
             m = callstatement_arg_re.match(expr)
             if m is not None:
                 ampersand, var_name = m.group(1), m.group(2)
+                print m.group(3), m.group(4)
                 try:
                     external_idx = pyf_arg_names.index(var_name)
                 except ValueError:
@@ -54,6 +55,7 @@ def mergepyf_proc_inplace(proc, pyf_proc):
                     
             # Introduce temporary variable
             1/0
+        print arg_permutation
         args_in_extern_order = [result_args[idx]
                                   for idx in inverse_permutation(arg_permutation)]
 

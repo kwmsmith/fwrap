@@ -27,3 +27,13 @@ C     Then do arr = arange(m*n).reshape(m, n)
       enddo
       z = 3
       end subroutine
+
+      function sum(n, arr, offx)
+      integer i, n
+      real*8 sum
+      real*8 arr
+      sum = 0
+      do i = 1, n
+         sum = sum + arr(i)
+      enddo
+      end function

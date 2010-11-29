@@ -124,6 +124,9 @@ class _CyArgWrapperBase(object):
     pyf_mode = False # TODO: Refactor so this is not needed
     check = ()
     
+    def get_extern_name(self):
+        return self.name
+
     def equal_up_to_type(self, other_arg):
         return self.arg.equal_up_to_type(other_arg.arg)    
 
@@ -416,6 +419,9 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
     def set_extern_name(self, name):
         self.extern_name = name
         self.intern_name = '%s_' % name
+
+    def get_extern_name(self):
+        return self.extern_name
 
     def extern_declarations(self):
         default_value = 'None' if (self.intent == 'out' and
