@@ -24,18 +24,6 @@ def attribute_sort(attributes):
             return x
     attributes.sort(key=key)
     
-
-class Mandatory(object):
-    def __eq__(self, other):
-        return type(other) is Mandatory
-    def __hash__(self):
-        return 99
-    def __repr__(self):
-        return '<unset mandatory attribute>'
-
-def is_mandatory(x):
-    return isinstance(x, Mandatory)
-
 class AstNodeType(type):
     """
     Populate "attributes" list of node attributes, and also
@@ -47,18 +35,27 @@ class AstNodeType(type):
 ##             if isinstance(value, property):
 ##                 raise AssertionError('Do not use properties on AST nodes')
         if not 'attributes' in dct.keys():
-            cls.attributes = [key for key in dir(cls)
-                              if not key.startswith('_')
-                              and not iscallable(getattr(cls, key))
-                              and not isinstance(getattr(cls, key), property)
-                              and key != 'attributes']
-            attribute_sort(cls.attributes)
+            mandatory = getattr(cls, 'mandatory', None)
+            if mandatory is None:
+                cls.mandatory = mandatory = ()
+            optional = getattr(cls, 'optional', None)
+            if optional is None:
+                optional = [key for key in dir(cls)
+                            if not key.startswith('_') and
+                            key not in mandatory and
+                            not iscallable(getattr(cls, key)) and
+                            not isinstance(getattr(cls, key), property) and
+                            key not in ('attributes', 'mandatory', 'optional')]
+                optional.sort()
+                optional = tuple(optional)
+                cls.optional = optional
+            cls.attributes = mandatory + optional
 
 class AstNode(object):
     __metaclass__ = AstNodeType
 
     @classmethod
-    def create_from(cls, node, **kw):
+    def create_node_from(cls, node, **kw):
         d = dict(kw)
         for attr in cls.attributes:
             if attr in d:
@@ -80,7 +77,7 @@ class AstNode(object):
 
     def validate(self, **kw):
         for attr in self.attributes:
-            if attr not in kw and is_mandatory(getattr(self, attr)):
+            if attr not in kw and attr in self.mandatory:
                 raise TypeError('Attribute %s not provided' % attr)
         self._validate(**kw)
 
@@ -131,14 +128,12 @@ class AstNode(object):
         else:
             from fwrap.pyf_iface import Argument
             indent = "  " * level
-            defaults = [getattr(type(self), key) for key, attr in attrs]
-##             attrs_at_default = [key
-##                                 for (key, value), default in zip(attrs, defaults)
-##                                 if eq(value, default)]
             res = "<%s (%d)\n" % (self.__class__.__name__, id(self))
-            for (key, value), default in zip(attrs, defaults):
-                if eq(value, default):
-                    continue
+            for key, value in attrs:
+                if key not in self.mandatory:
+                    default = getattr(type(self), key)
+                    if eq(value, default):
+                        continue
                 res += "%s  %s: %s\n" % (indent, key, dump_child(value, level + 1))
             res += "%s>" % indent
             return res
