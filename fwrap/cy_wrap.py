@@ -28,7 +28,7 @@ class CythonCodeGenerationContext:
 def wrap_fc(ast):
     ret = []
     for proc in ast:
-        ret.append(ProcWrapper(wrapped=proc))
+        ret.append(CyProcedure(wrapped=proc))
     return ret
 
 def generate_cy_pxd(ast, fc_pxd_name, buf):
@@ -107,7 +107,7 @@ For usage information see the function docstrings.
 
     return dstring
 
-def CyArgWrapper(arg):
+def cy_arg_factory(arg):
     import fc_wrap
     if isinstance(arg, fc_wrap.FcErrStrArg):
         return _CyErrStrArg(arg)
@@ -115,13 +115,13 @@ def CyArgWrapper(arg):
         return _CyCmplxArg(arg)
     elif isinstance(arg.dtype, pyf_iface.CharacterType):
         return _CyCharArg(arg)
-    return _CyArgWrapper(arg)
+    return _CyArg(arg)
 
-class _CyArgWrapperBase(object):
+class _CyArgBase(object):
     def equal_up_to_type(self, other_arg):
         return self.arg.equal_up_to_type(other_arg.arg)    
 
-class _CyArgWrapper(_CyArgWrapperBase):
+class _CyArg(_CyArgBase):
 
     is_array = False
 
@@ -213,7 +213,7 @@ class _CyArgWrapper(_CyArgWrapperBase):
             return []
         return self._gen_dstring()
 
-class _CyCharArg(_CyArgWrapper):
+class _CyCharArg(_CyArg):
 
     def __init__(self, arg):
         super(_CyCharArg, self).__init__(arg)
@@ -310,7 +310,7 @@ class _CyCharArg(_CyArgWrapper):
             return super(_CyCharArg, self).in_dstring()
 
 
-class _CyErrStrArg(_CyArgWrapperBase):
+class _CyErrStrArg(_CyArgBase):
     hide_in_wrapper = False
 
     def __init__(self, arg):
@@ -353,7 +353,7 @@ class _CyErrStrArg(_CyArgWrapperBase):
         return []
 
 
-class _CyCmplxArg(_CyArgWrapper):
+class _CyCmplxArg(_CyArg):
     # TODO Is this class needed?
     def __init__(self, arg):
         super(_CyCmplxArg, self).__init__(arg)
@@ -367,13 +367,13 @@ class _CyCmplxArg(_CyArgWrapper):
         return ['&%s' % self.name]
 
 
-def CyArrayArgWrapper(arg):
+def cy_array_arg_factory(arg):
     if arg.dtype.type == 'character':
-        return CyCharArrayArgWrapper(arg)
-    return _CyArrayArgWrapper(arg)
+        return CyCharArrayArg(arg)
+    return _CyArrayArg(arg)
 
 
-class _CyArrayArgWrapper(_CyArgWrapperBase):
+class _CyArrayArg(_CyArgBase):
 
     is_array = True
     hide_in_wrapper = False
@@ -508,17 +508,17 @@ class _CyArrayArgWrapper(_CyArgWrapperBase):
         return []
 
 
-class CyCharArrayArgWrapper(_CyArrayArgWrapper):
+class CyCharArrayArg(_CyArrayArg):
 
     def __init__(self, arg):
-        super(CyCharArrayArgWrapper, self).__init__(arg)
+        super(CyCharArrayArg, self).__init__(arg)
         intern_name = _py_kw_mangler(self.arg.intern_name)
         self.odtype_name = "%s_odtype" % intern_name
         self.shape_name = "%s_shape" % intern_name
         self.name = intern_name
 
     def intern_declarations(self, ctx):
-        ret = super(CyCharArrayArgWrapper, self).intern_declarations(ctx)
+        ret = super(CyCharArrayArg, self).intern_declarations(ctx)
         return ret + ["cdef fw_shape_t %s[%d]" %
                 (self.shape_name, self.arg.ndims+1)]
 
@@ -561,7 +561,7 @@ class CyCharArrayArgWrapper(_CyArrayArgWrapper):
         return [", ".join(dstring)]
 
 
-class CyArgWrapperManager(object):
+class CyArgManager(object):
 
     def __init__(self, args):
         self.args = args
@@ -572,9 +572,9 @@ class CyArgWrapperManager(object):
         args = []
         for fw_arg in fw_arg_man.arg_wrappers:
             if fw_arg.is_array:
-                args.append(CyArrayArgWrapper(fw_arg))
+                args.append(cy_array_arg_factory(fw_arg))
             else:
-                args.append(CyArgWrapper(fw_arg))
+                args.append(cy_arg_factory(fw_arg))
         return cls(args=args)
 
     def call_arg_list(self, ctx):
@@ -640,13 +640,13 @@ class CyArgWrapperManager(object):
         return descrs
 
     
-class ProcWrapper(object):
+class CyProcedure(object):
 
     def __init__(self, wrapped):
         self.wrapped = wrapped
         self.unmangled_name = self.wrapped.wrapped_name()
         self.name = _py_kw_mangler(self.unmangled_name)
-        self.arg_mgr = CyArgWrapperManager.from_fwrapped_proc(wrapped)
+        self.arg_mgr = CyArgManager.from_fwrapped_proc(wrapped)
         self.wrapped_name = self.wrapped.name
 
     def get_names(self):
