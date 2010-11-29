@@ -109,7 +109,7 @@ For usage information see the function docstrings.
 
 def CyArgWrapper(arg):
     import fc_wrap
-    if isinstance(arg, fc_wrap.ErrStrArgWrapper):
+    if isinstance(arg, fc_wrap.FcErrStrArg):
         return _CyErrStrArg(arg)
     elif isinstance(arg.dtype, pyf_iface.ComplexType):
         return _CyCmplxArg(arg)
