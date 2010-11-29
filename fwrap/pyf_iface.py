@@ -7,6 +7,7 @@ from fwrap import fort_expr
 from intrinsics import intrinsics
 import re
 from configuration import default_cfg
+from fwrap.astnode import AstNode
 
 vfn_re = re.compile(r'[a-zA-Z][_a-zA-Z0-9]{,62}$')
 vfn_matcher = vfn_re.match
@@ -112,10 +113,14 @@ class Dtype(object):
         return hash(self.fw_ktp + (self.odecl or '') + self.type)
 
     def __eq__(self, other):
-        return self.fw_ktp == other.fw_ktp and \
-                self.odecl == other.odecl and \
-                self.type == other.type
+        return (isinstance(other, Dtype) and
+                self.fw_ktp == other.fw_ktp and
+                self.odecl == other.odecl and
+                self.type == other.type)
 
+    def __ne__(self, other):
+        return not self == other
+                
     def type_spec(self):
         return '%s(kind=%s)' % (self.type, self.fw_ktp)
 
@@ -141,6 +146,9 @@ class Dtype(object):
     def py_type_name(self):
         from fwrap.gen_config import py_type_name_from_type
         return py_type_name_from_type(self.fw_ktp)
+
+    def __repr__(self):
+        return '<Dtype: %s>' % self.type_spec()
 
 
 class CharacterType(Dtype):
@@ -432,6 +440,12 @@ class Dim(object):
                 self.is_explicit_shape == other.is_explicit_shape and
                 self.sizeexpr == other.sizeexpr)
 
+    def __ne__(self, other):
+        return not self == other
+                
+    def __repr__(self):
+        return '<Dim: %s>' % self.sizeexpr
+
 class Dimension(object):
 
     def __init__(self, dims):
@@ -452,11 +466,22 @@ class Dimension(object):
             dimlist.append(dim.dim_spec_str())
         self.attrspec = "dimension(%s)" % (", ".join(dimlist))
 
+    def __eq__(self, other):
+        if not isinstance(other, Dimension):
+            return False
+        return self.dims == other.dims
+
+    def __ne__(self, other):
+        return not self == other
+                
     def __len__(self):
         return len(self.dims)
 
     def __iter__(self):
         return iter(self.dims)
+
+    def __repr__(self):
+        return '<Dimension: %s>' % repr(self.dims)
 
 
 class Var(_NamedType):
@@ -472,42 +497,24 @@ class Var(_NamedType):
             specs.append('pointer')
         return specs
 
-class Argument(object):
+class Argument(AstNode):
+    name = None
+    dtype = None
+    intent = None
+    isvalue = None
+    is_return_arg = False
+    init_code = None
+    hide_in_wrapper = False
+    check = ()
+    dimension = None
 
-    def __init__(self, name, dtype,
-                 intent=None,
-                 dimension=None,
-                 isvalue=None,
-                 is_return_arg=False,
-                 init_code=None,
-                 hide_in_wrapper=False,
-                 check=()):
-        self._var = Var(name=name, dtype=dtype, dimension=dimension)
-        self.intent = intent
-        self.isvalue = isvalue
-        self.is_return_arg = is_return_arg
-        self.init_code = init_code
-        self.hide_in_wrapper = hide_in_wrapper
-        self.check = check
-
+    def _update(self):
+        self._var = Var(name=self.name, dtype=self.dtype,
+                        dimension=self.dimension)
         if self.dtype.type == 'c_ptr' and not self.isvalue:
             raise ValueError(
                 "argument '%s' has datatype 'type(c_ptr)' "
                 "but does not have the 'value' attribute." % self.name)
-
-    def _get_name(self):
-        return self._var.name
-    def _set_name(self, name):
-        self._var.name = name
-    name = property(_get_name, _set_name)
-
-    def _get_dtype(self):
-        return self._var.dtype
-    dtype = property(_get_dtype)
-
-    def _get_dimension(self):
-        return self._var.dimension
-    dimension = property(_get_dimension)
 
     def _get_ktp(self):
         return self._var.dtype.fw_ktp
@@ -562,12 +569,6 @@ class HiddenArgument(Argument):
 
     def intent_spec(self):
         return []
-
-class ProcArgument(object):
-    def __init__(self, proc):
-        self.proc = proc
-        self.name = proc.name
-
 
 class ArgManager(object):
 
@@ -668,20 +669,20 @@ class ArgManager(object):
         return dts
 
 
-class Procedure(object):
+class Procedure(AstNode):
+    name = None
+    args = ()
+    arg_man = None
+    params = ()
+    language = 'fortran'
+    kind = None
 
-    def __init__(self, name, args, params=(), language='fortran'):
-        super(Procedure, self).__init__()
+    def _validate(self, name, language, **kw):
         assert language in ('fortran', 'pyf')
         if not valid_fort_name(name):
             raise InvalidNameException(
                     "%s is not a valid Fortran procedure name.")
-        self.name = name
-        self.args = args
-        self.arg_man = None
-        self.params = params
-        self.language = language
-
+        
     def extern_arg_list(self):
         return self.arg_man.extern_arg_list()
 
@@ -707,23 +708,18 @@ class Procedure(object):
 
 
 class Function(Procedure):
+    kind = 'function'
 
-    def __init__(self, name, args, return_arg, params=(),
-                 language='fortran'):
-        super(Function, self).__init__(name, args, params, language)
-        self.return_arg = return_arg
-        self.return_arg.name = self.name
-        self.kind = 'function'
+    def _update(self):
+        self.return_arg.name = self.name # TODO: Refactor
         self.arg_man = ArgManager(args=self.args,
                             return_arg=self.return_arg,
                             params=self.params)
 
-
 class Subroutine(Procedure):
+    kind = 'subroutine'
 
-    def __init__(self, name, args, params=(), language='fortran'):
-        super(Subroutine, self).__init__(name, args, params, language)
-        self.kind = 'subroutine'
+    def _update(self):
         self.arg_man = ArgManager(self.args, params=self.params)
 
 

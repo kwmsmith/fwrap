@@ -13,9 +13,9 @@ def wrap_pyf_iface(ast):
     fc_wrapper = []
     for proc in ast:
         if proc.kind == 'function':
-            fc_wrapper.append(FunctionWrapper(wrapped=proc))
+            fc_wrapper.append(FcFunction(wrapped=proc))
         elif proc.kind == 'subroutine':
-            fc_wrapper.append(SubroutineWrapper(wrapped=proc))
+            fc_wrapper.append(FcSubroutine(wrapped=proc))
         else:
             raise ValueError("object not function or subroutine, %s" % proc)
     return fc_wrapper
@@ -93,7 +93,7 @@ def _dim_test(dims1, dims2):
     return ' .or. '.join(ck)
 
 
-class ProcWrapper(object):
+class FcProcedure(object):
 
     def __init__(self, wrapped):
         self.name = constants.PROC_SUFFIX_TMPL % wrapped.name
@@ -102,7 +102,7 @@ class ProcWrapper(object):
         self._get_arg_man()
 
     def _get_arg_man(self):
-        self.arg_man = ArgWrapperManager(self.wrapped)
+        self.arg_man = FcArgManager(self.wrapped)
 
     def wrapped_name(self):
         return self.wrapped.name
@@ -168,9 +168,9 @@ class ProcWrapper(object):
     def proc_call(self, buf, cfg):
         proc_call = "%s(%s)" % (self.wrapped.name,
                                 ', '.join(self.call_arg_list(cfg)))
-        if isinstance(self, SubroutineWrapper):
+        if isinstance(self, FcSubroutine):
             buf.putln("call %s" % proc_call)
-        elif isinstance(self, FunctionWrapper):
+        elif isinstance(self, FcFunction):
             buf.putln("%s = %s" % (self.proc_result_name(), proc_call))
 
     def call_arg_list(self, cfg):
@@ -200,19 +200,19 @@ class ProcWrapper(object):
         return self.arg_man.all_dtypes()
 
 
-class SubroutineWrapper(ProcWrapper):
+class FcSubroutine(FcProcedure):
     pass
 
 
-class FunctionWrapper(ProcWrapper):
+class FcFunction(FcProcedure):
 
     RETURN_ARG_NAME = constants.RETURN_ARG_NAME
 
     def __init__(self, wrapped):
-        super(FunctionWrapper, self).__init__(wrapped)
+        super(FcFunction, self).__init__(wrapped)
 
     def _get_arg_man(self):
-        self.arg_man = ArgWrapperManager(self.wrapped)
+        self.arg_man = FcArgManager(self.wrapped)
 
     def return_spec_declaration(self):
         return self.arg_man.return_spec_declaration()
@@ -221,14 +221,14 @@ class FunctionWrapper(ProcWrapper):
         return self.arg_man.proc_result_name()
 
 
-class ArgWrapperManager(object):
+class FcArgManager(object):
 
     def __init__(self, proc):
         self.proc = proc
         self.isfunction = (proc.kind == 'function')
         self.ret_arg = None
         if self.isfunction:
-            ra = pyf.Argument(name=FunctionWrapper.RETURN_ARG_NAME,
+            ra = pyf.Argument(name=FcFunction.RETURN_ARG_NAME,
                     dtype=proc.return_arg.dtype,
                     intent='out')
             self._orig_args = [ra] + list(proc.args)
@@ -238,13 +238,13 @@ class ArgWrapperManager(object):
         self.errflag = pyf.Argument(name=constants.ERR_NAME,
                                 dtype=pyf.default_integer,
                                 intent='out')
-        self.errstr = ErrStrArgWrapper()
+        self.errstr = FcErrStrArg()
         self._gen_wrappers()
 
     def _gen_wrappers(self):
         wargs = []
         for arg in self._orig_args + [self.errflag]:
-            wargs.append(ArgWrapperFactory(arg))
+            wargs.append(FcArgFactory(arg))
         self.arg_wrappers = wargs + [self.errstr]
         if self.isfunction:
             self.ret_arg = self.arg_wrappers[0]
@@ -252,10 +252,10 @@ class ArgWrapperManager(object):
     def call_arg_list(self, cfg):
         intern_names = [argw.get_call_name(cfg) for argw in self.arg_wrappers]
         cl = [intern_name for intern_name in intern_names
-                if (intern_name != FunctionWrapper.RETURN_ARG_NAME and
+                if (intern_name != FcFunction.RETURN_ARG_NAME and
                     intern_name != constants.ERR_NAME and
                     intern_name != constants.ERRSTR_NAME and
-                    intern_name != _arg_name_mangler(FunctionWrapper.RETURN_ARG_NAME))]
+                    intern_name != _arg_name_mangler(FcFunction.RETURN_ARG_NAME))]
         return cl
 
     def proc_result_name(self):
@@ -341,28 +341,28 @@ class ArgWrapperManager(object):
                 [self.errflag.dtype])
 
 
-def ArgWrapperFactory(arg):
+def FcArgFactory(arg):
     if getattr(arg, 'dimension', None):
         if arg.dtype.type == 'character':
-            return CharArrayArgWrapper(arg)
+            return FcCharArrayArg(arg)
 
         # FIXME: uncomment when logical arrays use c_f_pointer
         # FIXME: currently this is a workaround for 4.3.3 <= gfortran version <
         # 4.4.
 
         # elif arg.dtype.type == 'logical':
-            # return LogicalArrayArgWrapper(arg)
+            # return FcLogicalArrayArg(arg)
 
-        return ArrayArgWrapper(arg)
+        return FcArrayArg(arg)
     elif arg.dtype.type == 'logical':
-        return LogicalWrapper(arg)
+        return FcLogicalArg(arg)
     elif arg.dtype.type == 'character':
-        return CharArgWrapper(arg)
+        return FcCharArg(arg)
     else:
-        return ArgWrapper(arg)
+        return FcArg(arg)
 
 
-class ArgWrapperBase(object):
+class FcArgBase(object):
 
     is_array = False
 
@@ -387,7 +387,7 @@ class ArgWrapperBase(object):
     def get_call_name(self, cfg):
         return self.intern_name
 
-class ArgWrapper(ArgWrapperBase):
+class FcArg(FcArgBase):
 
     def __init__(self, arg):
         self.orig_arg = arg
@@ -452,7 +452,7 @@ class ArgWrapper(ArgWrapperBase):
         return True
                 
 
-class ErrStrArgWrapper(ArgWrapperBase):
+class FcErrStrArg(FcArgBase):
 
     def __init__(self):
         self.arg = pyf.Argument(name=constants.ERRSTR_NAME,
@@ -490,7 +490,7 @@ class ErrStrArgWrapper(ArgWrapperBase):
         return type(self) is type(other)
 
 
-class ArrayArgWrapper(ArgWrapper):
+class FcArrayArg(FcArg):
 
     is_array = True
     shape_pattern = '%s_shape__'
@@ -523,7 +523,7 @@ class ArrayArgWrapper(ArgWrapper):
                             self.extern_arg.name)
         return []
 
-class ScalarPtrWrapper(ArgWrapper):
+class FcScalarPtrArg(FcArg):
 
     def _set_intern_name(self):
         self.intern_name = _arg_name_mangler(self.name)
@@ -567,19 +567,19 @@ class ScalarPtrWrapper(ArgWrapper):
             return [self.len_arg.declaration(cfg),
                     f77_extern_var.declaration(cfg)]
         else:
-            return super(ScalarPtrWrapper, self).extern_declarations(cfg)
+            return super(FcScalarPtrArg, self).extern_declarations(cfg)
 
     def intern_declarations(self, cfg):
         if cfg.f77binding:
             return []
         else:
-            return super(ScalarPtrWrapper, self).intern_declarations(cfg)
+            return super(FcScalarPtrArg, self).intern_declarations(cfg)
 
 
-class LogicalWrapper(ScalarPtrWrapper):
+class FcLogicalArg(FcScalarPtrArg):
     pass
 
-class CharArgWrapper(ScalarPtrWrapper):
+class FcCharArg(FcScalarPtrArg):
 
     def _set_intern_vars(self):
         self.len_arg = pyf.Argument(name="%s_len" % self.intern_name,
@@ -601,7 +601,7 @@ class CharArgWrapper(ScalarPtrWrapper):
                                        isptr=True)
 
     def _set_extern_args(self):
-        super(CharArgWrapper, self)._set_extern_args()
+        super(FcCharArg, self)._set_extern_args()
         self.extern_args = [self.len_arg] + self.extern_args
 
     def _err_ck_code(self):
@@ -618,10 +618,10 @@ class CharArgWrapper(ScalarPtrWrapper):
 
     def pre_call_code(self, cfg):
         return self._err_ck_code() + \
-                super(CharArgWrapper, self).pre_call_code(cfg)
+                super(FcCharArg, self).pre_call_code(cfg)
 
 
-class ArrayPtrArg(ArrayArgWrapper):
+class FcArrayPtrArg(FcArrayArg):
 
     def _set_intern_name(self):
         self.intern_name = _arg_name_mangler(self.name)
@@ -652,11 +652,11 @@ class ArrayPtrArg(ArrayArgWrapper):
 
 # FIXME: uncomment when logical arrays use c_f_pointer
 # FIXME: currently this is a workaround for 4.3.3 <= gfortran version < 4.4.
-# class LogicalArrayArgWrapper(ArrayPtrArg):
+# class FcLogicalArrayArg(FcArrayPtrArg):
     # pass
 
 
-class CharArrayArgWrapper(ArrayPtrArg):
+class FcCharArrayArg(FcArrayPtrArg):
 
     def _set_intern_vars(self):
         self.len_arg = pyf.Argument(name="%s_len" % self.intern_name,
@@ -677,12 +677,12 @@ class CharArrayArgWrapper(ArrayPtrArg):
                                        isptr=True)
 
     def _set_extern_args(self):
-        super(CharArrayArgWrapper, self)._set_extern_args()
+        super(FcCharArrayArg, self)._set_extern_args()
         self.extern_args = [self.len_arg] + self.extern_args
 
 
     def _check_code(self, cfg):
-        orig_check = super(CharArrayArgWrapper, self)._check_code(cfg)
+        orig_check = super(FcCharArrayArg, self)._check_code(cfg)
         if self.is_assumed_len:
             char_ck = []
         else:

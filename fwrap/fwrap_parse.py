@@ -51,6 +51,7 @@ def _process_node(node, ast, language):
                                 params=params,
                                 return_arg=_get_ret_arg(child),
                                 language=language))
+
     return ast
 
 def is_proc(proc):

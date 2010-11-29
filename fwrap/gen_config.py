@@ -198,6 +198,9 @@ class _ConfigTypeParam(object):
                 self.odecl == other.odecl and \
                 self.fwrap_name == other.fwrap_name
 
+    def __ne__(self, other):
+        return not self == other
+                
     def get_c_preambles(self):
         if 'npy' in self.fc_type:
             return ['#include <numpy/npy_math.h>'] + self.c_preambles
