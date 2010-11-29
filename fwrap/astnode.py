@@ -25,6 +25,17 @@ def attribute_sort(attributes):
     attributes.sort(key=key)
     
 
+class Mandatory(object):
+    def __eq__(self, other):
+        return type(other) is Mandatory
+    def __hash__(self):
+        return 99
+    def __repr__(self):
+        return '<unset mandatory attribute>'
+
+def is_mandatory(x):
+    return isinstance(x, Mandatory)
+
 class AstNodeType(type):
     """
     Populate "attributes" list of node attributes, and also
@@ -47,30 +58,37 @@ class AstNode(object):
     __metaclass__ = AstNodeType
 
     @classmethod
-    def create_from(cls, node):
-        d = {}
+    def create_from(cls, node, **kw):
+        d = dict(kw)
         for attr in cls.attributes:
+            if attr in d:
+                continue
             if not hasattr(node, attr):
                 continue            
             value = getattr(node, attr, None)
             assert not iscallable(value)
             d[attr] = value
-        instance = cls()
-        instance.update(**d)
-        return instance
+        return cls(**d)
 
     def __init__(self, **kw):
         self.update(**kw)
 
     def update(self, **kw):
-        self._validate(**kw)
+        self.validate(**kw)
         self.__dict__.update(kw)
         self._update()
+
+    def validate(self, **kw):
+        for attr in self.attributes:
+            if attr not in kw and is_mandatory(getattr(self, attr)):
+                raise TypeError('Attribute %s not provided' % attr)
+        self._validate(**kw)
 
     def _validate(self, **kw):
         """
         Override this method to raise exceptions for invalid
-        node attributes
+        assignments to node attributes. One does not have to
+        check that mandatory attributes are set.
         """
         pass
  
