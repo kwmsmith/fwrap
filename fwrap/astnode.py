@@ -96,6 +96,12 @@ class AstNode(object):
         """
         pass
 
+    def copy(self):
+        return type(self).create_node_from(self)
+
+    def copy_and_set(self, **kw):
+        return type(self).create_node_from(self, **kw)
+
     def describe(self, level=0, filter_out=(), cutoff=100, encountered=None):
         if cutoff == 0:
             return "<...nesting level cutoff...>"
@@ -154,3 +160,4 @@ class AstNode(object):
             if getattr(self, attrname) != getattr(other, attrname):
                 return False
         return True
+
