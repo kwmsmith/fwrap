@@ -38,7 +38,7 @@ class AstNodeType(type):
             mandatory = getattr(cls, 'mandatory', None)
             if mandatory is None:
                 cls.mandatory = mandatory = ()
-            optional = getattr(cls, 'optional', None)
+            optional = dct.get('optional', None)
             if optional is None:
                 optional = [key for key in dir(cls)
                             if not key.startswith('_') and
