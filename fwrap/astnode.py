@@ -141,6 +141,14 @@ class AstNode(object):
     def __repr__(self):
         return self.describe()
 
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.attributes == other.attributes and
+                self.equal_attributes(other, self.attributes))
+
+    def __ne__(self, other):
+        return not self == other
+    
     def equal_attributes(self, other, attributes):
         for attrname in attributes:
             if getattr(self, attrname) != getattr(other, attrname):
