@@ -85,14 +85,6 @@ endif
         return (tmpl % locals()).splitlines()
     return []
 
-def _dim_test(dims1, dims2):
-    ck = []
-    for dim1, dim2 in zip(dims1, dims2):
-        if dim1.is_explicit_shape and dim2.is_explicit_shape:
-            ck += ['%s .ne. %s' % (dim1.sizeexpr, dim2.sizeexpr)]
-    return ' .or. '.join(ck)
-
-
 class FcProcedure(object):
 
     def __init__(self, wrapped):
@@ -516,9 +508,28 @@ class FcArrayArg(FcArg):
                                 dimension=self._dimension_exprs)
         self.extern_args = [self.shape_arg, self.extern_arg]
 
+    def _dim_test(self, arg_dims, buf_dims):
+        # arg_dims is "n" etc. passed in as arguments,
+        # and buf_dims comes from shape of the passed in
+        # NumPy array
+        ck = []
+        assert len(arg_dims) == len(buf_dims)
+        if len(arg_dims) == 1:
+            arg_dim, = arg_dims
+            buf_dim, = buf_dims
+            if arg_dim.is_explicit_shape and buf_dim.is_explicit_shape:
+                # Truncation of array is allowed
+                ck.append('%s .lt. 0 .or. %s .gt. %s' %
+                          (arg_dim.sizeexpr, arg_dim.sizeexpr, buf_dim.sizeexpr))
+        else:
+            for arg_dim, buf_dim in zip(arg_dims, buf_dims):
+                if arg_dim.is_explicit_shape and buf_dim.is_explicit_shape:
+                    ck.append('%s .ne. %s' % (arg_dim.sizeexpr, buf_dim.sizeexpr))
+        return ' .or. '.join(ck)
+
     def pre_call_code(self, cfg):
         dims = pyf.Dimension(self._dimension_exprs)
-        ckstr = _dim_test(self.orig_arg.dimension, dims)
+        ckstr = self._dim_test(self.orig_arg.dimension, dims)
         if ckstr:
             return _err_test_block(
                             ckstr,
