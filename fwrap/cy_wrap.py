@@ -177,6 +177,7 @@ class _CyArgBase(AstNode):
     # Optional:
     hide_in_wrapper = False
     init_code = None
+    defer_init_to_body = False
     check = ()
 
     def equal_up_to_type(self, other_arg):
@@ -193,6 +194,9 @@ class _CyArgBase(AstNode):
                                         if x not in ('dtype', 'ktp', 'npy_enum')])
         return result
 
+    def is_optional(self):
+        return self.init_code is not None
+
 class _CyArg(_CyArgBase):
 
 
@@ -200,7 +204,10 @@ class _CyArg(_CyArgBase):
     is_array = False
 
     def _update(self):
-        self.intern_name = self.cy_name
+        if self.defer_init_to_body:
+            self.intern_name = '%s_' % self.cy_name
+        else:
+            self.intern_name = self.cy_name
         self.cy_dtype_name = self._get_cy_dtype_name()
 
     def _get_cy_dtype_name(self):
@@ -218,20 +225,22 @@ class _CyArg(_CyArgBase):
         either None or 'None')
         """
         assert not self.hide_in_wrapper and self.intent in ('in', 'inout', None)
-        return [("%s %s" % (self.cy_dtype_name, self.cy_name), self.init_code)]
+        init_code = 'None' if self.defer_init_to_body else self.init_code
+        typedecl = 'object' if self.defer_init_to_body else self.cy_dtype_name
+        return [("%s %s" % (typedecl, self.cy_name), init_code)]
 
     def docstring_extern_arg_list(self):
         assert not self.hide_in_wrapper and self.intent in ('in', 'inout', None)
         return [self.cy_name]
 
     def intern_declarations(self, ctx, extern_decl_made):
-        if not extern_decl_made:
-            return ["cdef %s %s" % (self.cy_dtype_name, self.cy_name)]
+        if self.defer_init_to_body or not extern_decl_made:
+            return ["cdef %s %s" % (self.cy_dtype_name, self.intern_name)]
         else:
             return []
 
     def call_arg_list(self, ctx):
-        return ["&%s" % self.cy_name]
+        return ["&%s" % self.intern_name]
 
     def post_call_code(self, ctx):
         return []
@@ -242,7 +251,10 @@ class _CyArg(_CyArgBase):
         # must be inserted here.
         lines = []
         if self.hide_in_wrapper and self.init_code is not None:
-            lines.append("%s = %s" % (self.cy_name, self.init_code))
+            lines.append("%s = %s" % (self.intern_name, self.init_code))
+        elif self.defer_init_to_body:
+            lines.append("%s = %s if (%s is not None) else %s" %
+                         (self.intern_name, self.cy_name, self.cy_name, self.init_code))
         for c in self.check:
             c = py_kw_mangle_expression(c)
             c = c_to_cython(c)
@@ -428,6 +440,9 @@ class _CyCmplxArg(_CyArg):
 class _CyArrayArg(_CyArgBase):
     mandatory = _CyArgBase.mandatory + ('dimension', 'ndims')
 
+    # Optional
+    mem_offset_code = None
+
     # Set from deduplicator
     npy_enum = None
 
@@ -449,11 +464,16 @@ class _CyArrayArg(_CyArgBase):
                 dim.sizeexpr for dim in self.dimension]
         if self.hide_in_wrapper:
             raise NotImplementedError()
+        if self.init_code is not None:
+            raise NotImplementedError()
         # Note: The following are set to something else in
         # deduplicator.TemplatedCyArrayArg
         self.py_type_name = py_type_name_from_type(self.ktp)
         if self.npy_enum is None:
             self.npy_enum = self.dtype.npy_enum
+
+    def is_optional(self):
+        return self.explicit_out_array
 
     def set_extern_name(self, name):
         self.extern_name = name
@@ -481,12 +501,17 @@ class _CyArrayArg(_CyArgBase):
         return self.py_type_name
 
     def call_arg_list(self, ctx):
+        if self.mem_offset_code is not None:
+            offset_code = ' + %s' % self.mem_offset_code
+        else:
+            offset_code = ''
         if not ctx.cfg.f77binding:
             shape_expr = 'np.PyArray_DIMS(%s)' % self.intern_name
         else:
             shape_expr = self.shape_var_name
         return [shape_expr,
-                '<%s*>np.PyArray_DATA(%s)' % (self.ktp, self.intern_name)]
+                '<%s*>np.PyArray_DATA(%s)%s' %
+                (self.ktp, self.intern_name, offset_code)]
 
     def pre_call_code(self, ctx):
         # NOTE: we can support a STRICT macro that would disable the

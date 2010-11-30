@@ -24,4 +24,14 @@ __doc__ = u"""
 
     >>> reorders(1, 3, np.arange(4).astype(np.int32))
     (3, 1, array([2, 2, 2, 2], dtype=int32))
+
+    >>> r = np.arange(10)
+    >>> fort_sum_simple(r, 10)
+    45.0
+    >>> fort_sum_simple(r)
+    45.0
+
+    
+#    >>> fort_sum_simpl(7, r, 3)
+#    45.0
 """

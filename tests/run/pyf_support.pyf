@@ -14,9 +14,15 @@ python module pyf_support
             integer intent(inout) :: yp(5)
         end subroutine
 
+        function fort_sum_simple(n, arr) result(x)
+            callstatement (*f2py_func)(&n, arr)
+            real*8 intent(in), dimension(n) :: arr
+            integer optional, intent(in) :: n = len(arr)
+            real*8 :: x
+        end function
 
-        function sum(n, arr, offx) result(x)
-            callstatement (*f2py_func)(n, arr + offx)
+        function fort_sum(n, arr, offx) result(x)
+            callstatement (*f2py_func)(&n, arr + offx)
             real*8 intent(in), dimension(n) :: arr
             integer intent(in) :: n, offx
             real*8 :: x

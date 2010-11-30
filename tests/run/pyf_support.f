@@ -28,12 +28,22 @@ C     Then do arr = arange(m*n).reshape(m, n)
       z = 3
       end subroutine
 
-      function sum(n, arr)
+      function fort_sum_simple(n, arr)
       integer i, n
-      real*8 sum
+      real*8 fort_sum_simple
       real*8 arr(n)
-      sum = 0
+      fort_sum_simple = 0
       do i = 1, n
-         sum = sum + arr(i)
+         fort_sum_simple = fort_sum_simple + arr(i)
+      enddo
+      end function
+
+      function fort_sum(n, arr)
+      integer i, n
+      real*8 fort_sum
+      real*8 arr(n)
+      fort_sum = 0
+      do i = 1, n
+         fort_sum = fort_sum + arr(i)
       enddo
       end function
