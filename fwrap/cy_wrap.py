@@ -6,8 +6,7 @@
 from fwrap import pyf_iface
 from fwrap import constants
 from fwrap.code import CodeBuffer
-from fwrap.pyf_iface import _py_kw_mangler, py_kw_mangle_expression
-from fwrap.pyf_utils import c_to_cython
+from fwrap.pyf_iface import _py_kw_mangler
 from fwrap.astnode import AstNode
 
 import re
@@ -256,8 +255,6 @@ class _CyArg(_CyArgBase):
             lines.append("%s = %s if (%s is not None) else %s" %
                          (self.intern_name, self.cy_name, self.cy_name, self.init_code))
         for c in self.check:
-            c = py_kw_mangle_expression(c)
-            c = c_to_cython(c)
             lines.append("if not (%s):" % c)
             lines.append("    raise ValueError('Condition on arguments not satisfied: %s')" % c)
         return lines

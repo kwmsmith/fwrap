@@ -4,7 +4,7 @@
 #------------------------------------------------------------------------------
 import re
 from fwrap import constants
-from fwrap.pyf_iface import _py_kw_mangler
+from fwrap.pyf_iface import _py_kw_mangler, py_kw_mangle_expression
 
 
 def mergepyf_ast(cython_ast, cython_ast_from_pyf):
@@ -83,7 +83,7 @@ def mergepyf_proc(f_proc, pyf_proc):
 
     in_args = [copy_or_get(arg) for arg in pyf_proc.in_args]
     out_args = [copy_or_get(arg) for arg in pyf_proc.out_args]
-    process_init_codes(in_args, call_args)
+    process_in_args(in_args)
     result = f_proc.copy_and_set(call_args=call_args,
                                  in_args=in_args,
                                  out_args=out_args,
@@ -116,29 +116,73 @@ def parse_callstatement_arg(arg_expr, pyf_args):
 
 literal_re = re.compile(r'^-?[0-9.]+$') # close enough
 
-def process_init_codes(in_args, call_args):
+def process_in_args(in_args):
     # Arguments must be changed as follows:
     # a) Reorder so that arguments with defaults come last
     # b) Parse the init_code into something usable by Cython.
-    #    If necessary, change argument type to object, default to None,
-    #    and introduce dummy call_args.
+    for arg in in_args:
+        if arg.check is not None:
+            arg.update(check=[c_to_cython(c) for c in arg.check])
+    
     mandatory = [arg for arg in in_args if not arg.is_optional()]
     optional = [arg for arg in in_args if arg.is_optional()]
     in_args[:] = mandatory + optional
     for arg in optional:
         if (arg.init_code is not None and
             literal_re.match(arg.init_code) is None):
+            # Do some crude processing of init_code to translate
+            # it fully or partially to Cython
+            init_code = py_kw_mangle_expression(arg.init_code)
+            init_code = c_to_cython(init_code)
             arg.update(defer_init_to_body=True,
-                       init_code=port_init_code(arg.init_code))
+                       init_code=init_code)
 
 
+_c_to_cython_dictionary = {
+    '&&' : 'and',
+    '||' : 'or',
+    '!' : 'not',
+    '/' : '//', # ...probably...
+    # Just to 'convert' whitespace style as well, include
+    # other operators
+    '<' : '<',
+    '<=' : '<=',
+    '==' : '==',
+    '>=' : '>=',
+    '>' : '>',
+    '!=' : '!=',
+    '+' : '+',
+    '-' : '-',
+    '*' : '*'
+}
 
+# Add spaces
+for key, value in _c_to_cython_dictionary.iteritems():
+    _c_to_cython_dictionary[key] = ' %s ' % value
+
+cast_re = re.compile(r'\((int|float|double)\)([a-zA-Z0-9_]+)')
+functions_re = re.compile(r'(len)\(\s*([a-zA-Z0-9_]+)\s*\)')
+whitespace_re = re.compile(r'\s\s+')
+operators_re = re.compile(r'&&|\|\||<=?|>=?|==|!=?')
+
+def c_to_cython(expr):
+    # Deal with the most common cases to reduce the amount
+    # of manual modification needed afterwards. This is used
+    # in check(...), so support common boolean constructs
+    def f(m):
+        return _c_to_cython_dictionary[m.group(0)]
+
+    expr = operators_re.sub(f, expr)
+    expr = whitespace_re.sub(' ', expr) # Remove redundant spaces introduced
+    expr = cast_re.sub(r'<\1>\2', expr) # (int)v -> <int>v
+
+    def funcs(m):
+        func = m.group(1)
+        if func == 'len':
+            return 'np.PyArray_DIMS(%s)[0]' % m.group(2)
+        else:
+            assert False
     
+    expr = functions_re.sub(funcs, expr)
+    return expr.strip()
 
-def inverse_permutation(permutation):
-    result = [None] * len(permutation)
-    for idx, p in enumerate(permutation):
-        result[p] = idx
-    return result
-        
-    
