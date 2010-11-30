@@ -52,9 +52,26 @@ def cy_deduplify(cy_ast, cfg):
 def cy_create_template(procs, cfg):
     """Make an attempt to merge the given procedures into a template
     """
-    arg_lists = [proc.arg_mgr.args for proc in procs]
+
+    template_mgr = create_template_manager(cfg)
+    merged_attrs = merge_node_attributes(procs, template_mgr,
+                                         exclude=('in_args', 'out_args', 'call_args',
+                                                  'all_dtypes_list'))
+
+    in_args = cy_merge_args([proc.in_args for proc in procs], template_mgr)
+    out_args = cy_merge_args([proc.out_args for proc in procs], template_mgr)
+    call_args = cy_merge_args([proc.call_args for proc in procs], template_mgr)
+    
+    return TemplatedProcedure(template_mgr=template_mgr,
+                              in_args=in_args,
+                              out_args=out_args,
+                              call_args=call_args,
+                              all_dtypes_list=sum([proc.all_dtypes() for proc in procs], []),
+                              names=[proc.cy_name for proc in procs],
+                              **merged_attrs)
+
+def cy_merge_args(arg_lists, template_mgr):
     if not all_equal(len(lst) for lst in arg_lists):
-        # Different number of arguments
         raise UnableToMergeError()
     for matched_args in zip(*arg_lists):
         arg0 = matched_args[0]
@@ -62,19 +79,10 @@ def cy_create_template(procs, cfg):
             if not arg0.equal_up_to_type(arg):
                 raise UnableToMergeError()
 
-    template_mgr = create_template_manager(cfg)
-    merged_attrs = merge_node_attributes(procs, template_mgr,
-                                         exclude=('args', 'all_dtypes_list'))
     merged_args = [get_templated_cy_arg(matched_args,
                                         template_mgr)
-                   for matched_args in
-                   zip(*[proc.args for proc in procs])]
-    return TemplatedProcedure(template_mgr=template_mgr,
-                              args=merged_args,
-                              all_dtypes_list=sum([proc.all_dtypes() for proc in procs], []),
-                              names=[proc.cy_name for proc in procs],
-                              **merged_attrs)
-
+                   for matched_args in zip(*arg_lists)]
+    return merged_args
 
 def get_templated_cy_arg(args, template_mgr):
     cls = type(args[0])

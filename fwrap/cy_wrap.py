@@ -42,14 +42,57 @@ def fc_proc_to_cy_proc(fc_proc):
         args.append(cy_arg_factory(fw_arg, fw_arg.is_array))
 
     all_dtypes_list = fc_proc.all_dtypes()
-
+    
     return CyProcedure.create_node_from(
         fc_proc,
         name=fc_proc.wrapped_name(), # remove when FcProcedure is refactored
         fc_name=fc_proc.name, # ditto
         cy_name=cy_name,
-        args=args,
+        call_args=get_call_args(args),
+        in_args=get_in_args(args),
+        out_args=get_out_args(args),
         all_dtypes_list=all_dtypes_list)
+
+def cy_arg_factory(arg, is_array):
+    import fc_wrap
+    attrs = {}
+    attrs['cy_name'] = _py_kw_mangler(arg.name)
+    if is_array:
+        if arg.dtype.type == 'character':
+            cls = CyCharArrayArg
+        else:
+            cls = _CyArrayArg
+        attrs['dimension'] = arg.orig_arg.dimension
+    else:
+        if isinstance(arg, fc_wrap.FcErrStrArg):
+            cls = _CyErrStrArg
+        elif isinstance(arg.dtype, pyf_iface.ComplexType):
+            cls = _CyCmplxArg
+        elif isinstance(arg.dtype, pyf_iface.CharacterType):
+            cls = _CyCharArg
+        else:
+            cls = _CyArg
+        if arg.name == constants.ERR_NAME:
+            attrs['hide_in_wrapper'] = True
+    return cls.create_node_from(arg, **attrs)
+
+def get_call_args(args):
+    return args
+
+def get_in_args(args):
+    # Arrays with intent(out) is still present in case user wants
+    # to input a buffer
+    return [arg for arg in args
+            if (not arg.hide_in_wrapper and
+                (arg.is_array or
+                 arg.intent in ('in', 'inout', None)) and
+                not isinstance(arg, _CyErrStrArg))]
+
+def get_out_args(args):
+    return [arg for arg in args
+            if (not arg.hide_in_wrapper and
+                arg.intent in ('out', 'inout', None) and
+                not isinstance(arg, _CyErrStrArg))]
 
 def generate_cy_pxd(ast, fc_pxd_name, buf):
     buf.putln('cimport numpy as np')
@@ -128,31 +171,6 @@ For usage information see the function docstrings.
     return dstring
 
 
-def cy_arg_factory(arg, is_array):
-    import fc_wrap
-
-    attrs = {}
-    attrs['cy_name'] = _py_kw_mangler(arg.name)
-
-    if is_array:
-        if arg.dtype.type == 'character':
-            cls = CyCharArrayArg
-        else:
-            cls = _CyArrayArg
-        attrs['dimension'] = arg.orig_arg.dimension
-    else:
-        if isinstance(arg, fc_wrap.FcErrStrArg):
-            cls = _CyErrStrArg
-        elif isinstance(arg.dtype, pyf_iface.ComplexType):
-            cls = _CyCmplxArg
-        elif isinstance(arg.dtype, pyf_iface.CharacterType):
-            cls = _CyCharArg
-        else:
-            cls = _CyArg
-        
-    return cls.create_node_from(arg, **attrs)
-
-
 class _CyArgBase(AstNode):
     mandatory = ('name', 'cy_name', 'intent', 'dtype', 'ktp')
 
@@ -172,7 +190,7 @@ class _CyArgBase(AstNode):
                 return False
         result = self.equal_attributes(other_arg,
                                        [x for x in self.attributes
-                                        if x not in ('dtype', 'ktp')])
+                                        if x not in ('dtype', 'ktp', 'npy_enum')])
         return result
 
 class _CyArg(_CyArgBase):
@@ -199,24 +217,18 @@ class _CyArg(_CyArgBase):
         string representation of possible default value (normally
         either None or 'None')
         """
-        if (self.intent in ('in', 'inout', None) and
-            not self.hide_in_wrapper):
-            # In pyf files, one can insert initialization code using '= value'
-            # in the declaration. For now, put it here (that is, only supports
-            # literals and not expressions in the other arguments)
-            return [("%s %s" % (self.cy_dtype_name, self.cy_name), self.init_code)]
-        return []
+        assert not self.hide_in_wrapper and self.intent in ('in', 'inout', None)
+        return [("%s %s" % (self.cy_dtype_name, self.cy_name), self.init_code)]
 
     def docstring_extern_arg_list(self):
-        if (self.intent in ("in", "inout", None) and
-            not self.hide_in_wrapper):
-            return [self.cy_name]
-        return []
+        assert not self.hide_in_wrapper and self.intent in ('in', 'inout', None)
+        return [self.cy_name]
 
-    def intern_declarations(self, ctx):
-        if self.intent == 'out' or self.hide_in_wrapper:
+    def intern_declarations(self, ctx, extern_decl_made):
+        if not extern_decl_made:
             return ["cdef %s %s" % (self.cy_dtype_name, self.cy_name)]
-        return []
+        else:
+            return []
 
     def call_arg_list(self, ctx):
         return ["&%s" % self.cy_name]
@@ -239,11 +251,9 @@ class _CyArg(_CyArgBase):
         return lines
 
     def return_tuple_list(self):
-        if self.cy_name == constants.ERR_NAME:
-            return []
-        elif self.intent in ('out', 'inout', None):
-            return [self.cy_name]
-        return []
+        assert self.cy_name != constants.ERR_NAME
+        assert self.intent in ('out', 'inout', None)
+        return [self.cy_name]
 
     docstring_return_tuple_list = return_tuple_list
 
@@ -288,7 +298,7 @@ class _CyCharArg(_CyArg):
             return [('%s %s' % (self.cy_dtype_name, self.cy_name), None)]
         return []
 
-    def intern_declarations(self, ctx):
+    def intern_declarations(self, ctx, extern_decl_made):
         ret = ['cdef %s %s' % (self.cy_dtype_name, self.intern_name),
                 'cdef fw_shape_t %s' % self.intern_len_name]
         if self.intent in ('out', 'inout', None):
@@ -365,6 +375,7 @@ class _CyCharArg(_CyArg):
 
 class _CyErrStrArg(_CyArgBase):
     hide_in_wrapper = False
+    is_array = False
 
     def get_len(self):
         return self.dtype.len
@@ -372,7 +383,7 @@ class _CyErrStrArg(_CyArgBase):
     def extern_declarations(self):
         return []
 
-    def intern_declarations(self, ctx):
+    def intern_declarations(self, ctx, extern_decl_made):
         return ['cdef fw_character_t %s[%s]' %
                     (self.cy_name, constants.ERRSTR_LEN)]
 
@@ -407,7 +418,7 @@ class _CyCmplxArg(_CyArg):
         super(_CyCmplxArg, self)._update()
         self.intern_name = 'fw_%s' % self.cy_name
 
-    def intern_declarations(self, ctx):
+    def intern_declarations(self, ctx, extern_decl_made):
         return super(_CyCmplxArg, self).intern_declarations(ctx)
 
     def call_arg_list(self, ctx):
@@ -455,7 +466,7 @@ class _CyArrayArg(_CyArgBase):
         default_value = 'None' if self.explicit_out_array else None
         return [('object %s' % self.cy_name, default_value)]
 
-    def intern_declarations(self, ctx):
+    def intern_declarations(self, ctx, extern_decl_made):
         decls = ["cdef np.ndarray[%s, ndim=%d, mode='fortran'] %s" %
                 (self.ktp,
                  self.ndims,
@@ -487,10 +498,10 @@ class _CyArrayArg(_CyArgBase):
              'ndim' : self.ndims}
         lines = []
 
-        allocate_outs = self.is_explicit_array and self.intent == 'out'
+        allocate_outs = self.explicit_out_array and self.intent == 'out'
         if allocate_outs:
-            sizeexprs = list(self.explicit_array_sizeexprs)
-            if not self.pyf_mode:
+            sizeexprs = list(self.explicit_out_array_sizeexprs)
+            if not ctx.language == 'pyf':
                 # With .pyf, C expressions can be used directly
                 # Otherwise, only very simplest cases supported.
                 # TODO: Fix this up (compile Fortran-side function to give
@@ -564,8 +575,8 @@ class CyCharArrayArg(_CyArrayArg):
         self.odtype_name = "%s_odtype" % self.intern_name
         self.shape_name = "%s_shape" % self.intern_name
 
-    def intern_declarations(self, ctx):
-        ret = super(CyCharArrayArg, self).intern_declarations(ctx)
+    def intern_declarations(self, ctx, extern_decl_made):
+        ret = super(CyCharArrayArg, self).intern_declarations(ctx, extern_decl_made)
         return ret + ["cdef fw_shape_t %s[%d]" %
                 (self.shape_name, self.ndims+1)]
 
@@ -610,80 +621,85 @@ class CyCharArrayArg(_CyArrayArg):
 
 class CyArgManager(object):
 
-    def __init__(self, args):
-        self.args = args
-        self.args_in_extern_order  = args
+    def __init__(self, in_args, out_args, call_args):
+        self.in_args = in_args
+        self.out_args = out_args
+        self.call_args = call_args
 
     def call_arg_list(self, ctx):
         cal = []
-        for arg in self.args:
+        for arg in self.call_args:
             cal.extend(arg.call_arg_list(ctx))
         return cal
 
     def arg_declarations(self):
         decls = []
-        for arg in self.args_in_extern_order:
+        for arg in self.in_args:
             decls.extend(arg.extern_declarations())
         return decls
 
     def intern_declarations(self, ctx):
         decls = []
-        for arg in self.args:
-            decls.extend(arg.intern_declarations(ctx))
+        for arg in self.call_args:
+            decls.extend(arg.intern_declarations(ctx, arg in self.in_args))
         return decls
 
     def return_tuple_list(self):
         rtl = []
-        for arg in self.args_in_extern_order:
+        for arg in self.out_args:
             rtl.extend(arg.return_tuple_list())
         return rtl
 
     def pre_call_code(self, ctx):
         pcc = []
-        for arg in self.args:
+        for arg in self.call_args:
             pcc.extend(arg.pre_call_code(ctx))
         return pcc
 
     def post_call_code(self, ctx):
         pcc = []
-        for arg in self.args:
+        for arg in self.call_args:
             pcc.extend(arg.post_call_code(ctx))
         return pcc
 
     def docstring_extern_arg_list(self):
         decls = []
-        for arg in self.args_in_extern_order:
+        for arg in self.in_args:
             decls.extend(arg.docstring_extern_arg_list())
         return decls
 
     def docstring_return_tuple_list(self):
         decls = []
-        for arg in self.args_in_extern_order:
+        for arg in self.out_args:
             decls.extend(arg.docstring_return_tuple_list())
         return decls
 
     def docstring_in_descrs(self):
         descrs = []
-        for arg in self.args:
-            if arg.hide_in_wrapper:
-                continue
+        for arg in self.in_args:
             descrs.extend(arg.in_dstring())
         return descrs
 
     def docstring_out_descrs(self):
         descrs = []
-        for arg in self.args_in_extern_order:
+        for arg in self.out_args:
             descrs.extend(arg.out_dstring())
         return descrs
     
 class CyProcedure(AstNode):
-    mandatory = ('name', 'cy_name', 'fc_name', 'args',
-                 'all_dtypes_list', 'language')
+    # The argument lists often contain the same argument nodes, but
+    # may appear in only one of them, e.g., be automatically inferred
+    # (only present in call_args) or have the contents participate in
+    # a pyf init_code expression (only present in in_args).
+    
+    mandatory = ('name', 'cy_name', 'fc_name', 'in_args',
+                 'out_args', 'call_args', 'all_dtypes_list',
+                 'language')
     pyf_callstatement = None
     language = 'fortran'
 
     def _update(self):
-        self.arg_mgr = CyArgManager(self.args)
+        self.arg_mgr = CyArgManager(self.in_args, self.out_args, self.call_args)
         
     def get_names(self):
         # A template proc can provide more than one name
