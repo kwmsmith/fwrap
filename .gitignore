@@ -6,3 +6,4 @@ fwrap.log
 fwrap/waf
 *~
 fparser.log
+*.pye
