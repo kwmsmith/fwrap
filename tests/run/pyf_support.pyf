@@ -1,13 +1,28 @@
 python module pyf_support
     interface
         subroutine testone(m_hidden, m, n, arr)
-            callstatement ** *ignore this please **
-            callprotoargument ignore this too ** *
             integer intent(hide), depend(m) :: m_hidden=m+1
             integer intent(in), check((m>=1) && (m_hidden <= 10)) :: m
             integer intent(in), check(n>=2) :: n = 2
             real*8 intent(out),dimension(1:m_hidden,1:n),depend(m_hidden,n) :: arr
-        end subroutine testone
+        end subroutine
+
+
+        subroutine reorders(zp, xp, yp)
+            callstatement { (*f2py_func)(&xp, yp, &zp ); }
+            integer intent(inout) :: x, z
+            integer intent(inout) :: y(5)
+        end subroutine
+
+
+        function sum(n, arr, offx) result(x)
+            callstatement (*f2py_func)(n, arr + offx)
+            real*8 intent(in), dimension(n) :: arr
+            integer intent(in) :: offx = 0
+            check(offx>=0 && offx<len(x)) :: offx
+            integer optional, intent(in) :: n = (len(x) - offx)
+        end function
+
     end interface 
 end python module pyf_support
 

@@ -59,9 +59,11 @@ def build_cb(opts, args, argv):
     srcs = []
     for arg in args:
         larg = arg.lower()
-        if larg.endswith('.f') or larg.endswith('.f90') or larg.endswith('.pyf'):
+        if larg.endswith('.f') or larg.endswith('.f90'):
             srcs.append(os.path.abspath(arg))
             argv.remove(arg)
+    if opts.pyf:
+        srcs.append(os.path.abspath(opts.pyf))
 
     dst = os.path.join(proj_dir(opts.outdir), 'src')
     for src in srcs:
@@ -116,6 +118,9 @@ def fwrapc(argv):
     configure_opts = OptionGroup(parser, "Configure Options")
     configure_opts.add_option("--name",
             help='name for the extension module [default %default]')
+    configure_opts.add_option('--pyf',
+                              help='merge in the manual changes in this pyf-file to '
+                              'the wrapper')
     configure_opts.add_option("--outdir",
                               help='directory for the intermediate files [default %default]')
     fwrap.configuration.add_cmdline_options(configure_opts.add_option)

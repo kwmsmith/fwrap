@@ -9,6 +9,7 @@ out = 'build'
 def options(opt):
     opt.add_option('--name', action='store', default='fwproj')
     opt.add_option('--outdir', action='store', default='fwproj')
+    opt.add_option('--pyf', action='store')
     opt.add_option('--f77binding', action='store_true', default=False)
     opt.add_option('--detect-templates', action='store_true', default=False)
     opt.load('compiler_c')
@@ -43,6 +44,7 @@ def configure(conf):
     conf.env['FW_F77_BINDING'] = conf.options.f77binding
     conf.env['FW_DETECT_TEMPLATES'] = conf.options.detect_templates
     conf.env['FWRAPPER_OPTS'] = ''
+    conf.env['FW_PYF'] = conf.options.pyf
 
     conf.add_os_flags('INCLUDES')
     conf.add_os_flags('LIB')
@@ -69,12 +71,14 @@ def build(bld):
         flags.append('--f77binding')
     if detect_templates:
         flags.append('--detect-templates')
+    if bld.env['FW_PYF']:
+        flags.append('--pyf=%s' % bld.env['FW_PYF'])
 
     bld(
         name = 'fwrapper',
         rule = '${PYTHON} ${FWRAPPER} --name=%s %s ${FWRAPPER_OPTS} ${SRC}' % (
             bld.env['FW_PROJ_NAME'], ' '.join(flags)),
-        source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90', 'src/*.pyf']),
+        source = bld.srcnode.ant_glob(['src/*.f', 'src/*.F', 'src/*.f90', 'src/*.F90']),
         target = type_specs + [wrapper, cy_in_src],
         )
 

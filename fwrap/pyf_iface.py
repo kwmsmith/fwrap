@@ -676,13 +676,14 @@ class Procedure(AstNode):
     params = ()
     language = 'fortran'
     kind = None
+    pyf_callstatement = None
 
     def _validate(self, name, language, **kw):
         assert language in ('fortran', 'pyf')
         if not valid_fort_name(name):
             raise InvalidNameException(
                     "%s is not a valid Fortran procedure name.")
-        
+
     def extern_arg_list(self):
         return self.arg_man.extern_arg_list()
 

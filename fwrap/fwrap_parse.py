@@ -38,20 +38,18 @@ def _process_node(node, ast, language):
         else:
             args = _get_args(child)
             params = _get_params(child)
+            callstatement = _get_callstatement(child)
+            kw = dict(
+                name=child.name,
+                args=args,
+                params=params,
+                language=language,
+                pyf_callstatement=callstatement)
             if child.blocktype == 'subroutine':
-                ast.append(pyf.Subroutine(
-                                name=child.name,
-                                args=args,
-                                params=params,
-                                language=language))
+                ast.append(pyf.Subroutine(**kw))
             elif child.blocktype == 'function':
-                ast.append(pyf.Function(
-                                name=child.name,
-                                args=args,
-                                params=params,
-                                return_arg=_get_ret_arg(child),
-                                language=language))
-
+                ast.append(pyf.Function(return_arg=_get_ret_arg(child),
+                                        **kw))
     return ast
 
 def is_proc(proc):
@@ -118,6 +116,13 @@ def _get_params(proc):
         if var.is_parameter():
             params.append(_get_param(var))
     return params
+
+def _get_callstatement(proc):
+    from fparser.statements import CallStatement
+    for line in proc.content:
+        if isinstance(line, CallStatement):
+            return line.expr
+    return None
 
 def _get_intent(arg):
     intents = []

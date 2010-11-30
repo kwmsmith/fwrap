@@ -11,7 +11,7 @@ from fwrap.pyf_utils import c_to_cython
 from fwrap.astnode import AstNode
 
 import re
-import warnings
+from warnings import warn
 
 plain_sizeexpr_re = re.compile(r'\(([a-zA-Z0-9_]+)\)')
 
@@ -49,6 +49,7 @@ def fc_proc_to_cy_proc(fc_proc):
                        cy_name=cy_name,
                        args=args,
                        all_dtypes_list=all_dtypes_list,
+                       pyf_callstatement=fc_proc.pyf_callstatement,
                        language=fc_proc.wrapped.language)
     
 
@@ -446,6 +447,13 @@ class _CyArrayArg(_CyArgBase):
         if self.npy_enum is None:
             self.npy_enum = self.dtype.npy_enum
 
+    def set_extern_name(self, name):
+        self.extern_name = name
+        self.intern_name = '%s_' % name
+
+    def get_extern_name(self):
+        return self.extern_name
+
     def extern_declarations(self):
         default_value = 'None' if self.explicit_out_array else None
         return [('object %s' % self.cy_name, default_value)]
@@ -482,10 +490,10 @@ class _CyArrayArg(_CyArgBase):
              'ndim' : self.ndims}
         lines = []
 
-        allocate_outs = self.explicit_out_array
+        allocate_outs = self.is_explicit_array and self.intent == 'out'
         if allocate_outs:
-            sizeexprs = list(self.explicit_out_array_sizeexprs)
-            if ctx.language != 'pyf':
+            sizeexprs = list(self.explicit_array_sizeexprs)
+            if not self.pyf_mode:
                 # With .pyf, C expressions can be used directly
                 # Otherwise, only very simplest cases supported.
                 # TODO: Fix this up (compile Fortran-side function to give
@@ -493,7 +501,7 @@ class _CyArrayArg(_CyArgBase):
                 for i, expr in enumerate(sizeexprs):
                     m = plain_sizeexpr_re.match(expr)
                     if not m:
-                        warnings.warn(
+                        warn(
                             'Cannot automatically allocate explicit-shape intent(out) array '
                             'as expression is too complicated: %s' % expr)
                         allocate_outs = False
@@ -607,6 +615,7 @@ class CyArgManager(object):
 
     def __init__(self, args):
         self.args = args
+        self.args_in_extern_order  = args
 
     def call_arg_list(self, ctx):
         cal = []
@@ -616,7 +625,7 @@ class CyArgManager(object):
 
     def arg_declarations(self):
         decls = []
-        for arg in self.args:
+        for arg in self.args_in_extern_order:
             decls.extend(arg.extern_declarations())
         return decls
 
@@ -628,7 +637,7 @@ class CyArgManager(object):
 
     def return_tuple_list(self):
         rtl = []
-        for arg in self.args:
+        for arg in self.args_in_extern_order:
             rtl.extend(arg.return_tuple_list())
         return rtl
 
@@ -646,13 +655,13 @@ class CyArgManager(object):
 
     def docstring_extern_arg_list(self):
         decls = []
-        for arg in self.args:
+        for arg in self.args_in_extern_order:
             decls.extend(arg.docstring_extern_arg_list())
         return decls
 
     def docstring_return_tuple_list(self):
         decls = []
-        for arg in self.args:
+        for arg in self.args_in_extern_order:
             decls.extend(arg.docstring_return_tuple_list())
         return decls
 
@@ -666,13 +675,14 @@ class CyArgManager(object):
 
     def docstring_out_descrs(self):
         descrs = []
-        for arg in self.args:
+        for arg in self.args_in_extern_order:
             descrs.extend(arg.out_dstring())
         return descrs
     
 class CyProcedure(AstNode):
     mandatory = ('name', 'cy_name', 'fc_name', 'args',
                  'all_dtypes_list', 'language')
+    pyf_callstatement = None
 
     def _update(self):
         self.arg_mgr = CyArgManager(self.args)
