@@ -34,7 +34,6 @@ def wrap_fc(ast):
 
 def fc_proc_to_cy_proc(fc_proc):
     name = fc_proc.wrapped_name()
-    fc_name = fc_proc.name
     cy_name = _py_kw_mangler(name)
 
     fw_arg_man = fc_proc.arg_man
@@ -44,15 +43,13 @@ def fc_proc_to_cy_proc(fc_proc):
 
     all_dtypes_list = fc_proc.all_dtypes()
 
-    return CyProcedure(name=name,
-                       fc_name=fc_name,
-                       cy_name=cy_name,
-                       args=args,
-                       all_dtypes_list=all_dtypes_list,
-                       pyf_callstatement=fc_proc.pyf_callstatement,
-                       language=fc_proc.wrapped.language)
-    
-
+    return CyProcedure.create_node_from(
+        fc_proc,
+        name=fc_proc.wrapped_name(), # remove when FcProcedure is refactored
+        fc_name=fc_proc.name, # ditto
+        cy_name=cy_name,
+        args=args,
+        all_dtypes_list=all_dtypes_list)
 
 def generate_cy_pxd(ast, fc_pxd_name, buf):
     buf.putln('cimport numpy as np')
@@ -683,6 +680,7 @@ class CyProcedure(AstNode):
     mandatory = ('name', 'cy_name', 'fc_name', 'args',
                  'all_dtypes_list', 'language')
     pyf_callstatement = None
+    language = 'fortran'
 
     def _update(self):
         self.arg_mgr = CyArgManager(self.args)

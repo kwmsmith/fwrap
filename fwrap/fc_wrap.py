@@ -101,6 +101,7 @@ class FcProcedure(object):
         self.arg_man = None
         self._get_arg_man()
         self.pyf_callstatement = wrapped.pyf_callstatement
+        self.language = wrapped.language
 
     def _get_arg_man(self):
         self.arg_man = FcArgManager(self.wrapped)
