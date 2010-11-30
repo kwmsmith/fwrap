@@ -108,7 +108,7 @@ def generate(fort_ast, name, cfg, output_directory=None,
         pyf_ast = fc_wrap.wrap_pyf_iface(pyf_ast)
         pyf_ast = cy_wrap.wrap_fc(pyf_ast)
         import mergepyf
-        mergepyf.mergepyf_ast_inplace(cython_ast, pyf_ast)
+        cython_ast = mergepyf.mergepyf_ast(cython_ast, pyf_ast)
         
 
     # Generate files and write them out

@@ -694,7 +694,7 @@ class CyProcedure(AstNode):
     
     mandatory = ('name', 'cy_name', 'fc_name', 'in_args',
                  'out_args', 'call_args', 'all_dtypes_list',
-                 'language')
+                 'language', 'kind')
     pyf_callstatement = None
     language = 'fortran'
 
