@@ -77,7 +77,7 @@ class AstNode(object):
 
     def validate(self, **kw):
         for attr in self.attributes:
-            if attr not in kw and attr in self.mandatory:
+            if attr not in kw and attr in self.mandatory and attr not in self.__dict__:
                 raise TypeError('Attribute %s not provided' % attr)
         self._validate(**kw)
 
