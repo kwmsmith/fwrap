@@ -398,7 +398,7 @@ class FcArg(FcArgBase):
         self.name = arg.name
         self.ktp = arg.ktp
         self.intent = arg.intent
-        self.init_code = arg.init_code
+        self.default_value_expr = arg.default_value_expr
         self.hide_in_wrapper = arg.hide_in_wrapper
         self.check = arg.check
         self._set_intern_name()
@@ -439,7 +439,7 @@ class FcArg(FcArgBase):
         if type(self) is not type(other):
             return False
         if not (self.intent == other.intent and
-                self.init_code == other.init_code and
+                self.default_value_expr == other.default_value_expr and
                 self.hide_in_wrapper == other.hide_in_wrapper and
                 self.check == other.check):
             return False

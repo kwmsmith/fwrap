@@ -77,6 +77,7 @@ def _get_param(p_param):
     return pyf.Parameter(name=name, dtype=dtype, expr=p_param.init)
 
 def _get_arg(p_arg):
+    
     if not p_arg.is_scalar() and not p_arg.is_array():
         raise RuntimeError(
                 "argument %s is neither "
@@ -87,7 +88,7 @@ def _get_arg(p_arg):
     name = p_arg.name
     intent = _get_intent(p_arg)
     hide_in_wrapper = p_arg.is_intent_hide() and not p_arg.is_intent_out()
-    init_code = p_arg.init
+    default_value_expr = p_arg.init
 
     if p_arg.is_array():
         p_dims = p_arg.get_array_spec()
@@ -98,7 +99,7 @@ def _get_arg(p_arg):
                         dtype=dtype,
                         intent=intent,
                         dimension=dimspec,
-                        init_code=init_code,
+                        default_value_expr=default_value_expr,
                         hide_in_wrapper=hide_in_wrapper,
                         check=p_arg.check)
 

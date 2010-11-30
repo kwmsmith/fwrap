@@ -503,7 +503,7 @@ class Argument(AstNode):
     intent = None
     isvalue = None
     is_return_arg = False
-    init_code = None
+    default_value_expr = None
     hide_in_wrapper = False
     check = ()
     dimension = None

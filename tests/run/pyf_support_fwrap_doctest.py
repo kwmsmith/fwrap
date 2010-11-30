@@ -32,6 +32,15 @@ __doc__ = u"""
     45.0
 
     
-#    >>> fort_sum_simpl(7, r, 3)
-#    45.0
+    >>> fort_sum(r, 10, 0)
+    45.0
+    >>> fort_sum(r, 10, -1)
+    Traceback (most recent call last):
+        ...
+    ValueError: Condition on arguments not satisfied: offx >= 0 and offx < np.PyArray_DIMS(arr)[0]
+    >>> fort_sum(r, 10, 11)
+    Traceback (most recent call last):
+        ...
+    ValueError: Condition on arguments not satisfied: offx >= 0 and offx < np.PyArray_DIMS(arr)[0]
+
 """

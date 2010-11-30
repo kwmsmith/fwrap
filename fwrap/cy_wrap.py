@@ -175,7 +175,7 @@ class _CyArgBase(AstNode):
 
     # Optional:
     hide_in_wrapper = False
-    init_code = None
+    default_value_expr = None
     defer_init_to_body = False
     check = ()
 
@@ -194,7 +194,7 @@ class _CyArgBase(AstNode):
         return result
 
     def is_optional(self):
-        return self.init_code is not None
+        return self.default_value_expr is not None
 
 class _CyArg(_CyArgBase):
 
@@ -224,9 +224,9 @@ class _CyArg(_CyArgBase):
         either None or 'None')
         """
         assert not self.hide_in_wrapper and self.intent in ('in', 'inout', None)
-        init_code = 'None' if self.defer_init_to_body else self.init_code
+        default_value_expr = 'None' if self.defer_init_to_body else self.default_value_expr
         typedecl = 'object' if self.defer_init_to_body else self.cy_dtype_name
-        return [("%s %s" % (typedecl, self.cy_name), init_code)]
+        return [("%s %s" % (typedecl, self.cy_name), default_value_expr)]
 
     def docstring_extern_arg_list(self):
         assert not self.hide_in_wrapper and self.intent in ('in', 'inout', None)
@@ -245,15 +245,23 @@ class _CyArg(_CyArgBase):
         return []
 
     def pre_call_code(self, ctx):
+        return []
+    
+    def init_code(self, ctx):
         # When parsing pyf files, one can specify arbitrary initialization
         # code (assumed to be in Cython). For hidden arguments, this
         # must be inserted here.
         lines = []
-        if self.hide_in_wrapper and self.init_code is not None:
-            lines.append("%s = %s" % (self.intern_name, self.init_code))
+        if self.hide_in_wrapper and self.default_value_expr is not None:
+            lines.append("%s = %s" % (self.intern_name, self.default_value_expr))
         elif self.defer_init_to_body:
             lines.append("%s = %s if (%s is not None) else %s" %
-                         (self.intern_name, self.cy_name, self.cy_name, self.init_code))
+                         (self.intern_name, self.cy_name, self.cy_name,
+                          self.default_value_expr))
+        return lines
+
+    def check_code(self, ctx):
+        lines = []
         for c in self.check:
             lines.append("if not (%s):" % c)
             lines.append("    raise ValueError('Condition on arguments not satisfied: %s')" % c)
@@ -402,6 +410,15 @@ class _CyErrStrArg(_CyArgBase):
     def return_tuple_list(self):
         return []
 
+    def init_code(self, ctx):
+        return []
+
+    def init_code(self, ctx):
+        return []
+
+    def check_code(self, ctx):
+        return []
+
     def pre_call_code(self, ctx):
         return []
 
@@ -461,7 +478,7 @@ class _CyArrayArg(_CyArgBase):
                 dim.sizeexpr for dim in self.dimension]
         if self.hide_in_wrapper:
             raise NotImplementedError()
-        if self.init_code is not None:
+        if self.default_value_expr is not None:
             raise NotImplementedError()
         # Note: The following are set to something else in
         # deduplicator.TemplatedCyArrayArg
@@ -480,8 +497,8 @@ class _CyArrayArg(_CyArgBase):
         return self.extern_name
 
     def extern_declarations(self):
-        default_value = 'None' if self.explicit_out_array else None
-        return [('object %s' % self.cy_name, default_value)]
+        default_value_expr = 'None' if self.explicit_out_array else None
+        return [('object %s' % self.cy_name, default_value_expr)]
 
     def intern_declarations(self, ctx, extern_decl_made):
         decls = ["cdef np.ndarray[%s, ndim=%d, mode='fortran'] %s" %
@@ -509,6 +526,12 @@ class _CyArrayArg(_CyArgBase):
         return [shape_expr,
                 '<%s*>np.PyArray_DATA(%s)%s' %
                 (self.ktp, self.intern_name, offset_code)]
+
+    def init_code(self, ctx):
+        return []
+
+    def check_code(self, ctx):
+        return []
 
     def pre_call_code(self, ctx):
         # NOTE: we can support a STRICT macro that would disable the
@@ -647,6 +670,9 @@ class CyArgManager(object):
         self.in_args = in_args
         self.out_args = out_args
         self.call_args = call_args
+        self.in_and_call_args = ([arg for arg in self.in_args] +
+                                 [arg for arg in self.call_args
+                                  if arg not in self.in_args])
 
     def call_arg_list(self, ctx):
         cal = []
@@ -671,6 +697,18 @@ class CyArgManager(object):
         for arg in self.out_args:
             rtl.extend(arg.return_tuple_list())
         return rtl
+
+    def init_code(self, ctx):
+        cc = []
+        for arg in self.in_and_call_args:
+            cc.extend(arg.init_code(ctx))
+        return cc
+
+    def check_code(self, ctx):
+        cc = []
+        for arg in self.in_and_call_args:
+            cc.extend(arg.check_code(ctx))
+        return cc
 
     def pre_call_code(self, ctx):
         pcc = []
@@ -712,7 +750,7 @@ class CyProcedure(AstNode):
     # The argument lists often contain the same argument nodes, but
     # may appear in only one of them, e.g., be automatically inferred
     # (only present in call_args) or have the contents participate in
-    # a pyf init_code expression (only present in in_args).
+    # a pyf default_value_expr expression (only present in in_args).
     
     mandatory = ('name', 'cy_name', 'fc_name', 'in_args',
                  'out_args', 'call_args', 'all_dtypes_list',
@@ -818,6 +856,8 @@ class CyProcedure(AstNode):
         buf.indent()
         self.put_docstring(buf)
         self.temp_declarations(buf, ctx)
+        buf.putlines(self.arg_mgr.init_code(ctx))
+        buf.putlines(self.arg_mgr.check_code(ctx))
         self.pre_call_code(ctx, buf)
         buf.putln(self.proc_call(ctx))
         self.post_try_finally(ctx, buf)

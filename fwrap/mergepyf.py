@@ -65,7 +65,7 @@ def mergepyf_proc(f_proc, pyf_proc):
                 # and put in a placeholder for user intervention
                 arg = f_arg.copy_and_set(hide_in_wrapper=True,
                                          intent=None,
-                                         init_code='##TODO: %s' % expr)
+                                         default_value_expr='##TODO: %s' % expr)
             call_args.append(arg)
             
         # Reinsert the extra error-handling and function return arguments
@@ -119,7 +119,7 @@ literal_re = re.compile(r'^-?[0-9.]+$') # close enough
 def process_in_args(in_args):
     # Arguments must be changed as follows:
     # a) Reorder so that arguments with defaults come last
-    # b) Parse the init_code into something usable by Cython.
+    # b) Parse the default_value_expr into something usable by Cython.
     for arg in in_args:
         if arg.check is not None:
             arg.update(check=[c_to_cython(c) for c in arg.check])
@@ -128,14 +128,14 @@ def process_in_args(in_args):
     optional = [arg for arg in in_args if arg.is_optional()]
     in_args[:] = mandatory + optional
     for arg in optional:
-        if (arg.init_code is not None and
-            literal_re.match(arg.init_code) is None):
-            # Do some crude processing of init_code to translate
+        if (arg.default_value_expr is not None and
+            literal_re.match(arg.default_value_expr) is None):
+            # Do some crude processing of default_value_expr to translate
             # it fully or partially to Cython
-            init_code = py_kw_mangle_expression(arg.init_code)
-            init_code = c_to_cython(init_code)
+            default_value_expr = py_kw_mangle_expression(arg.default_value_expr)
+            default_value_expr = c_to_cython(default_value_expr)
             arg.update(defer_init_to_body=True,
-                       init_code=init_code)
+                       default_value_expr=default_value_expr)
 
 
 _c_to_cython_dictionary = {
