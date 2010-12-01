@@ -84,3 +84,11 @@
         character, intent(out) :: x
         x = 'F'
       end subroutine
+
+C TODO: Does not work
+c$$$      logical function lsame(ca,cb)
+c$$$      character ca,cb
+c$$$      intrinsic ichar
+c$$$      integer inta,intb,zcode
+c$$$      lsame = .true.
+c$$$      end
