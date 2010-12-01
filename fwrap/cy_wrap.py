@@ -505,7 +505,7 @@ class _CyArrayArg(_CyArgBase):
                 (self.ktp,
                  self.ndims,
                  self.intern_name,)]
-        if ctx.cfg.f77binding:
+        if ctx.cfg.f77binding or self.mem_offset_code is not None:
             decls.append("cdef fw_shape_t %s[%d]" %
                          (self.shape_var_name,
                           self.ndims))
@@ -519,10 +519,10 @@ class _CyArrayArg(_CyArgBase):
             offset_code = ' + %s' % self.mem_offset_code
         else:
             offset_code = ''
-        if not ctx.cfg.f77binding:
-            shape_expr = 'np.PyArray_DIMS(%s)' % self.intern_name
-        else:
+        if ctx.cfg.f77binding or self.mem_offset_code is not None:
             shape_expr = self.shape_var_name
+        else:
+            shape_expr = 'np.PyArray_DIMS(%s)' % self.intern_name
         return [shape_expr,
                 '<%s*>np.PyArray_DATA(%s)%s' %
                 (self.ktp, self.intern_name, offset_code)]
@@ -569,11 +569,12 @@ class _CyArrayArg(_CyArgBase):
             lines.append('%(intern)s = fw_getoutarray(%(extern)s, %(dtenum)s, '
                          '%(ndim)d, [%(shape)s])' % d)
 
-        if ctx.cfg.f77binding:
+        if ctx.cfg.f77binding or self.mem_offset_code is not None:
             ctx.use_utility_code(copy_shape_utility_code)
             lines.append('fw_copyshape(%s, np.PyArray_DIMS(%s), %d)' %
                          (self.shape_var_name, self.intern_name, self.ndims))
-
+        if self.mem_offset_code is not None:
+            lines.append('%s[0] -= %s' % (self.shape_var_name, self.mem_offset_code))
         return lines
 
     def post_call_code(self, ctx):
