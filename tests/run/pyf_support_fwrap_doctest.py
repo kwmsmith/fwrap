@@ -25,6 +25,8 @@ __doc__ = u"""
     >>> reorders(1, 3, np.arange(4).astype(np.int32))
     (3, 1, array([2, 2, 2, 2], dtype=int32))
 
+Test truncating array and playing with bounds of explicit-shape array::
+
     >>> r = np.arange(10)
     >>> fort_sum_simple(r, 10)
     45.0
@@ -41,12 +43,16 @@ __doc__ = u"""
     Traceback (most recent call last):
     ...
     RuntimeError: an error was encountered when calling the 'fort_sum_simple' wrapper.
-
     
     >>> fort_sum(r)
     45.0
+    >>> fort_sum(r, 5)
+    10.0
     >>> fort_sum(r, 10)
     45.0
+    
+Test offx argument::
+
     >>> fort_sum(r, 10, 0)
     45.0
     >>> fort_sum(r, 10, -1)
@@ -57,9 +63,6 @@ __doc__ = u"""
     Traceback (most recent call last):
         ...
     ValueError: Condition on arguments not satisfied: offx >= 0 and offx < np.PyArray_DIMS(arr)[0]
-    
-Test offx argument::
-
     >>> fort_sum(r, 5, 5)
     35.0
     >>> fort_sum(r, 5, 6)
@@ -81,5 +84,16 @@ Test offx argument::
     >>> fort_sum(r, offx=9)
     9.0
 
+intent(copy) and intent(overwrite) tests::
+
+    >>> r = np.zeros(10)
+    >>> intent_copy_arange(r, 10)
+    array([  1.,   2.,   3.,   4.,   5.,   6.,   7.,   8.,   9.,  10.])
+    >>> r
+    array([ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.])
+    >>> _ = intent_copy_arange(r, 10, overwrite_x=True)
+    >>> r
+    array([  1.,   2.,   3.,   4.,   5.,   6.,   7.,   8.,   9.,  10.])
 
 """
+

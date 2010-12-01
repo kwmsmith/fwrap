@@ -47,3 +47,11 @@ C     Then do arr = arange(m*n).reshape(m, n)
          fort_sum = fort_sum + arr(i)
       enddo
       end function
+
+      subroutine intent_copy_arange(x, n)
+      integer n, i
+      real*8 x(n)
+      do i = 1, n
+         x(i) = i
+      enddo
+      end subroutine

@@ -5,7 +5,7 @@
 import re
 from fwrap import constants
 from fwrap.pyf_iface import _py_kw_mangler, py_kw_mangle_expression
-
+from fwrap.cy_wrap import _CyArg
 
 def mergepyf_ast(cython_ast, cython_ast_from_pyf):
     # Primarily just copy ast, but merge in select detected manual
@@ -84,7 +84,7 @@ def mergepyf_proc(f_proc, pyf_proc):
 
     in_args = [copy_or_get(arg) for arg in pyf_proc.in_args]
     out_args = [copy_or_get(arg) for arg in pyf_proc.out_args]
-    process_in_args(in_args)
+    in_args = process_in_args(in_args)
     result = f_proc.copy_and_set(call_args=call_args,
                                  in_args=in_args,
                                  out_args=out_args,
@@ -127,7 +127,8 @@ def process_in_args(in_args):
     
     mandatory = [arg for arg in in_args if not arg.is_optional()]
     optional = [arg for arg in in_args if arg.is_optional()]
-    in_args[:] = mandatory + optional
+    in_args = mandatory + optional
+
     for arg in optional:
         default_value = arg.pyf_default_value
         if (default_value is not None and
@@ -139,6 +140,26 @@ def process_in_args(in_args):
             arg.update(defer_init_to_body=True,
                        pyf_default_value=default_value)
 
+    
+    # Process intent(copy) and intent(overwrite). f2py behaviour is to
+    # add overwrite_X to the very end of the argument list, so insert
+    # new argument nodes.
+    overwrite_args = []
+    for arg in in_args:
+        if arg.pyf_overwrite_flag:
+            flagname = 'overwrite_%s' % arg.cy_name
+            arg.overwrite_flag_cy_name = flagname
+            overwrite_args.append(
+                _CyArg(name=flagname,
+                       cy_name=flagname,
+                       ktp='bint',
+                       intent='in',
+                       dtype=None,
+                       pyf_default_value=repr(arg.pyf_overwrite_flag_default)))
+    in_args.extend(overwrite_args)
+
+    # Return new set of in_args
+    return in_args
 
 _c_to_cython_dictionary = {
     '&&' : 'and',

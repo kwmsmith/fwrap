@@ -174,13 +174,16 @@ class _CyArgBase(AstNode):
     mandatory = ('name', 'cy_name', 'intent', 'dtype', 'ktp')
 
     # Optional:
-    defer_init_to_body = False
 
     pyf_hide = False
     pyf_default_value = None
     pyf_check = ()
     pyf_overwrite_flag = False
     pyf_overwrite_flag_default = None
+
+    # Set by mergepyf
+    defer_init_to_body = False
+    overwrite_flag_cy_name = None
 
     def equal_up_to_type(self, other_arg):
         type_a = type(self)
@@ -544,7 +547,8 @@ class _CyArrayArg(_CyArgBase):
         d = {'intern' : self.intern_name,
              'extern' : self.cy_name,
              'dtenum' : self.npy_enum,
-             'ndim' : self.ndims}
+             'ndim' : self.ndims,
+             'overwrite_flag' : self.overwrite_flag_cy_name}
         lines = []
 
         allocate_outs = self.explicit_out_array and self.intent == 'out'
@@ -565,8 +569,15 @@ class _CyArrayArg(_CyArgBase):
                         break
                     sizeexprs[i] = _py_kw_mangler(m.group(1))
         if not allocate_outs:
-            lines.append('%(intern)s = np.PyArray_FROMANY(%(extern)s, %(dtenum)s, '
-                         '%(ndim)d, %(ndim)d, np.NPY_F_CONTIGUOUS)' % d)
+            convert_array_code = ('%(intern)s = np.PyArray_FROMANY(%(extern)s, %(dtenum)s, '
+                                  '%(ndim)d, %(ndim)d, np.NPY_F_CONTIGUOUS)' % d)
+            if self.pyf_overwrite_flag:
+                lines.append('if %(overwrite_flag)s:' % d)
+                lines.append('    ' + convert_array_code)
+                lines.append('else:')
+                lines.append('    %(intern)s = %(extern)s.copy("F")' % d)
+            else:
+                lines.append(convert_array_code)
         else:
             d['shape'] = ', '.join(sizeexprs)
             ctx.use_utility_code(explicit_shape_out_array_utility_code)
