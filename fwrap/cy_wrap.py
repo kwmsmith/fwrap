@@ -569,8 +569,9 @@ class _CyArrayArg(_CyArgBase):
                         break
                     sizeexprs[i] = _py_kw_mangler(m.group(1))
         if not allocate_outs:
-            convert_array_code = ('%(intern)s = np.PyArray_FROMANY(%(extern)s, %(dtenum)s, '
-                                  '%(ndim)d, %(ndim)d, np.NPY_F_CONTIGUOUS)' % d)
+            ctx.use_utility_code(as_fortran_array_utility_code)
+            convert_array_code = ('%(intern)s = fw_asfortranarray(%(extern)s, %(dtenum)s, '
+                                  '%(ndim)d)' % d)
             if self.pyf_overwrite_flag:
                 lines.append('if %(overwrite_flag)s:' % d)
                 lines.append('    ' + convert_array_code)
@@ -925,8 +926,11 @@ class CyProcedure(AstNode):
 
 explicit_shape_out_array_utility_code = u"""
 cdef object fw_getoutarray(object value, int typenum, int ndim, np.intp_t *shape):
+    cdef int flags = np.NPY_F_CONTIGUOUS
+    if ndim <= 1:
+        flags |= np.NPY_C_CONTIGUOUS
     if value is not None:
-        return np.PyArray_FROMANY(value, typenum, ndim, ndim, np.NPY_F_CONTIGUOUS)
+        return np.PyArray_FROMANY(value, typenum, ndim, ndim, flags)
     else:
         return np.PyArray_ZEROS(ndim, shape, typenum, 1)
 """
@@ -938,4 +942,13 @@ cdef void fw_copyshape(fw_shape_t *target, np.intp_t *source, int ndim):
     cdef int i
     for i in range(ndim):
         target[i] = source[i]
+"""
+
+as_fortran_array_utility_code = u"""
+cdef object fw_asfortranarray(object value, int typenum, int ndim):
+    cdef int flags = np.NPY_F_CONTIGUOUS
+    if ndim <= 1:
+        # See http://projects.scipy.org/numpy/ticket/1691 for why this is needed
+        flags |= np.NPY_C_CONTIGUOUS
+    return np.PyArray_FROMANY(value, typenum, ndim, ndim, flags)
 """
