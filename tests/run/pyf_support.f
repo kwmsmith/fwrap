@@ -55,3 +55,11 @@ C     Then do arr = arange(m*n).reshape(m, n)
          x(i) = i
       enddo
       end subroutine
+
+      subroutine intent_overwrite_arange(x, n)
+      integer n, i
+      real*8 x(n)
+      do i = 1, n
+         x(i) = i
+      enddo
+      end subroutine

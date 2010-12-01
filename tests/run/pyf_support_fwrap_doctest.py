@@ -99,6 +99,14 @@ intent(copy) and intent(overwrite) tests::
     >>> _ = intent_copy_arange(r[::2], 5, overwrite_x=True)
     >>> r
     array([ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.])
+    >>> intent_overwrite_arange(r, 10)
+    array([  1.,   2.,   3.,   4.,   5.,   6.,   7.,   8.,   9.,  10.])
+    >>> r
+    array([  1.,   2.,   3.,   4.,   5.,   6.,   7.,   8.,   9.,  10.])
+    >>> r[:] = 0
+    >>> _ = intent_overwrite_arange(r, 10, overwrite_x=False)
+    >>> r
+    array([ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.])
 
 
 """

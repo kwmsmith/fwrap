@@ -37,6 +37,11 @@ python module pyf_support
           integer :: n
         end subroutine
 
+        subroutine intent_overwrite_arange(x, n)
+          real*8, intent(in,out,overwrite), dimension(n) :: x
+          integer :: n
+        end subroutine
+
     end interface 
 end python module pyf_support
 
