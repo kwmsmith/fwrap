@@ -278,7 +278,7 @@ class _CyArg(_CyArgBase):
     def return_tuple_list(self):
         assert self.cy_name != constants.ERR_NAME
         assert self.intent in ('out', 'inout', None)
-        return [self.cy_name]
+        return [self.intern_name]
 
     docstring_return_tuple_list = return_tuple_list
 
@@ -446,16 +446,17 @@ class _CyErrStrArg(_CyArgBase):
 
 
 class _CyCmplxArg(_CyArg):
-    # TODO Is this class needed?
-    def _update(self):
-        super(_CyCmplxArg, self)._update()
-        self.intern_name = 'fw_%s' % self.cy_name
+    pass
+##     # TODO Is this class needed?
+##     def _update(self):
+##         super(_CyCmplxArg, self)._update()
+##         self.intern_name = 'fw_%s' % self.cy_name
 
-    def intern_declarations(self, ctx, extern_decl_made):
-        return super(_CyCmplxArg, self).intern_declarations(ctx)
+##     def intern_declarations(self, ctx, extern_decl_made):
+##         return super(_CyCmplxArg, self).intern_declarations(ctx)
 
-    def call_arg_list(self, ctx):
-        return ['&%s' % self.cy_name]
+##     def call_arg_list(self, ctx):
+##         return ['&%s' % self.cy_name]
 
 
 class _CyArrayArg(_CyArgBase):
