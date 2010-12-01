@@ -10,8 +10,10 @@ python module pyf_support
 
         subroutine reorders(zp, xp, yp)
             callstatement { (*f2py_func)(&xp, yp, &zp ); }
-            integer intent(inout) :: xp, zp
-            integer intent(inout) :: yp(5)
+            ! The in,out of f2py corresponds to the "inout" of fwrap.
+            ! The "inout" of f2py is not supported
+            integer intent(in,out) :: xp, zp
+            integer intent(in,out) :: yp(5)
         end subroutine
 
         function fort_sum_simple(n, arr) result(x)

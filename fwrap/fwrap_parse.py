@@ -36,9 +36,9 @@ def _process_node(node, ast, language):
             # we ignore non-top-level procedures until modules are supported.
             pass
         else:
-            args = _get_args(child)
-            params = _get_params(child)
-            callstatement = _get_callstatement(child)
+            args = _get_args(child, language)
+            params = _get_params(child, language)
+            callstatement = _get_callstatement(child, language)
             kw = dict(
                 name=child.name,
                 args=args,
@@ -48,35 +48,35 @@ def _process_node(node, ast, language):
             if child.blocktype == 'subroutine':
                 ast.append(pyf.Subroutine(**kw))
             elif child.blocktype == 'function':
-                ast.append(pyf.Function(return_arg=_get_ret_arg(child),
+                ast.append(pyf.Function(return_arg=_get_ret_arg(child, language),
                                         **kw))
     return ast
 
 def is_proc(proc):
     return proc.blocktype in ('subroutine', 'function')
 
-def _get_ret_arg(proc):
+def _get_ret_arg(proc, language):
     ret_var = proc.get_variable(proc.result)
-    ret_arg = _get_arg(ret_var)
+    ret_arg = _get_arg(ret_var, language)
     ret_arg.intent = None
     return ret_arg
 
-def _get_param(p_param):
+def _get_param(p_param, language):
     if not p_param.is_parameter():
         raise ValueError("argument %r is not a parameter" % p_param)
     if not p_param.init:
         raise ValueError("parameter %r does not have an initialization "
                          "expression." % p_param)
     p_typedecl = p_param.get_typedecl()
-    dtype = _get_dtype(p_typedecl)
+    dtype = _get_dtype(p_typedecl, language)
     name = p_param.name
-    intent = _get_intent(p_param)
+    intent = _get_intent(p_param, language)
     if not p_param.is_scalar():
         raise RuntimeError("do not support array or derived-type "
                            "parameters at the moment...")
     return pyf.Parameter(name=name, dtype=dtype, expr=p_param.init)
 
-def _get_arg(p_arg):
+def _get_arg(p_arg, language):
     
     if not p_arg.is_scalar() and not p_arg.is_array():
         raise RuntimeError(
@@ -84,9 +84,9 @@ def _get_arg(p_arg):
                     "a scalar or an array (derived type?)" % p_arg)
 
     p_typedecl = p_arg.get_typedecl()
-    dtype = _get_dtype(p_typedecl)
+    dtype = _get_dtype(p_typedecl, language)
     name = p_arg.name
-    intent = _get_intent(p_arg)
+    intent = _get_intent(p_arg, language)
     hide_in_wrapper = p_arg.is_intent_hide() and not p_arg.is_intent_out()
     default_value_expr = p_arg.init
 
@@ -103,29 +103,31 @@ def _get_arg(p_arg):
                         hide_in_wrapper=hide_in_wrapper,
                         check=p_arg.check)
 
-def _get_args(proc):
+def _get_args(proc, language):
     args = []
     for argname in proc.args:
         p_arg = proc.get_variable(argname)
-        args.append(_get_arg(p_arg))
+        args.append(_get_arg(p_arg, language))
     return args
 
-def _get_params(proc):
+def _get_params(proc, language):
     params = []
     for varname in proc.a.variables:
         var = proc.a.variables[varname]
         if var.is_parameter():
-            params.append(_get_param(var))
+            params.append(_get_param(var, language))
     return params
 
-def _get_callstatement(proc):
+def _get_callstatement(proc, language):
     from fparser.statements import CallStatement
     for line in proc.content:
         if isinstance(line, CallStatement):
             return line.expr
     return None
 
-def _get_intent(arg):
+def _get_intent(arg, language):
+    if language == 'pyf':
+        return _get_intent_pyf(arg)
     intents = []
     if not arg.intent:
         intents.append("inout")
@@ -136,8 +138,6 @@ def _get_intent(arg):
             intents.append("inout")
         if arg.is_intent_out():
             intents.append("out")
-    if not intents and arg.is_intent_hide():
-        intents.append("in")
     if not intents:
         raise RuntimeError("argument has no intent specified, '%s'" % arg)
     if len(intents) > 1:
@@ -145,6 +145,24 @@ def _get_intent(arg):
                 "argument has multiple "
                     "intents specified, '%s', %s" % (arg, intents))
     return intents[0]
+
+def _get_intent_pyf(arg):
+    if arg.is_intent_inout():
+        # The "inout" feature of f2py is different; hiding
+        # the argument from the result tuple.
+        raise NotImplementedError("intent(inout) not supported in pyf files")
+    elif arg.is_intent_in() and arg.is_intent_out():
+        # The "in,out" feature of f2py corresponds to fwrap's inout
+        intent = "inout"
+    elif arg.is_intent_in():
+        intent = "in"
+    elif arg.is_intent_out():
+        intent = "out"
+    elif arg.is_intent_hide():
+        intent = "in"
+    else:
+        intent = "inout"
+    return intent    
 
 name2default = {
         'integer' : pyf.default_integer,
@@ -164,7 +182,7 @@ name2type = {
         'logical' : pyf.LogicalType,
         }
 
-def _get_dtype(typedecl):
+def _get_dtype(typedecl, language):
     if not typedecl.is_intrinsic():
         raise RuntimeError(
                 "only intrinsic types supported ATM... [%s]" % str(typedecl))
