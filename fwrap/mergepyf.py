@@ -63,9 +63,10 @@ def mergepyf_proc(f_proc, pyf_proc):
                 # OK, we do not understand the C code in the callstatement in this
                 # argument position, but at least introduce a temporary variable
                 # and put in a placeholder for user intervention
-                arg = f_arg.copy_and_set(hide_in_wrapper=True,
-                                         intent=None,
-                                         default_value_expr='##TODO: %s' % expr)
+                arg = f_arg.copy_and_set(
+                    intent=None,
+                    pyf_hide=True,
+                    pyf_default_value='##TODO: %s' % expr)
             call_args.append(arg)
             
         # Reinsert the extra error-handling and function return arguments
@@ -119,23 +120,24 @@ literal_re = re.compile(r'^-?[0-9.]+$') # close enough
 def process_in_args(in_args):
     # Arguments must be changed as follows:
     # a) Reorder so that arguments with defaults come last
-    # b) Parse the default_value_expr into something usable by Cython.
+    # b) Parse the default_value into something usable by Cython.
     for arg in in_args:
-        if arg.check is not None:
-            arg.update(check=[c_to_cython(c) for c in arg.check])
+        if arg.pyf_check is not None:
+            arg.update(pyf_check=[c_to_cython(c) for c in arg.pyf_check])
     
     mandatory = [arg for arg in in_args if not arg.is_optional()]
     optional = [arg for arg in in_args if arg.is_optional()]
     in_args[:] = mandatory + optional
     for arg in optional:
-        if (arg.default_value_expr is not None and
-            literal_re.match(arg.default_value_expr) is None):
-            # Do some crude processing of default_value_expr to translate
+        default_value = arg.pyf_default_value
+        if (default_value is not None and
+            literal_re.match(default_value) is None):
+            # Do some crude processing of default_value to translate
             # it fully or partially to Cython
-            default_value_expr = py_kw_mangle_expression(arg.default_value_expr)
-            default_value_expr = c_to_cython(default_value_expr)
+            default_value = (default_value)
+            default_value = c_to_cython(default_value)
             arg.update(defer_init_to_body=True,
-                       default_value_expr=default_value_expr)
+                       pyf_default_value=default_value)
 
 
 _c_to_cython_dictionary = {
@@ -169,6 +171,8 @@ def c_to_cython(expr):
     # Deal with the most common cases to reduce the amount
     # of manual modification needed afterwards. This is used
     # in check(...), so support common boolean constructs
+    expr = py_kw_mangle_expression(expr)
+    
     def f(m):
         return _c_to_cython_dictionary[m.group(0)]
 

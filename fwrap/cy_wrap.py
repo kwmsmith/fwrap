@@ -72,7 +72,7 @@ def cy_arg_factory(arg, is_array):
         else:
             cls = _CyArg
         if arg.name == constants.ERR_NAME:
-            attrs['hide_in_wrapper'] = True
+            attrs['pyf_hide'] = True
     return cls.create_node_from(arg, **attrs)
 
 def get_call_args(args):
@@ -82,14 +82,14 @@ def get_in_args(args):
     # Arrays with intent(out) is still present in case user wants
     # to input a buffer
     return [arg for arg in args
-            if (not arg.hide_in_wrapper and
+            if (not arg.pyf_hide and
                 (arg.is_array or
                  arg.intent in ('in', 'inout', None)) and
                 not isinstance(arg, _CyErrStrArg))]
 
 def get_out_args(args):
     return [arg for arg in args
-            if (not arg.hide_in_wrapper and
+            if (not arg.pyf_hide and
                 arg.intent in ('out', 'inout', None) and
                 not isinstance(arg, _CyErrStrArg))]
 
@@ -174,10 +174,13 @@ class _CyArgBase(AstNode):
     mandatory = ('name', 'cy_name', 'intent', 'dtype', 'ktp')
 
     # Optional:
-    hide_in_wrapper = False
-    default_value_expr = None
     defer_init_to_body = False
-    check = ()
+
+    pyf_hide = False
+    pyf_default_value = None
+    pyf_check = ()
+    pyf_overwrite_flag = False
+    pyf_overwrite_flag_default = None
 
     def equal_up_to_type(self, other_arg):
         type_a = type(self)
@@ -194,7 +197,7 @@ class _CyArgBase(AstNode):
         return result
 
     def is_optional(self):
-        return self.default_value_expr is not None
+        return self.pyf_default_value is not None
 
 class _CyArg(_CyArgBase):
 
@@ -223,13 +226,14 @@ class _CyArg(_CyArgBase):
         string representation of possible default value (normally
         either None or 'None')
         """
-        assert not self.hide_in_wrapper and self.intent in ('in', 'inout', None)
-        default_value_expr = 'None' if self.defer_init_to_body else self.default_value_expr
+        assert not self.pyf_hide and self.intent in ('in', 'inout', None)
+        default = ('None' if self.defer_init_to_body else
+                   self.pyf_default_value)
         typedecl = 'object' if self.defer_init_to_body else self.cy_dtype_name
-        return [("%s %s" % (typedecl, self.cy_name), default_value_expr)]
+        return [("%s %s" % (typedecl, self.cy_name), default)]
 
     def docstring_extern_arg_list(self):
-        assert not self.hide_in_wrapper and self.intent in ('in', 'inout', None)
+        assert not self.pyf_hide and self.intent in ('in', 'inout', None)
         return [self.cy_name]
 
     def intern_declarations(self, ctx, extern_decl_made):
@@ -252,17 +256,18 @@ class _CyArg(_CyArgBase):
         # code (assumed to be in Cython). For hidden arguments, this
         # must be inserted here.
         lines = []
-        if self.hide_in_wrapper and self.default_value_expr is not None:
-            lines.append("%s = %s" % (self.intern_name, self.default_value_expr))
+        if (self.pyf_hide and
+            self.pyf_default_value is not None):
+            lines.append("%s = %s" % (self.intern_name, self.pyf_default_value))
         elif self.defer_init_to_body:
             lines.append("%s = %s if (%s is not None) else %s" %
                          (self.intern_name, self.cy_name, self.cy_name,
-                          self.default_value_expr))
+                          self.pyf_default_value))
         return lines
 
     def check_code(self, ctx):
         lines = []
-        for c in self.check:
+        for c in self.pyf_check:
             lines.append("if not (%s):" % c)
             lines.append("    raise ValueError('Condition on arguments not satisfied: %s')" % c)
         return lines
@@ -391,7 +396,6 @@ class _CyCharArg(_CyArg):
 
 
 class _CyErrStrArg(_CyArgBase):
-    hide_in_wrapper = False
     is_array = False
 
     def get_len(self):
@@ -476,9 +480,9 @@ class _CyArrayArg(_CyArgBase):
         if self.explicit_out_array:
             self.explicit_out_array_sizeexprs = [
                 dim.sizeexpr for dim in self.dimension]
-        if self.hide_in_wrapper:
+        if self.pyf_hide:
             raise NotImplementedError()
-        if self.default_value_expr is not None:
+        if self.pyf_default_value is not None:
             raise NotImplementedError()
         # Note: The following are set to something else in
         # deduplicator.TemplatedCyArrayArg
@@ -497,8 +501,8 @@ class _CyArrayArg(_CyArgBase):
         return self.extern_name
 
     def extern_declarations(self):
-        default_value_expr = 'None' if self.explicit_out_array else None
-        return [('object %s' % self.cy_name, default_value_expr)]
+        default = 'None' if self.explicit_out_array else None
+        return [('object %s' % self.cy_name, default)]
 
     def intern_declarations(self, ctx, extern_decl_made):
         decls = ["cdef np.ndarray[%s, ndim=%d, mode='fortran'] %s" %
@@ -751,7 +755,7 @@ class CyProcedure(AstNode):
     # The argument lists often contain the same argument nodes, but
     # may appear in only one of them, e.g., be automatically inferred
     # (only present in call_args) or have the contents participate in
-    # a pyf default_value_expr expression (only present in in_args).
+    # a pyf_default_value expression (only present in in_args).
     
     mandatory = ('name', 'cy_name', 'fc_name', 'in_args',
                  'out_args', 'call_args', 'all_dtypes_list',

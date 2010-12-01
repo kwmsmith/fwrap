@@ -503,10 +503,13 @@ class Argument(AstNode):
     intent = None
     isvalue = None
     is_return_arg = False
-    default_value_expr = None
-    hide_in_wrapper = False
-    check = ()
     dimension = None
+
+    pyf_hide = False
+    pyf_default_value = None
+    pyf_check = ()
+    pyf_overwrite_flag = False
+    pyf_overwrite_flag_default = None
 
     def _update(self):
         self._var = Var(name=self.name, dtype=self.dtype,
@@ -734,6 +737,8 @@ class Use(object):
 
     def __init__(self, mod, only=None):
         pass
+
+    
 
 #
 # Check

@@ -86,22 +86,23 @@ def _get_arg(p_arg, language):
     p_typedecl = p_arg.get_typedecl()
     dtype = _get_dtype(p_typedecl, language)
     name = p_arg.name
-    intent = _get_intent(p_arg, language)
-    hide_in_wrapper = p_arg.is_intent_hide() and not p_arg.is_intent_out()
-    default_value_expr = p_arg.init
+    if language == 'pyf':
+        intent, pyf_annotations = _get_pyf_annotations(p_arg)
+    else:
+        intent = _get_intent(p_arg, language)
+        pyf_annotations = {}
 
     if p_arg.is_array():
         p_dims = p_arg.get_array_spec()
         dimspec = pyf.Dimension(p_dims)
     else:
         dimspec = None
+
     return pyf.Argument(name=name,
                         dtype=dtype,
                         intent=intent,
                         dimension=dimspec,
-                        default_value_expr=default_value_expr,
-                        hide_in_wrapper=hide_in_wrapper,
-                        check=p_arg.check)
+                        **pyf_annotations)
 
 def _get_args(proc, language):
     args = []
@@ -126,8 +127,7 @@ def _get_callstatement(proc, language):
     return None
 
 def _get_intent(arg, language):
-    if language == 'pyf':
-        return _get_intent_pyf(arg)
+    assert language != 'pyf'
     intents = []
     if not arg.intent:
         intents.append("inout")
@@ -146,7 +146,8 @@ def _get_intent(arg, language):
                     "intents specified, '%s', %s" % (arg, intents))
     return intents[0]
 
-def _get_intent_pyf(arg):
+def _get_pyf_annotations(arg):
+    # Parse Fwrap-compatible intents
     if arg.is_intent_inout():
         # The "inout" feature of f2py is different; hiding
         # the argument from the result tuple.
@@ -162,7 +163,29 @@ def _get_intent_pyf(arg):
         intent = "in"
     else:
         intent = "inout"
-    return intent    
+
+    # Parse intents that are not in Fortran (custom annotations)
+    hide = arg.is_intent_hide() and not arg.is_intent_out()
+        
+    if arg.is_intent_copy() and arg.is_intent_overwrite():
+        raise RuntimeError('intent(copy) conflicts with intent(overwrite)')
+    elif arg.is_intent_copy():
+        overwrite_flag = True
+        overwrite_flag_default = False
+    elif arg.is_intent_overwrite():
+        overwrite_flag = True
+        overwrite_flag_default = True
+    else:
+        overwrite_flag = False
+        overwrite_flag_default = None
+
+    annotations = dict(pyf_hide=hide,
+                       pyf_default_value=arg.init,
+                       pyf_check=arg.check,
+                       pyf_overwrite_flag=overwrite_flag,
+                       pyf_overwrite_flag_default=overwrite_flag_default)
+
+    return intent, annotations
 
 name2default = {
         'integer' : pyf.default_integer,

@@ -390,9 +390,10 @@ class FcArg(FcArgBase):
         self.name = arg.name
         self.ktp = arg.ktp
         self.intent = arg.intent
-        self.default_value_expr = arg.default_value_expr
-        self.hide_in_wrapper = arg.hide_in_wrapper
-        self.check = arg.check
+        # TODO: Make FcArg an AstNode. For now:
+        for attr in arg.attributes:
+            if attr.startswith('pyf_'):
+                setattr(self, attr, getattr(arg, attr))
         self._set_intern_name()
         self._set_intern_vars()
         self._set_extern_args()
