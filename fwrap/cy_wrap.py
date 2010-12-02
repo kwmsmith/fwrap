@@ -459,6 +459,8 @@ class _CyCmplxArg(_CyArg):
 ##         return ['&%s' % self.cy_name]
 
 
+default_array_value_re = re.compile(r'^[()0.,\s]+$') # variations of zero...
+
 class _CyArrayArg(_CyArgBase):
     mandatory = _CyArgBase.mandatory + ('dimension', 'ndims')
 
@@ -478,15 +480,9 @@ class _CyArrayArg(_CyArgBase):
 
         # In the special case of explicit-shape intent(out) arrays,
         # find the expressions for constructing the output argument
-        self.explicit_out_array = (self.intent == 'out' and
-                                   all(dim.is_explicit_shape
-                                       for dim in self.dimension))
-        if self.explicit_out_array:
-            self.explicit_out_array_sizeexprs = [
-                dim.sizeexpr for dim in self.dimension]
+        self.is_explicit_shape = all(dim.is_explicit_shape
+                                     for dim in self.dimension)
         if self.pyf_hide:
-            raise NotImplementedError()
-        if self.pyf_default_value is not None:
             raise NotImplementedError()
         # Note: The following are set to something else in
         # deduplicator.TemplatedCyArrayArg
@@ -494,8 +490,15 @@ class _CyArrayArg(_CyArgBase):
         if self.npy_enum is None:
             self.npy_enum = self.dtype.npy_enum
 
+        if (self.pyf_default_value is not None and
+            default_array_value_re.match(self.pyf_default_value) is None):
+            raise NotImplementedError('Only support zero default array values for now, not: %s' %
+                                      self.pyf_default_value)
+
     def is_optional(self):
-        return self.explicit_out_array
+        return (self.is_explicit_shape and 
+                (self.intent == 'out' or
+                 self.pyf_default_value is not None))
 
     def set_extern_name(self, name):
         self.extern_name = name
@@ -505,7 +508,10 @@ class _CyArrayArg(_CyArgBase):
         return self.extern_name
 
     def extern_declarations(self):
-        default = 'None' if self.explicit_out_array else None
+        if self.is_optional():
+            default = 'None'
+        else:
+            default = None
         return [('object %s' % self.cy_name, default)]
 
     def intern_declarations(self, ctx, extern_decl_made):
@@ -536,6 +542,7 @@ class _CyArrayArg(_CyArgBase):
                 (self.ktp, self.intern_name, offset_code)]
 
     def init_code(self, ctx):
+        # We do the init in pre_call_code instead
         return []
 
     def check_code(self, ctx):
@@ -545,16 +552,21 @@ class _CyArrayArg(_CyArgBase):
         # NOTE: we can support a STRICT macro that would disable the
         # PyArray_ANYARRAY() call, forcing all incoming arrays to be already F
         # contiguous.
+        ctx.use_utility_code(as_fortran_array_utility_code)
         d = {'intern' : self.intern_name,
              'extern' : self.cy_name,
              'dtenum' : self.npy_enum,
-             'ndim' : self.ndims,
-             'overwrite_flag' : self.overwrite_flag_cy_name}
+             'ndim' : self.ndims}
         lines = []
 
-        allocate_outs = self.explicit_out_array and self.intent == 'out'
-        if allocate_outs:
-            sizeexprs = list(self.explicit_out_array_sizeexprs)
+        # Can we allocate the out-array ourselves? Currently this
+        # involves trying to parse the size expression to see if it
+        # is simple enough.
+        # TODO: Move parsing of shapes to _fc.
+        can_allocate = self.is_optional()
+        if can_allocate:
+            # Parse size-exprs and generate d['shape']
+            sizeexprs = [dim.sizeexpr for dim in self.dimension]
             if not ctx.language == 'pyf':
                 # With .pyf, C expressions can be used directly
                 # Otherwise, only very simplest cases supported.
@@ -569,23 +581,31 @@ class _CyArrayArg(_CyArgBase):
                         allocate_outs = False
                         break
                     sizeexprs[i] = _py_kw_mangler(m.group(1))
-        if not allocate_outs:
-            ctx.use_utility_code(as_fortran_array_utility_code)
-            convert_array_code = ('%(intern)s = fw_asfortranarray(%(extern)s, %(dtenum)s, '
-                                  '%(ndim)d)' % d)
-            if self.pyf_overwrite_flag:
-                lines.append('if %(overwrite_flag)s:' % d)
-                lines.append('    ' + convert_array_code)
-                lines.append('else:')
-                lines.append('    %(intern)s = %(extern)s.copy("F")' % d)
-            else:
-                lines.append(convert_array_code)
-        else:
             d['shape'] = ', '.join(sizeexprs)
-            ctx.use_utility_code(explicit_shape_out_array_utility_code)
-            lines.append('%(intern)s = fw_getoutarray(%(extern)s, %(dtenum)s, '
-                         '%(ndim)d, [%(shape)s])' % d)
 
+        # Figure out the copy flag
+        if self.pyf_overwrite_flag:
+            # Simply use overwrite_X argument
+            d['copy'] = 'not %s' % self.overwrite_flag_cy_name
+        else:
+            # Intents:
+            # In the case of "out" the array is presumably provided as a buffer.
+            # In the case of "in", the called proc promises not to touch it,
+            # so we do not need a copy.
+            # In the case of "inout", there's explicit permission by user to
+            # touch buffer
+            d['copy'] = 'False'
+
+        # Generate call to convert or allocate array
+        if can_allocate:
+            ctx.use_utility_code(explicit_shape_array_utility_code)
+            lines.append('%(intern)s = fw_explicitshapearray(%(extern)s, %(dtenum)s, '
+                         '%(ndim)d, [%(shape)s], %(copy)s)' % d)
+        else:
+            lines.append('%(intern)s = fw_asfortranarray(%(extern)s, %(dtenum)s, '
+                         '%(ndim)d, %(copy)s)' % d)
+
+        # May need to copy shape into new array as well
         if ctx.cfg.f77binding or self.mem_offset_code is not None:
             ctx.use_utility_code(copy_shape_utility_code)
             lines.append('fw_copyshape(%s, np.PyArray_DIMS(%s), %d)' %
@@ -925,17 +945,6 @@ class CyProcedure(AstNode):
 
 
 
-explicit_shape_out_array_utility_code = u"""
-cdef object fw_getoutarray(object value, int typenum, int ndim, np.intp_t *shape):
-    cdef int flags = np.NPY_F_CONTIGUOUS
-    if ndim <= 1:
-        flags |= np.NPY_C_CONTIGUOUS
-    if value is not None:
-        return np.PyArray_FROMANY(value, typenum, ndim, ndim, flags)
-    else:
-        return np.PyArray_ZEROS(ndim, shape, typenum, 1)
-"""
-
 copy_shape_utility_code = u"""
 cdef void fw_copyshape(fw_shape_t *target, np.intp_t *source, int ndim):
     # In f77binding mode, we do not always have fw_shape_t and np.npy_intp
@@ -945,11 +954,22 @@ cdef void fw_copyshape(fw_shape_t *target, np.intp_t *source, int ndim):
         target[i] = source[i]
 """
 
+explicit_shape_array_utility_code = u"""
+cdef object fw_explicitshapearray(object value, int typenum, int ndim,
+                                  np.intp_t *shape, bint copy):
+    if value is None:
+        return np.PyArray_ZEROS(ndim, shape, typenum, 1)
+    else:
+        return fw_asfortranarray(value, typenum, ndim, copy)
+"""
+
 as_fortran_array_utility_code = u"""
-cdef object fw_asfortranarray(object value, int typenum, int ndim):
+cdef object fw_asfortranarray(object value, int typenum, int ndim, bint copy):
     cdef int flags = np.NPY_F_CONTIGUOUS
     if ndim <= 1:
         # See http://projects.scipy.org/numpy/ticket/1691 for why this is needed
         flags |= np.NPY_C_CONTIGUOUS
+    if copy:
+        flags |= np.NPY_ENSURECOPY
     return np.PyArray_FROMANY(value, typenum, ndim, ndim, flags)
 """

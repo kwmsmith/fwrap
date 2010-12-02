@@ -42,6 +42,14 @@ python module pyf_support
           integer :: n
         end subroutine
 
+        function sum_and_fill_optional_arrays(m, n, x, y, z)
+          double precision dimension(m,n), intent(in,out), optional :: x = 0
+          complex*16 dimension(m,n), intent(in,out,copy), optional :: y = (0,0.)
+          integer dimension(m,n), intent(in,out,copy), optional :: z = 0
+          integer :: m, n
+          complex*16 :: sum_and_fill_optional_arrays
+        end function
+
     end interface 
 end python module pyf_support
 

@@ -63,3 +63,22 @@ C     Then do arr = arange(m*n).reshape(m, n)
          x(i) = i
       enddo
       end subroutine
+
+      function sum_and_fill_optional_arrays(m, n, x, y, z)
+      implicit none
+      double precision x(m, n)
+      complex*16 y(m, n)
+      integer z(m, n)
+      complex*16 sum_and_fill_optional_arrays
+      integer i, j, m, n
+      sum_and_fill_optional_arrays = (0d0, 0d0)
+      do j = 1, n
+         do i = 1, m
+            sum_and_fill_optional_arrays = sum_and_fill_optional_arrays
+     & + x(i, j) + y(i, j) + z(i, j)
+            x(i, j) = 1.0
+            y(i, j) = (2.0, 3.0)
+            z(i, j) = 4
+         enddo
+      enddo
+      end function

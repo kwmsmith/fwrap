@@ -107,7 +107,30 @@ intent(copy) and intent(overwrite) tests::
     >>> _ = intent_overwrite_arange(r, 10, overwrite_x=False)
     >>> r
     array([ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.])
+    >>> intent_copy_arange([0, 0, 0], 3)
+    array([ 1.,  2.,  3.])
+    >>> intent_copy_arange([0, 0, 1], 3, overwrite_x=True)
+    array([ 1.,  2.,  3.])
+
+Default values for arrays::
+
+    >>> r = np.arange(10).reshape(2,5)
+    >>> s, x, y, z = sum_and_fill_optional_arrays(2, 5, r.astype(np.float64))
+    >>> s
+    (45+0j)
+    >>> x
+    array([[ 1.,  1.,  1.,  1.,  1.],
+           [ 1.,  1.,  1.,  1.,  1.]])
+    >>> y
+    array([[ 2.+3.j,  2.+3.j,  2.+3.j,  2.+3.j,  2.+3.j],
+           [ 2.+3.j,  2.+3.j,  2.+3.j,  2.+3.j,  2.+3.j]])
+    >>> z
+    array([[4, 4, 4, 4, 4],
+           [4, 4, 4, 4, 4]], dtype=int32)
 
 
+    >>> s, x, y, z = sum_and_fill_optional_arrays(2, 5, r.astype(np.float64),
+    ...     r.astype(np.complex128), r.astype(np.int32)); s
+    (135+0j)
 """
 
