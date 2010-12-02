@@ -82,11 +82,12 @@ def get_call_args(args):
 def get_in_args(args):
     # Arrays with intent(out) is still present in case user wants
     # to input a buffer
-    return [arg for arg in args
-            if (not arg.pyf_hide and
-                (arg.is_array or
-                 arg.intent in ('in', 'inout', None)) and
-                not isinstance(arg, _CyErrStrArg))]
+    result = [arg for arg in args
+              if (not arg.pyf_hide and
+                  (arg.is_array or
+                   arg.intent in ('in', 'inout', None)) and
+                  not isinstance(arg, _CyErrStrArg))]
+    return result
 
 def get_out_args(args):
     return [arg for arg in args

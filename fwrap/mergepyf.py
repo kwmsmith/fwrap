@@ -65,6 +65,8 @@ def mergepyf_proc(f_proc, pyf_proc):
                 # argument position, but at least introduce a temporary variable
                 # and put in a placeholder for user intervention
                 arg = f_arg.copy_and_set(
+                    cy_name='%s_f' % f_arg.name,
+                    name='%s_f' % f_arg.name,
                     intent=None,
                     pyf_hide=True,
                     pyf_default_value='##TODO: %s' % expr)
