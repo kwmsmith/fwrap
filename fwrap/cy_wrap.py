@@ -180,6 +180,7 @@ class _CyArgBase(AstNode):
     pyf_check = ()
     pyf_overwrite_flag = False
     pyf_overwrite_flag_default = None
+    pyf_optional = False
 
     # Set by mergepyf
     defer_init_to_body = False
@@ -214,6 +215,8 @@ class _CyArg(_CyArgBase):
         else:
             self.intern_name = self.cy_name
         self.cy_dtype_name = self._get_cy_dtype_name()
+        if self.pyf_optional and self.pyf_default_value is None:
+            raise RuntimeError('Default value not provided for argument ' + self.name)
 
     def _get_cy_dtype_name(self):
         return self.ktp
@@ -484,6 +487,8 @@ class _CyArrayArg(_CyArgBase):
                                      for dim in self.dimension)
         if self.pyf_hide:
             raise NotImplementedError()
+        if self.pyf_optional and not self.is_explicit_shape:
+            raise RuntimeError('Cannot have an optional array without explicit shape')
         # Note: The following are set to something else in
         # deduplicator.TemplatedCyArrayArg
         self.py_type_name = py_type_name_from_type(self.ktp)
@@ -496,9 +501,9 @@ class _CyArrayArg(_CyArgBase):
                                       self.pyf_default_value)
 
     def is_optional(self):
-        return (self.is_explicit_shape and 
+        return (self.pyf_optional or (self.is_explicit_shape and 
                 (self.intent == 'out' or
-                 self.pyf_default_value is not None))
+                 self.pyf_default_value is not None)))
 
     def set_extern_name(self, name):
         self.extern_name = name

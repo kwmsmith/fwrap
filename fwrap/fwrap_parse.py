@@ -166,7 +166,7 @@ def _get_pyf_annotations(arg):
 
     # Parse intents that are not in Fortran (custom annotations)
     hide = arg.is_intent_hide() and not arg.is_intent_out()
-        
+
     if arg.is_intent_copy() and arg.is_intent_overwrite():
         raise RuntimeError('intent(copy) conflicts with intent(overwrite)')
     elif arg.is_intent_copy():
@@ -183,7 +183,11 @@ def _get_pyf_annotations(arg):
                        pyf_default_value=arg.init,
                        pyf_check=arg.check,
                        pyf_overwrite_flag=overwrite_flag,
-                       pyf_overwrite_flag_default=overwrite_flag_default)
+                       pyf_overwrite_flag_default=overwrite_flag_default,
+                       # optional fills a rather different role in pyf files
+                       # compared to in F90 files, so we use a seperate flag
+                       pyf_optional=arg.is_optional()
+                       )
 
     return intent, annotations
 

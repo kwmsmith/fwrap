@@ -64,7 +64,7 @@ C     Then do arr = arange(m*n).reshape(m, n)
       enddo
       end subroutine
 
-      function sum_and_fill_optional_arrays(m, n, x, y, z)
+      function sum_and_fill_optional_arrays(x, y, z, m, n)
       implicit none
       double precision x(m, n)
       complex*16 y(m, n)
@@ -87,4 +87,4 @@ c$$$      function aux_arg(x)
 c$$$          integer aux_arg, x
 c$$$          aux_arg = x
 c$$$      end function
-      
+
