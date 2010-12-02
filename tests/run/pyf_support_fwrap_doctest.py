@@ -132,5 +132,10 @@ Default values for arrays::
     >>> s, x, y, z = sum_and_fill_optional_arrays(2, 5, r.astype(np.float64),
     ...     r.astype(np.complex128), r.astype(np.int32)); s
     (135+0j)
+
+
+# TODO Auxiliary arguments:
+#    >>> aux_arg(10)
+
 """
 

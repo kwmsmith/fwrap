@@ -50,6 +50,15 @@ python module pyf_support
           complex*16 :: sum_and_fill_optional_arrays
         end function
 
+! TODO:
+!!$        function aux_arg(a)
+!!$          ! TODO Dependency resolution; for now, care about order
+!!$          integer :: a
+!!$          integer intent(hide) :: b = a + 1
+!!$          integer intent(hide) :: c = b + 1
+!!$          callstatement (*f2py_func)(&c)
+!!$        end function
+
     end interface 
 end python module pyf_support
 
