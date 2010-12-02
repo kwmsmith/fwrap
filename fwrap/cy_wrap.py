@@ -774,12 +774,6 @@ class CyArgManager(object):
             pcc.extend(arg.post_call_code(ctx))
         return pcc
 
-    def docstring_extern_arg_list(self):
-        decls = []
-        for arg in self.in_args:
-            decls.extend(arg.docstring_extern_arg_list())
-        return decls
-
     def docstring_return_tuple_list(self):
         decls = []
         for arg in self.out_args:
@@ -928,9 +922,18 @@ class CyProcedure(AstNode):
         buf.putln('"""')
 
     def dstring_signature(self):
-        in_args = ", ".join(self.arg_mgr.docstring_extern_arg_list())
+        mandatory = []
+        optional = []
+        for arg in self.in_args:
+            strs = arg.docstring_extern_arg_list()
+            if arg.is_optional():
+                optional.extend(strs)
+            else:
+                mandatory.extend(strs)
+        in_args = ", ".join(mandatory)
+        if len(optional) > 0:
+            in_args = "%s, [%s]" % (in_args, ", ".join(optional))
         dstring = "%s(%s)" % (self.cy_name, in_args)
-
         doc_ret_vars = self.arg_mgr.docstring_return_tuple_list()
         out_args = ", ".join(doc_ret_vars)
         if len(doc_ret_vars) > 1:
