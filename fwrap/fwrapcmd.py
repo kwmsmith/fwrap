@@ -18,7 +18,7 @@ from textwrap import dedent
 from fwrap import fwrapper
 from fwrap import configuration
 from fwrap import git
-from fwrap import fc_wrap, cy_wrap
+from fwrap import fc_wrap, cy_wrap, mergepyf
 from fwrap.configuration import Configuration
 
 BRANCH_PREFIX = '_fwrap'
@@ -200,8 +200,7 @@ def mergepyf_cmd(opts):
     pyf_cython_ast = cy_wrap.wrap_fc(pyf_c_ast)
 
     # Do the merge of Cython ast
-    merged_cython_ast = cy_wrap.pyfmerge_ast(pyf_cython_ast, cython_ast)
-
+    merged_cython_ast = mergepyf.mergepyf_ast(cython_ast, pyf_cython_ast)
 
     # Loaded what we need of HEAD to memory, time to branch
     orig_branch = git.current_branch()

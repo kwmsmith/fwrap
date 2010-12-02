@@ -81,7 +81,7 @@ def parse(source_files, cfg):
     return ast
 
 def generate(fort_ast, name, cfg, output_directory=None,
-             pyf_to_merge=None):
+             pyf_to_merge=None, c_ast=None, cython_ast=None):
     r"""Given a fortran abstract syntax tree ast, generate wrapper files
 
     :Input:
@@ -99,8 +99,10 @@ def generate(fort_ast, name, cfg, output_directory=None,
     # logger.info("Generating abstract syntax tress for c and cython.")
     fort_ast = filter_ast(fort_ast, cfg)
     routine_names = [sub.name for sub in fort_ast]
-    c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
-    cython_ast = cy_wrap.wrap_fc(c_ast)
+    if c_ast is None:
+        c_ast = fc_wrap.wrap_pyf_iface(fort_ast)
+    if cython_ast is None:
+        cython_ast = cy_wrap.wrap_fc(c_ast)
 
     if pyf_to_merge is not None:
         # TODO: refactor
