@@ -15,9 +15,6 @@ def mergepyf_ast(cython_ast, cython_ast_from_pyf):
     return [mergepyf_proc(proc, pyf_procs[proc.name])
             for proc in cython_ast]
 
-callstatement_re = re.compile(r'^.*\(\*f2py_func\)\s*\((.*)\).*$')
-callstatement_arg_re = re.compile(r'\s*(&)?\s*([a-zA-Z0-9_]+)(\s*\+\s*([a-zA-Z0-9_]+))?\s*$')
-
 def mergepyf_proc(f_proc, pyf_proc):
     #merge_comments = []
     # There are three argument lists to merge:
@@ -58,18 +55,10 @@ def mergepyf_proc(f_proc, pyf_proc):
             call_args.append(f_proc.call_args[0].copy())
             fortran_args = fortran_args[1:]
 
+        if len(fortran_args) != len(arg_exprs):
+            raise ValueError('pyf and f disagrees')
         for idx, (f_arg, expr) in enumerate(zip(fortran_args, arg_exprs)):
-            arg = parse_callstatement_arg(expr, pyf_args)
-            if arg is None:
-                # OK, we do not understand the C code in the callstatement in this
-                # argument position, but at least introduce a temporary variable
-                # and put in a placeholder for user intervention
-                arg = f_arg.copy_and_set(
-                    cy_name='%s_f' % f_arg.name,
-                    name='%s_f' % f_arg.name,
-                    intent=None,
-                    pyf_hide=True,
-                    pyf_default_value='##TODO: %s' % expr)
+            arg = parse_callstatement_arg(expr, f_arg, pyf_args)
             call_args.append(arg)
             
         # Reinsert the extra error-handling and function return arguments
@@ -96,7 +85,11 @@ def mergepyf_proc(f_proc, pyf_proc):
 #    print result
     return result
 
-def parse_callstatement_arg(arg_expr, pyf_args):
+callstatement_re = re.compile(r'^.*\(\*f2py_func\)\s*\((.*)\).*$')
+callstatement_arg_re = re.compile(r'^\s*(&)?\s*([a-zA-Z0-9_]+)(\s*\+\s*([a-zA-Z0-9_]+))?\s*$')
+nested_ternary_re = re.compile(r'^\(?(\s*\(\) .*)\?(.*):(.*)\)?$')
+
+def parse_callstatement_arg(arg_expr, f_arg, pyf_args):
     # Parse arg_expr, and return a suitable new argument based on pyf_args
     # Returns None for unparseable/too complex expression
     m = callstatement_arg_re.match(arg_expr)
@@ -104,6 +97,7 @@ def parse_callstatement_arg(arg_expr, pyf_args):
         ampersand, var_name, offset = m.group(1), m.group(2), m.group(4)
         if offset is not None and ampersand is not None:
             raise ValueError('Arithmetic on scalar pointer?')
+
         pyf_arg = [arg for arg in pyf_args if arg.name == var_name]
         if len(pyf_arg) >= 1:
             result = pyf_arg[0].copy()
@@ -113,9 +107,24 @@ def parse_callstatement_arg(arg_expr, pyf_args):
                 result.update(mem_offset_code=_py_kw_mangler(offset))
             return result
         else:
-            return None
+            return manual_arg(f_arg, arg_expr)
     else:
-        return None
+        return manual_arg(f_arg, c_to_cython(arg_expr))
+
+def manual_arg(f_arg, expr):
+    # OK, we do not understand the C code in the callstatement in this
+    # argument position, but at least introduce a temporary variable
+    # and put in a placeholder for user intervention
+    return auxiliary_arg(f_arg, '##TODO: %s' % expr)
+
+def auxiliary_arg(f_arg, expr):
+    arg = f_arg.copy_and_set(
+        cy_name='%s_f' % f_arg.name,
+        name='%s_f' % f_arg.name,
+        intent=None,
+        pyf_hide=True,
+        pyf_default_value=expr)
+    return arg
 
 literal_re = re.compile(r'^-?[0-9.]+$') # close enough
 
@@ -194,6 +203,12 @@ def c_to_cython(expr):
     # Deal with the most common cases to reduce the amount
     # of manual modification needed afterwards. This is used
     # in check(...), so support common boolean constructs
+
+    try:
+        expr = translate_ternary(expr)
+    except ValueError:
+        pass
+
     expr = py_kw_mangle_expression(expr)
     
     def f(m):
@@ -211,5 +226,39 @@ def c_to_cython(expr):
             assert False
     
     expr = functions_re.sub(funcs, expr)
+    
     return expr.strip()
 
+
+#
+# Translation of C ternary expressions to Python. Should ideally
+# take care of operator translation (above) using this as well...
+#
+def create_ternary_parser():
+    from pyparsing import (Word, Forward, Suppress, Group, alphanums,
+                           OneOrMore, Literal)
+    def handle_ternary(s, loc, tok):
+        return '(%s if %s else %s)' % (tok[1], tok[0], tok[2])
+
+    def handle_parens(s, loc, tok):
+        return '(%s)' % tok[0]
+    
+    var_or_literal_or_boolop = Word(alphanums + '_\"|&=><')
+    expr = Forward()
+    ternary_op = (expr + Suppress("?") +
+                  expr + Suppress(":") +
+                  expr)
+    ternary_op.setParseAction(handle_ternary)
+    parenthesis = Suppress("(") + expr + Suppress(")")
+    expr << (parenthesis | var_or_literal_or_boolop)
+    return ternary_op
+    
+parse_ternary = create_ternary_parser().parseString
+
+def translate_ternary(s):
+    from pyparsing import ParseException
+    try:
+        result = parse_ternary(s)
+        return result[0][1:-1]
+    except ParseException:
+        raise ValueError('Not a ternary expression: %s' % s)

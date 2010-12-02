@@ -57,7 +57,7 @@ python module pyf_support
           integer :: aux_arg
           integer intent(hide) :: b = a + 1
           integer intent(hide) :: c = b + 1
-          callstatement (*f2py_func)(&c)
+          callstatement (*f2py_func)(&c, (a>10)?"A":"B")
         end function
 
     end interface 
