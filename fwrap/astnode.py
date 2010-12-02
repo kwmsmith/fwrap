@@ -107,7 +107,7 @@ class AstNode(object):
             return "<...nesting level cutoff...>"
         if encountered is None:
             encountered = set()
-        if id(self) in encountered:
+        if id(self) in encountered and False:
             return "<%s (%d) -- already output>" % (self.__class__.__name__, id(self))
         encountered.add(id(self))
         
