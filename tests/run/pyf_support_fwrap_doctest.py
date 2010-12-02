@@ -134,8 +134,10 @@ Default values for arrays::
     (135+0j)
 
 
-# TODO Auxiliary arguments:
-#    >>> aux_arg(10)
+Auxiliary arguments::
+
+    >>> aux_arg(10)
+    12
 
 """
 

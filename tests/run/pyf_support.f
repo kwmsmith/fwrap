@@ -83,8 +83,10 @@ C     Then do arr = arange(m*n).reshape(m, n)
       enddo
       end function
 
-c$$$      function aux_arg(x)
-c$$$          integer aux_arg, x
-c$$$          aux_arg = x
-c$$$      end function
+      function aux_arg(x)
+      implicit none
+      integer x
+      integer aux_arg
+      aux_arg = x
+      end function
 

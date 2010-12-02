@@ -160,7 +160,7 @@ def _get_pyf_annotations(arg):
     elif arg.is_intent_out():
         intent = "out"
     elif arg.is_intent_hide():
-        intent = "in"
+        intent = None
     else:
         intent = "inout"
 

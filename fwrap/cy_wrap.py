@@ -41,7 +41,7 @@ def fc_proc_to_cy_proc(fc_proc):
         args.append(cy_arg_factory(fw_arg, fw_arg.is_array))
 
     all_dtypes_list = fc_proc.all_dtypes()
-    
+
     return CyProcedure.create_node_from(
         fc_proc,
         name=fc_proc.wrapped_name(), # remove when FcProcedure is refactored
@@ -50,6 +50,7 @@ def fc_proc_to_cy_proc(fc_proc):
         call_args=get_call_args(args),
         in_args=get_in_args(args),
         out_args=get_out_args(args),
+        aux_args=get_aux_args(args),
         all_dtypes_list=all_dtypes_list)
 
 def cy_arg_factory(arg, is_array):
@@ -92,6 +93,9 @@ def get_out_args(args):
             if (not arg.pyf_hide and
                 arg.intent in ('out', 'inout', None) and
                 not isinstance(arg, _CyErrStrArg))]
+
+def get_aux_args(args):
+    return [arg for arg in args if arg.pyf_hide]
 
 def generate_cy_pxd(ast, fc_pxd_name, buf):
     buf.putln('cimport numpy as np')
@@ -709,13 +713,17 @@ class CyCharArrayArg(_CyArrayArg):
 
 class CyArgManager(object):
 
-    def __init__(self, in_args, out_args, call_args):
+    def __init__(self, in_args, out_args, call_args, aux_args):
         self.in_args = in_args
         self.out_args = out_args
         self.call_args = call_args
-        self.in_and_call_args = ([arg for arg in self.in_args] +
-                                 [arg for arg in self.call_args
-                                  if arg not in self.in_args])
+        self.aux_args = aux_args
+        self.needs_init_args = (self.in_args +
+                                [arg for arg in self.aux_args
+                                 if arg not in self.in_args] +
+                                [arg for arg in self.call_args if
+                                 arg not in self.in_args and
+                                 arg not in self.aux_args])
 
     def call_arg_list(self, ctx):
         cal = []
@@ -731,7 +739,7 @@ class CyArgManager(object):
 
     def intern_declarations(self, ctx):
         decls = []
-        for arg in self.call_args:
+        for arg in self.needs_init_args:
             decls.extend(arg.intern_declarations(ctx, arg in self.in_args))
         return decls
 
@@ -743,13 +751,13 @@ class CyArgManager(object):
 
     def init_code(self, ctx):
         cc = []
-        for arg in self.in_and_call_args:
+        for arg in self.needs_init_args:
             cc.extend(arg.init_code(ctx))
         return cc
 
     def check_code(self, ctx):
         cc = []
-        for arg in self.in_and_call_args:
+        for arg in self.needs_init_args:
             cc.extend(arg.check_code(ctx))
         return cc
 
@@ -793,16 +801,19 @@ class CyProcedure(AstNode):
     # The argument lists often contain the same argument nodes, but
     # may appear in only one of them, e.g., be automatically inferred
     # (only present in call_args) or have the contents participate in
-    # a pyf_default_value expression (only present in in_args).
+    # a pyf_default_value expression (only present in in_args), or
+    # be purely present for temporary purposes (aux_args).
     
     mandatory = ('name', 'cy_name', 'fc_name', 'in_args',
                  'out_args', 'call_args', 'all_dtypes_list',
                  'language', 'kind')
     pyf_callstatement = None
     language = 'fortran'
+    aux_args = ()
 
     def _update(self):
-        self.arg_mgr = CyArgManager(self.in_args, self.out_args, self.call_args)
+        self.arg_mgr = CyArgManager(self.in_args, self.out_args, self.call_args,
+                                    self.aux_args)
         
     def get_names(self):
         # A template proc can provide more than one name

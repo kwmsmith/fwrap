@@ -42,6 +42,7 @@ def mergepyf_proc(f_proc, pyf_proc):
     else:
         # Do NOT trust the name or order in pyf_proc.call_args,
         # but match arguments by their position in the callstatement
+        pyf_args = pyf_proc.call_args + pyf_proc.aux_args
         call_args = []
         m = callstatement_re.match(callstat)
         if m is None:
@@ -58,7 +59,7 @@ def mergepyf_proc(f_proc, pyf_proc):
             fortran_args = fortran_args[1:]
 
         for idx, (f_arg, expr) in enumerate(zip(fortran_args, arg_exprs)):
-            arg = parse_callstatement_arg(expr, pyf_proc.call_args)
+            arg = parse_callstatement_arg(expr, pyf_args)
             if arg is None:
                 # OK, we do not understand the C code in the callstatement in this
                 # argument position, but at least introduce a temporary variable
@@ -88,6 +89,7 @@ def mergepyf_proc(f_proc, pyf_proc):
     result = f_proc.copy_and_set(call_args=call_args,
                                  in_args=in_args,
                                  out_args=out_args,
+                                 aux_args=pyf_proc.aux_args,
                                  language='pyf')
 #    print result
     return result
@@ -101,8 +103,7 @@ def parse_callstatement_arg(arg_expr, pyf_args):
         if offset is not None and ampersand is not None:
             raise ValueError('Arithmetic on scalar pointer?')
         pyf_arg = [arg for arg in pyf_args if arg.name == var_name]
-        if len(pyf_arg) == 1:
-            # Add the pyf arg we resolved at this position
+        if len(pyf_arg) >= 1:
             result = pyf_arg[0].copy()
             if offset is not None:
                 if not result.is_array:
@@ -110,7 +111,6 @@ def parse_callstatement_arg(arg_expr, pyf_args):
                 result.update(mem_offset_code=_py_kw_mangler(offset))
             return result
         else:
-            assert len(pyf_arg) == 0
             return None
     else:
         return None
