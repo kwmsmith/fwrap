@@ -133,6 +133,8 @@ def generate_cy_pyx(ast, name, buf, cfg):
         ctx.language = proc.language
         assert ctx.language in ('fortran', 'pyf')
         proc.generate_wrapper(ctx, buf)
+        buf.putln(' ')
+        buf.putln(' ')
     for utilcode in ctx.utility_codes:
         buf.putblock(utilcode)
     buf.putln('')
