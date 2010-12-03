@@ -148,6 +148,8 @@ class AstNode(object):
         return self.describe()
 
     def __eq__(self, other):
+        if self is other:
+            return True
         return (type(self) == type(other) and
                 self.attributes == other.attributes and
                 self.equal_attributes(other, self.attributes))
