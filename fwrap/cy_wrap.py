@@ -69,7 +69,7 @@ def cy_arg_factory(arg, is_array):
         elif isinstance(arg.dtype, pyf_iface.ComplexType):
             cls = _CyCmplxArg
         elif isinstance(arg.dtype, pyf_iface.CharacterType):
-            cls = _CyCharArg
+            cls = _CyStringArg
         else:
             cls = _CyArg
         if arg.name == constants.ERR_NAME:
@@ -309,10 +309,10 @@ class _CyArg(_CyArgBase):
             return []
         return self._gen_dstring()
 
-class _CyCharArg(_CyArg):
+class _CyStringArg(_CyArg):
 
     def _update(self):
-        super(_CyCharArg, self)._update()
+        super(_CyStringArg, self)._update()
         self.intern_name = 'fw_%s' % self.cy_name
         self.intern_len_name = '%s_len' % self.intern_name
         self.intern_buf_name = '%s_buf' % self.intern_name
@@ -403,7 +403,7 @@ class _CyCharArg(_CyArg):
         if self.is_assumed_size():
             return self._gen_dstring()
         else:
-            return super(_CyCharArg, self).in_dstring()
+            return super(_CyStringArg, self).in_dstring()
 
 
 class _CyErrStrArg(_CyArgBase):
