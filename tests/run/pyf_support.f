@@ -83,10 +83,11 @@ C     Then do arr = arange(m*n).reshape(m, n)
       enddo
       end function
 
-      function aux_arg(x)
+      function aux_arg(x, ch)
       implicit none
       integer x
       integer aux_arg
+      character ch
       aux_arg = x
       end function
 
