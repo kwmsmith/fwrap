@@ -24,9 +24,9 @@ def mergepyf_ast(cython_ast, cython_ast_from_pyf):
         try:
             result.append(mergepyf_proc(proc, pyf_procs[proc.name]))
         except CouldNotMergeError, e:
-            warn('Could not import procedure "%s" from .pyf:\n%s' % (proc.name, e))
-            warn('Please modify "%s" manually!' % proc.name)
-            result.append(proc.copy()
+            warn('Could not import procedure "%s" from .pyf, '
+                 'please modify manually' % proc.name)
+            result.append(proc.copy())
     return result
 
 def mergepyf_proc(f_proc, pyf_proc):
@@ -39,7 +39,7 @@ def mergepyf_proc(f_proc, pyf_proc):
     #
     # Try to parse call_statement to figure out as much as
     # possible, and leave the rest to the user.
-
+    func_name = f_proc.name
     callstat = pyf_proc.pyf_callstatement
     c_to_cython = CToCython(dict((arg.name, arg.cy_name)
                                   for arg in (pyf_proc.in_args +
@@ -107,7 +107,7 @@ def mergepyf_proc(f_proc, pyf_proc):
     # Translate C expressions to Cython
     for arg in set(in_args + out_args + aux_args + call_args):
         if arg.pyf_check is not None:
-            arg.update(cy_check=[c_to_cython.translate(c)[0]
+            arg.update(cy_check=[c_to_cython.warn_translate(c, func_name)[0]
                                  for c in arg.pyf_check],
                        pyf_check=None)
         if arg.pyf_default_value is not None:
@@ -115,7 +115,7 @@ def mergepyf_proc(f_proc, pyf_proc):
             if literal_re.match(defval) is not None:
                 defer = False
             else:
-                defval = c_to_cython.translate(defval)[0]
+                defval = c_to_cython.warn_translate(defval, func_name)[0]
                 defer = True
             arg.update(cy_default_value=defval,
                        pyf_default_value=None,
@@ -279,7 +279,16 @@ class CToCython(object):
             r = self.translator.parseString(s)[0]
         except prs.ParseException, e:
             raise ValueError('Could not auto-translate: %s (%s)' % (s, e))            
+        except KeyError, e:
+            raise ValueError('Referenced unknown symbol: %s (%s)' % (s, e))            
         if r[0] == '(' and r[-1] == ')':
             r = r[1:-1]
         return r, self.encountered
 
+    def warn_translate(self, s, func_name):
+        try:
+            return self.translate(s)
+        except ValueError, e:
+            warn('Problem in %s: %s' % (func_name, e))
+            return '##TODO: %s' % s
+        
