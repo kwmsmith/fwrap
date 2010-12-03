@@ -29,9 +29,6 @@ def mergepyf_proc(f_proc, pyf_proc):
     # Try to parse call_statement to figure out as much as
     # possible, and leave the rest to the user.
 
-#    print
-#    print '================', f_proc.name, '===================='
-    
     callstat = pyf_proc.pyf_callstatement
     c_to_cython = CToCython(dict((arg.name, arg.cy_name)
                                   for arg in pyf_proc.in_args + pyf_proc.aux_args))
@@ -52,18 +49,25 @@ def mergepyf_proc(f_proc, pyf_proc):
                              callstat)
         arg_exprs = m.group(1).split(',')
 
+        # Strip off error arguments (but leave return value)
         assert f_proc.call_args[-2].name == constants.ERR_NAME
         assert f_proc.call_args[-1].name == constants.ERRSTR_NAME
         fortran_args = f_proc.call_args[:-2]
-        if f_proc.kind == 'function':
-            assert f_proc.call_args[0].name == constants.RETURN_ARG_NAME
-            call_args.append(f_proc.call_args[0].copy())
-            fortran_args = fortran_args[1:]
-
         if len(fortran_args) != len(arg_exprs):
-            raise ValueError('pyf and f disagrees')
+            raise ValueError('"%s": pyf and f disagrees, '
+                             'len(fortran_args) != len(arg_exprs)' % pyf_proc.name)
+        # Build call_args from the strings present in the callstatement
         for idx, (f_arg, expr) in enumerate(zip(fortran_args, arg_exprs)):
-            arg = parse_callstatement_arg(expr, f_arg, pyf_args, c_to_cython)
+            if idx == 0 and pyf_proc.kind == 'function':
+                # NOT the same as f_proc.kind == 'function'
+                
+                # We can't resolve by name for the return arg, but it will
+                # always be first. This case does not hit for functions
+                # declared as subprocs in pyf, where the return arg *can*
+                # be reorderd, but also carries a user-given name for matching.
+                arg = pyf_proc.call_args[0].copy()
+            else:
+                arg = parse_callstatement_arg(expr, f_arg, pyf_args, c_to_cython)
             call_args.append(arg)
             
         # Reinsert the extra error-handling and function return arguments
@@ -87,7 +91,6 @@ def mergepyf_proc(f_proc, pyf_proc):
                                  out_args=out_args,
                                  aux_args=pyf_proc.aux_args,
                                  language='pyf')
-#    print result
     return result
 
 callstatement_re = re.compile(r'^.*\(\*f2py_func\)\s*\((.*)\).*$')
@@ -102,7 +105,6 @@ def parse_callstatement_arg(arg_expr, f_arg, pyf_args, c_to_cython):
         ampersand, var_name, offset = m.group(1), m.group(2), m.group(4)
         if offset is not None and ampersand is not None:
             raise ValueError('Arithmetic on scalar pointer?')
-
         pyf_arg = [arg for arg in pyf_args if arg.name == var_name]
         if len(pyf_arg) >= 1:
             result = pyf_arg[0].copy()

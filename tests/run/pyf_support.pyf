@@ -17,14 +17,14 @@ python module pyf_support
         end subroutine
 
         function fort_sum_simple(n, arr) result(x)
-            callstatement (*f2py_func)(&n, arr)
+            callstatement (*f2py_func)(&x, &n, arr)
             real*8 intent(in), dimension(n) :: arr
             integer optional, intent(in) :: n = len(arr)
             real*8 :: x
         end function
 
         function fort_sum(n, arr, offx) result(x)
-            callstatement (*f2py_func)(&n, arr + offx)
+            callstatement (*f2py_func)(&x, &n, arr + offx)
             real*8 intent(in), dimension(n) :: arr
             real*8 :: x
             integer intent(in) :: offx = 0
@@ -57,8 +57,17 @@ python module pyf_support
           integer :: aux_arg
           integer intent(hide) :: b = a + 1
           integer intent(hide) :: c = b + 1
-          callstatement (*f2py_func)(&c, (a>10)?"A":"B")
+          callstatement (*f2py_func)(&aux_arg, &c, (a>10)?"A":"B")
         end function
+
+
+        
+        subroutine a_function(y, x)
+          ! Function masquerading as subroutine in pyf
+          integer, intent(out) :: x
+          integer, intent(in,out) :: y
+          callstatement (*f2py_func)(&x, &y)
+        end subroutine
 
     end interface 
 end python module pyf_support

@@ -139,5 +139,12 @@ Auxiliary arguments::
     >>> aux_arg(10)
     12
 
+Function masquerading as subroutine:
+
+    >>> a_function(-1)
+    (-1, 12)
+
+
+
 """
 

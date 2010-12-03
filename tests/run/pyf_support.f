@@ -1,5 +1,6 @@
 
       subroutine testone(m_hidden, m, n, arr)
+      implicit none
 C     Assert that m_hidden == m + 1.
 C     Then do arr = arange(m*n).reshape(m, n)
       integer :: m_hidden, m, n, i, j, idx
@@ -19,6 +20,7 @@ C     Then do arr = arange(m*n).reshape(m, n)
       end subroutine
       
       subroutine reorders(x, y, z)
+      implicit none
       integer x, z, i
       integer y(4)
       x = 1
@@ -29,6 +31,7 @@ C     Then do arr = arange(m*n).reshape(m, n)
       end subroutine
 
       function fort_sum_simple(n, arr)
+      implicit none
       integer i, n
       real*8 fort_sum_simple
       real*8 arr(n)
@@ -39,6 +42,7 @@ C     Then do arr = arange(m*n).reshape(m, n)
       end function
 
       function fort_sum(n, arr)
+      implicit none
       integer i, n
       real*8 fort_sum
       real*8 arr(n)
@@ -49,6 +53,7 @@ C     Then do arr = arange(m*n).reshape(m, n)
       end function
 
       subroutine intent_copy_arange(x, n)
+      implicit none
       integer n, i
       real*8 x(n)
       do i = 1, n
@@ -57,6 +62,7 @@ C     Then do arr = arange(m*n).reshape(m, n)
       end subroutine
 
       subroutine intent_overwrite_arange(x, n)
+      implicit none
       integer n, i
       real*8 x(n)
       do i = 1, n
@@ -91,3 +97,9 @@ C     Then do arr = arange(m*n).reshape(m, n)
       aux_arg = x
       end function
 
+      function a_function(y)
+      implicit none
+      integer a_function
+      integer y
+      a_function = 13 + y
+      end function
