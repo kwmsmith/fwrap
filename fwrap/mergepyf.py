@@ -6,6 +6,9 @@ import re
 from fwrap import constants
 from fwrap.pyf_iface import _py_kw_mangler, py_kw_mangle_expression
 from fwrap.cy_wrap import _CyArg
+import pyparsing as prs
+
+prs.ParserElement.enablePackrat()
 
 def mergepyf_ast(cython_ast, cython_ast_from_pyf):
     # Primarily just copy ast, but merge in select detected manual
@@ -30,6 +33,8 @@ def mergepyf_proc(f_proc, pyf_proc):
 #    print '================', f_proc.name, '===================='
     
     callstat = pyf_proc.pyf_callstatement
+    c_to_cython = CToCython(dict((arg.name, arg.cy_name)
+                                  for arg in pyf_proc.in_args + pyf_proc.aux_args))
     if callstat is None:
         # We can simply use the pyf argument list and be satisfied
         if len(f_proc.call_args) != len(pyf_proc.call_args):
@@ -58,7 +63,7 @@ def mergepyf_proc(f_proc, pyf_proc):
         if len(fortran_args) != len(arg_exprs):
             raise ValueError('pyf and f disagrees')
         for idx, (f_arg, expr) in enumerate(zip(fortran_args, arg_exprs)):
-            arg = parse_callstatement_arg(expr, f_arg, pyf_args)
+            arg = parse_callstatement_arg(expr, f_arg, pyf_args, c_to_cython)
             call_args.append(arg)
             
         # Reinsert the extra error-handling and function return arguments
@@ -76,7 +81,7 @@ def mergepyf_proc(f_proc, pyf_proc):
 
     in_args = [copy_or_get(arg) for arg in pyf_proc.in_args]
     out_args = [copy_or_get(arg) for arg in pyf_proc.out_args]
-    in_args = process_in_args(in_args)
+    in_args = process_in_args(in_args, c_to_cython)
     result = f_proc.copy_and_set(call_args=call_args,
                                  in_args=in_args,
                                  out_args=out_args,
@@ -89,7 +94,7 @@ callstatement_re = re.compile(r'^.*\(\*f2py_func\)\s*\((.*)\).*$')
 callstatement_arg_re = re.compile(r'^\s*(&)?\s*([a-zA-Z0-9_]+)(\s*\+\s*([a-zA-Z0-9_]+))?\s*$')
 nested_ternary_re = re.compile(r'^\(?(\s*\(\) .*)\?(.*):(.*)\)?$')
 
-def parse_callstatement_arg(arg_expr, f_arg, pyf_args):
+def parse_callstatement_arg(arg_expr, f_arg, pyf_args, c_to_cython):
     # Parse arg_expr, and return a suitable new argument based on pyf_args
     # Returns None for unparseable/too complex expression
     m = callstatement_arg_re.match(arg_expr)
@@ -109,7 +114,12 @@ def parse_callstatement_arg(arg_expr, f_arg, pyf_args):
         else:
             return manual_arg(f_arg, arg_expr)
     else:
-        return manual_arg(f_arg, c_to_cython(arg_expr))
+        try:
+            cy_expr, depends = c_to_cython.translate(arg_expr)
+        except ValueError:
+            return manual_arg(f_arg, arg_expr)
+        else:
+            return auxiliary_arg(f_arg, cy_expr)
 
 def manual_arg(f_arg, expr):
     # OK, we do not understand the C code in the callstatement in this
@@ -118,6 +128,7 @@ def manual_arg(f_arg, expr):
     return auxiliary_arg(f_arg, '##TODO: %s' % expr)
 
 def auxiliary_arg(f_arg, expr):
+    print f_arg.name, f_arg.cy_name
     arg = f_arg.copy_and_set(
         cy_name='%s_f' % f_arg.name,
         name='%s_f' % f_arg.name,
@@ -126,15 +137,17 @@ def auxiliary_arg(f_arg, expr):
         pyf_default_value=expr)
     return arg
 
-literal_re = re.compile(r'^-?[0-9.]+$') # close enough
+literal_re = re.compile(r'^-?[()0-9.,\s]+$') # close enough; also matches e.g. (0, 0.)
+#default_array_value_re = re.compile(r'^[()0.,\s]+$') # variations of zero...
 
-def process_in_args(in_args):
+def process_in_args(in_args, c_to_cython):
     # Arguments must be changed as follows:
     # a) Reorder so that arguments with defaults come last
     # b) Parse the default_value into something usable by Cython.
     for arg in in_args:
         if arg.pyf_check is not None:
-            arg.update(pyf_check=[c_to_cython(c) for c in arg.pyf_check])
+            arg.update(pyf_check=[c_to_cython.translate(c)[0]
+                                  for c in arg.pyf_check])
     
     mandatory = [arg for arg in in_args if not arg.is_optional()]
     optional = [arg for arg in in_args if arg.is_optional()]
@@ -146,8 +159,7 @@ def process_in_args(in_args):
             literal_re.match(default_value) is None):
             # Do some crude processing of default_value to translate
             # it fully or partially to Cython
-            default_value = (default_value)
-            default_value = c_to_cython(default_value)
+            default_value, depends = c_to_cython.translate(default_value)
             arg.update(defer_init_to_body=True,
                        pyf_default_value=default_value)
 
@@ -172,93 +184,80 @@ def process_in_args(in_args):
     # Return new set of in_args
     return in_args
 
-_c_to_cython_dictionary = {
-    '&&' : 'and',
-    '||' : 'or',
-    '!' : 'not',
-    '/' : '//', # ...probably...
-    # Just to 'convert' whitespace style as well, include
-    # other operators
-    '<' : '<',
-    '<=' : '<=',
-    '==' : '==',
-    '>=' : '>=',
-    '>' : '>',
-    '!=' : '!=',
-    '+' : '+',
-    '-' : '-',
-    '*' : '*'
-}
 
-# Add spaces
-for key, value in _c_to_cython_dictionary.iteritems():
-    _c_to_cython_dictionary[key] = ' %s ' % value
+class CToCython(object):
+    def __init__(self, variable_map=None):
+        self.variable_map = variable_map
 
-cast_re = re.compile(r'\((int|float|double)\)([a-zA-Z0-9_]+)')
-functions_re = re.compile(r'(len)\(\s*([a-zA-Z0-9_]+)\s*\)')
-whitespace_re = re.compile(r'\s\s+')
-operators_re = re.compile(r'&&|\|\||<=?|>=?|==|!=?')
+        def handle_var(s, loc, tok):
+            v = tok[0]
+            self.encountered.add(v)
+            if self.variable_map is None:
+                return _py_kw_mangler(tok[0])
+            else:
+                return self.variable_map[tok[0]]
+            
 
-def c_to_cython(expr):
-    # Deal with the most common cases to reduce the amount
-    # of manual modification needed afterwards. This is used
-    # in check(...), so support common boolean constructs
+        # FollowedBy(NotAny): make sure variables and
+        # function calls are not confused
+        variables = prs.Regex(r'[a-zA-Z_][a-zA-Z0-9_]*') + prs.FollowedBy(prs.NotAny('('))
+        variables.setParseAction(handle_var)
 
-    try:
-        expr = translate_ternary(expr)
-    except ValueError:
-        pass
+        var_or_literal = variables | prs.Word(prs.nums + '.') | prs.dblQuotedString
 
-    expr = py_kw_mangle_expression(expr)
-    
-    def f(m):
-        return _c_to_cython_dictionary[m.group(0)]
+        def handle_ternary(s, loc, tok):
+            tok = tok[0]
+            return '(%s if %s else %s)' % (tok[2], tok[0], tok[4])
 
-    expr = operators_re.sub(f, expr)
-    expr = whitespace_re.sub(' ', expr) # Remove redundant spaces introduced
-    expr = cast_re.sub(r'<\1>\2', expr) # (int)v -> <int>v
+        def passthrough_op(s, loc, tok):
+            return '(%s)' % ' '.join(tok[0])
 
-    def funcs(m):
-        func = m.group(1)
-        if func == 'len':
-            return 'np.PyArray_DIMS(%s)[0]' % m.group(2)
-        else:
-            assert False
-    
-    expr = functions_re.sub(funcs, expr)
-    
-    return expr.strip()
+        _c_to_cython_bool = {'&&' : 'and', '||' : 'or', '/' : '//', '*' : '*'}
+        def translate_op(s, loc, tok):
+            tok = tok[0]
+            translated = [x if idx % 2 == 0 else _c_to_cython_bool[x]
+                          for idx, x in enumerate(tok)]
+            return '(%s)' % (' '.join(translated))
 
+        def handle_not(s, loc, tok):
+            return 'not %s' % tok[0][1]
 
-#
-# Translation of C ternary expressions to Python. Should ideally
-# take care of operator translation (above) using this as well...
-#
-def create_ternary_parser():
-    from pyparsing import (Word, Forward, Suppress, Group, alphanums,
-                           OneOrMore, Literal)
-    def handle_ternary(s, loc, tok):
-        return '(%s if %s else %s)' % (tok[1], tok[0], tok[2])
+        def handle_cast(s, loc, tok):
+            return '<%s>%s' % (tok[0][0], tok[0][1])
 
-    def handle_parens(s, loc, tok):
-        return '(%s)' % tok[0]
-    
-    var_or_literal_or_boolop = Word(alphanums + '_\"|&=><')
-    expr = Forward()
-    ternary_op = (expr + Suppress("?") +
-                  expr + Suppress(":") +
-                  expr)
-    ternary_op.setParseAction(handle_ternary)
-    parenthesis = Suppress("(") + expr + Suppress(")")
-    expr << (parenthesis | var_or_literal_or_boolop)
-    return ternary_op
-    
-parse_ternary = create_ternary_parser().parseString
+        def handle_func(s, loc, tok):
+            func, expr = tok[0], tok[1:]
+            if func == 'len':
+                return 'np.PyArray_DIMS(%s)[0]' % expr[0]
+            elif func == 'shape':
+                return 'np.PyArray_DIMS(%s)[%s]' % (expr[0], expr[1])
 
-def translate_ternary(s):
-    from pyparsing import ParseException
-    try:
-        result = parse_ternary(s)
-        return result[0][1:-1]
-    except ParseException:
-        raise ValueError('Not a ternary expression: %s' % s)
+        expr = prs.Forward()
+
+        func_call = (prs.oneOf('len shape') + prs.Suppress('(') + expr +
+                     prs.ZeroOrMore(prs.Suppress(',') + expr) + prs.Suppress(')'))
+        func_call.setParseAction(handle_func)
+        cast = prs.Suppress('(') + prs.oneOf('int float') + prs.Suppress(')')
+
+        expr << prs.operatorPrecedence(var_or_literal | func_call, [
+            ('!', 1, prs.opAssoc.RIGHT, handle_not),
+            (cast, 1, prs.opAssoc.RIGHT, handle_cast),
+            (prs.oneOf('* /'), 2, prs.opAssoc.LEFT, translate_op),
+            (prs.oneOf('+ -'), 2, prs.opAssoc.LEFT, passthrough_op),
+            (prs.oneOf('== != <= >= < >'), 2, prs.opAssoc.LEFT, passthrough_op),
+            (prs.oneOf('|| &&'), 2, prs.opAssoc.LEFT, translate_op),
+            (('?', ':'), 3, prs.opAssoc.RIGHT, handle_ternary),
+            ]) 
+
+        self.translator = expr + prs.StringEnd()
+
+    def translate(self, s):
+        self.encountered = set()
+        try:
+            r = self.translator.parseString(s)[0]
+        except prs.ParseException, e:
+            raise ValueError('Could not auto-translate: %s (%s)' % (s, e))            
+        if r[0] == '(' and r[-1] == ')':
+            r = r[1:-1]
+        return r, self.encountered
+
