@@ -44,8 +44,6 @@ def test_expressions():
         ('(np.PyArray_DIMS(a)[0] if (trans == 1) else not b) '
          'if ((trans != 0) and (x == (y + 1))) else <int>c',
          'a,b,c,trans,x,y'))
-    # Variable sub:
     eq_(f('shape(x, 1)', {'x':'foo'}), ('np.PyArray_DIMS(foo)[1]', 'x'))
     eq_(f('abs(x)', {'x':'foo'}), ('abs(foo)', 'x'))
-
-
+    eq_(f('incx==1||incx==-1'), ('(incx == 1) or (incx == -1)', 'incx'))

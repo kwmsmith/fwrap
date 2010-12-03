@@ -204,7 +204,7 @@ class CToCython(object):
         variables = prs.Regex(r'[a-zA-Z_][a-zA-Z0-9_]*') + prs.FollowedBy(prs.NotAny('('))
         variables.setParseAction(handle_var)
 
-        var_or_literal = variables | prs.Word(prs.nums + '.') | prs.dblQuotedString
+        var_or_literal = variables | prs.Regex('-?[0-9.]+') | prs.dblQuotedString
 
         def handle_ternary(s, loc, tok):
             tok = tok[0]
@@ -227,13 +227,13 @@ class CToCython(object):
             return '<%s>%s' % (tok[0][0], tok[0][1])
 
         def handle_func(s, loc, tok):
-            func, expr = tok[0], tok[1:]
+            func, args = tok[0], tok[1:]
             if func == 'len':
-                return 'np.PyArray_DIMS(%s)[0]' % expr[0]
+                return 'np.PyArray_DIMS(%s)[0]' % args[0]
             elif func == 'shape':
-                return 'np.PyArray_DIMS(%s)[%s]' % (expr[0], expr[1])
+                return 'np.PyArray_DIMS(%s)[%s]' % (args[0], args[1])
             elif func in ('abs',):
-                return '%s(%s)' % (expr[0], ', '.join(expr[1:]))
+                return '%s(%s)' % (func, ', '.join(args))
 
         expr = prs.Forward()
 
