@@ -69,7 +69,11 @@ def cy_arg_factory(arg, is_array):
         elif isinstance(arg.dtype, pyf_iface.ComplexType):
             cls = _CyCmplxArg
         elif isinstance(arg.dtype, pyf_iface.CharacterType):
-            cls = _CyStringArg
+            if arg.dtype.length == '1':
+                # Handle common flag-case with nicer code
+                cls = _CySingleCharArg
+            else:
+                cls = _CyStringArg
         else:
             cls = _CyArg
         if arg.name == constants.ERR_NAME:
@@ -309,6 +313,32 @@ class _CyArg(_CyArgBase):
             return []
         return self._gen_dstring()
 
+class _CySingleCharArg(_CyArg):
+    def _update(self):
+        super(_CySingleCharArg, self)._update()
+        self.buf_name = 'fw_%s' % self.cy_name
+    
+    def _get_cy_dtype_name(self):
+        return "object"
+
+    def intern_declarations(self, ctx, extern_decl_made):
+        return ['cdef char *%s = [0, 0]' % self.buf_name]
+
+    def pre_call_code(self, ctx):
+        ctx.use_utility_code(as_char_utility_code)        
+        if self.intent in ('in', 'inout', None):
+            return ['%s[0] = fw_aschar(%s)' % (self.buf_name, self.cy_name),
+                    'if %s[0] == 0:' % self.buf_name,
+                    '    raise ValueError("len(%s) != 1")' % self.cy_name]
+        else:
+            return []
+
+    def call_arg_list(self, ctx):
+        return ["%s" % self.buf_name]
+
+    def return_tuple_list(self):
+        return [self.buf_name]
+
 class _CyStringArg(_CyArg):
 
     def _update(self):
@@ -325,6 +355,7 @@ class _CyStringArg(_CyArg):
         return py_type_name_from_type(self.ktp)
 
     def extern_declarations(self):
+        #TODO: This seems like the result of a refactoring error?
         if self.intent in ('in', 'inout', None):
             return [("%s %s" % (self.cy_dtype_name, self.cy_name), None)]
         elif self.is_assumed_size():
@@ -332,6 +363,7 @@ class _CyStringArg(_CyArg):
         return []
 
     def intern_declarations(self, ctx, extern_decl_made):
+        # TODO: Check extern_decl_made here?
         ret = ['cdef %s %s' % (self.cy_dtype_name, self.intern_name),
                 'cdef fw_shape_t %s' % self.intern_len_name]
         if self.intent in ('out', 'inout', None):
@@ -992,4 +1024,24 @@ cdef object fw_asfortranarray(object value, int typenum, int ndim, bint copy):
     if copy:
         flags |= np.NPY_ENSURECOPY
     return np.PyArray_FROMANY(value, typenum, ndim, ndim, flags)
+"""
+
+as_char_utility_code = u"""
+cdef char fw_aschar(object s):
+    cdef char* buf
+    try:
+        return <char>s # int
+    except TypeError:
+        pass
+    try:
+        buf = <char*>s # bytes
+    except TypeError:
+        s = s.encode('ASCII')
+        buf = <char*>s # unicode
+    if buf[0] == 0:
+        return 0
+    elif buf[1] != 0:
+        return 0
+    else:
+        return buf[0]
 """

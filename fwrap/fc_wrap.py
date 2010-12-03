@@ -352,7 +352,10 @@ def FcArgFactory(arg):
     elif arg.dtype.type == 'logical':
         return FcLogicalArg(arg)
     elif arg.dtype.type == 'character':
-        return FcCharArg(arg)
+        if arg.dtype.length == '1':
+            return FcArg(arg)
+        else:
+            return FcStringArg(arg)
     else:
         return FcArg(arg)
 
@@ -594,7 +597,7 @@ class FcScalarPtrArg(FcArg):
 class FcLogicalArg(FcScalarPtrArg):
     pass
 
-class FcCharArg(FcScalarPtrArg):
+class FcStringArg(FcScalarPtrArg):
 
     def _set_intern_vars(self):
         self.len_arg = pyf.Argument(name="%s_len" % self.intern_name,
@@ -616,7 +619,7 @@ class FcCharArg(FcScalarPtrArg):
                                        isptr=True)
 
     def _set_extern_args(self):
-        super(FcCharArg, self)._set_extern_args()
+        super(FcStringArg, self)._set_extern_args()
         self.extern_args = [self.len_arg] + self.extern_args
 
     def _err_ck_code(self):
@@ -633,7 +636,7 @@ class FcCharArg(FcScalarPtrArg):
 
     def pre_call_code(self, cfg):
         return self._err_ck_code() + \
-                super(FcCharArg, self).pre_call_code(cfg)
+                super(FcStringArg, self).pre_call_code(cfg)
 
 
 class FcArrayPtrArg(FcArrayArg):
