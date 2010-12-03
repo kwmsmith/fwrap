@@ -123,9 +123,6 @@ def generate_cy_pyx(ast, name, buf, cfg):
     if cfg.detect_templates:
         ast = cy_deduplify(ast, cfg)    
     buf.putln("#cython: ccomplex=True")
-    buf.putln('')
-    buf.putln('# Fwrap configuration:')
-    cfg.serialize_to_pyx(buf)
     buf.putln(' ')
     put_cymod_docstring(ast, name, buf)
     buf.putln("np.import_array()")
@@ -138,6 +135,10 @@ def generate_cy_pyx(ast, name, buf, cfg):
         proc.generate_wrapper(ctx, buf)
     for utilcode in ctx.utility_codes:
         buf.putblock(utilcode)
+    buf.putln('')
+    buf.putln('# Fwrap configuration:')
+    cfg.serialize_to_pyx(buf)
+    buf.putln('')
 
 def put_cymod_docstring(ast, modname, buf):
     dstring = get_cymod_docstring(ast, modname)
