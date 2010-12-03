@@ -128,7 +128,6 @@ def manual_arg(f_arg, expr):
     return auxiliary_arg(f_arg, '##TODO: %s' % expr)
 
 def auxiliary_arg(f_arg, expr):
-    print f_arg.name, f_arg.cy_name
     arg = f_arg.copy_and_set(
         cy_name='%s_f' % f_arg.name,
         name='%s_f' % f_arg.name,
