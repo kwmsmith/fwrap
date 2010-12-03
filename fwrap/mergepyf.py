@@ -7,16 +7,27 @@ from fwrap import constants
 from fwrap.pyf_iface import _py_kw_mangler, py_kw_mangle_expression
 from fwrap.cy_wrap import _CyArg
 import pyparsing as prs
+from warnings import warn
 
 prs.ParserElement.enablePackrat()
+
+class CouldNotMergeError(Exception):
+    pass
 
 def mergepyf_ast(cython_ast, cython_ast_from_pyf):
     # Primarily just copy ast, but merge in select detected manual
     # modifications to the pyf file present in pyf_ast
 
     pyf_procs = dict((proc.name, proc) for proc in cython_ast_from_pyf)
-    return [mergepyf_proc(proc, pyf_procs[proc.name])
-            for proc in cython_ast]
+    result = []
+    for proc in cython_ast:
+        try:
+            result.append(mergepyf_proc(proc, pyf_procs[proc.name]))
+        except CouldNotMergeError, e:
+            warn('Could not import procedure "%s" from .pyf:\n%s' % (proc.name, e))
+            warn('Please modify "%s" manually!' % proc.name)
+            result.append(proc.copy()
+    return result
 
 def mergepyf_proc(f_proc, pyf_proc):
     #merge_comments = []
@@ -35,7 +46,7 @@ def mergepyf_proc(f_proc, pyf_proc):
     if callstat is None:
         # We can simply use the pyf argument list and be satisfied
         if len(f_proc.call_args) != len(pyf_proc.call_args):
-            raise ValueError('pyf and f description of function is different')
+            raise CouldNotMergeError('pyf and f description of function is different')
         # TODO: Verify that types match as well
         call_args = [arg.copy() for arg in pyf_proc.call_args]
     else:
@@ -45,8 +56,8 @@ def mergepyf_proc(f_proc, pyf_proc):
         call_args = []
         m = callstatement_re.match(callstat)
         if m is None:
-            raise ValueError('Unable to parse callstatement! Have a look at callstatement_re:' +
-                             callstat)
+            raise CouldNotMergeError('Unable to parse callstatement! Have a look at '
+                                     'callstatement_re:' + callstat)
         arg_exprs = m.group(1).split(',')
 
         # Strip off error arguments (but leave return value)
@@ -54,7 +65,7 @@ def mergepyf_proc(f_proc, pyf_proc):
         assert f_proc.call_args[-1].name == constants.ERRSTR_NAME
         fortran_args = f_proc.call_args[:-2]
         if len(fortran_args) != len(arg_exprs):
-            raise ValueError('"%s": pyf and f disagrees, '
+            raise CouldNotMergeError('"%s": pyf and f disagrees, '
                              'len(fortran_args) != len(arg_exprs)' % pyf_proc.name)
         # Build call_args from the strings present in the callstatement
         for idx, (f_arg, expr) in enumerate(zip(fortran_args, arg_exprs)):
@@ -104,13 +115,13 @@ def parse_callstatement_arg(arg_expr, f_arg, pyf_args, c_to_cython):
     if m is not None:
         ampersand, var_name, offset = m.group(1), m.group(2), m.group(4)
         if offset is not None and ampersand is not None:
-            raise ValueError('Arithmetic on scalar pointer?')
+            raise CouldNotMergeError('Arithmetic on scalar pointer?')
         pyf_arg = [arg for arg in pyf_args if arg.name == var_name]
         if len(pyf_arg) >= 1:
             result = pyf_arg[0].copy()
             if offset is not None:
                 if not result.is_array:
-                    raise ValueError('Passing scalar without taking address?')
+                    raise CouldNotMergeError('Passing scalar without taking address?')
                 result.update(mem_offset_code=_py_kw_mangler(offset))
             return result
         else:
