@@ -648,7 +648,7 @@ class FcArrayPtrArg(FcArrayArg):
                                    isptr=True)
 
     def _set_extern_args(self):
-        super(ArrayPtrArg, self)._set_extern_args()
+        super(FcArrayPtrArg, self)._set_extern_args()
         self.extern_arg = pyf.Argument(name=self.name,
                                        dtype=pyf.c_ptr_type,
                                        isvalue=True)
@@ -660,7 +660,7 @@ class FcArrayPtrArg(FcArrayArg):
                 (self.extern_arg.name, self.intern_var.name, ', '.join(dim_names))]
 
     def _check_code(self, cfg):
-        return super(ArrayPtrArg, self).pre_call_code(cfg)
+        return super(FcArrayPtrArg, self).pre_call_code(cfg)
 
     def pre_call_code(self, cfg):
         return self._check_code(cfg) + self._pointer_call()
