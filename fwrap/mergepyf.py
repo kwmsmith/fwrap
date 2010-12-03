@@ -42,7 +42,10 @@ def mergepyf_proc(f_proc, pyf_proc):
 
     callstat = pyf_proc.pyf_callstatement
     c_to_cython = CToCython(dict((arg.name, arg.cy_name)
-                                  for arg in pyf_proc.in_args + pyf_proc.aux_args))
+                                  for arg in (pyf_proc.in_args +
+                                              pyf_proc.aux_args +
+                                              pyf_proc.call_args)))
+
     if callstat is None:
         # We can simply use the pyf argument list and be satisfied
         if len(f_proc.call_args) != len(pyf_proc.call_args):
@@ -85,11 +88,13 @@ def mergepyf_proc(f_proc, pyf_proc):
         call_args.append(f_proc.call_args[-2].copy())
         call_args.append(f_proc.call_args[-1].copy())
 
+
     # Make sure our three lists (in/out/callargs) contain the same
     # argument objects
-    all_args = dict((arg.name, arg) for arg in call_args)
+    arg_by_name = dict((arg.name, arg) for arg in call_args)
     def copy_or_get(arg):
-        result = all_args.get(arg.name, None)
+        # Also translate default values
+        result = arg_by_name.get(arg.name, None)
         if result is None:
             result = arg.copy()
         return result
@@ -97,10 +102,29 @@ def mergepyf_proc(f_proc, pyf_proc):
     in_args = [copy_or_get(arg) for arg in pyf_proc.in_args]
     out_args = [copy_or_get(arg) for arg in pyf_proc.out_args]
     in_args = process_in_args(in_args, c_to_cython)
+    aux_args = ([copy_or_get(arg) for arg in pyf_proc.aux_args])
+
+    # Translate C expressions to Cython
+    for arg in set(in_args + out_args + aux_args + call_args):
+        if arg.pyf_check is not None:
+            arg.update(cy_check=[c_to_cython.translate(c)[0]
+                                 for c in arg.pyf_check],
+                       pyf_check=None)
+        if arg.pyf_default_value is not None:
+            defval = arg.pyf_default_value
+            if literal_re.match(defval) is not None:
+                defer = False
+            else:
+                defval = c_to_cython.translate(defval)[0]
+                defer = True
+            arg.update(cy_default_value=defval,
+                       pyf_default_value=None,
+                       defer_init_to_body=defer)
+
     result = f_proc.copy_and_set(call_args=call_args,
                                  in_args=in_args,
                                  out_args=out_args,
-                                 aux_args=pyf_proc.aux_args,
+                                 aux_args=aux_args,
                                  language='pyf')
     return result
 
@@ -146,7 +170,7 @@ def auxiliary_arg(f_arg, expr):
         name='%s_f' % f_arg.name,
         intent=None,
         pyf_hide=True,
-        pyf_default_value=expr)
+        cy_default_value=expr)
     return arg
 
 literal_re = re.compile(r'^-?[()0-9.,\s]+$') # close enough; also matches e.g. (0, 0.)
@@ -156,25 +180,9 @@ def process_in_args(in_args, c_to_cython):
     # Arguments must be changed as follows:
     # a) Reorder so that arguments with defaults come last
     # b) Parse the default_value into something usable by Cython.
-    for arg in in_args:
-        if arg.pyf_check is not None:
-            arg.update(pyf_check=[c_to_cython.translate(c)[0]
-                                  for c in arg.pyf_check])
-    
     mandatory = [arg for arg in in_args if not arg.is_optional()]
     optional = [arg for arg in in_args if arg.is_optional()]
     in_args = mandatory + optional
-
-    for arg in optional:
-        default_value = arg.pyf_default_value
-        if (default_value is not None and
-            literal_re.match(default_value) is None):
-            # Do some crude processing of default_value to translate
-            # it fully or partially to Cython
-            default_value, depends = c_to_cython.translate(default_value)
-            arg.update(defer_init_to_body=True,
-                       pyf_default_value=default_value)
-
     
     # Process intent(copy) and intent(overwrite). f2py behaviour is to
     # add overwrite_X to the very end of the argument list, so insert
@@ -190,7 +198,7 @@ def process_in_args(in_args, c_to_cython):
                        ktp='bint',
                        intent='in',
                        dtype=None,
-                       pyf_default_value=repr(arg.pyf_overwrite_flag_default)))
+                       cy_default_value=repr(arg.pyf_overwrite_flag_default)))
     in_args.extend(overwrite_args)
 
     # Return new set of in_args

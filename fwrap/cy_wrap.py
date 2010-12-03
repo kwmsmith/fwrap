@@ -183,13 +183,15 @@ class _CyArgBase(AstNode):
     mandatory = ('name', 'cy_name', 'intent', 'dtype', 'ktp')
 
     # Optional:
-
     pyf_hide = False
     pyf_default_value = None
     pyf_check = ()
     pyf_overwrite_flag = False
     pyf_overwrite_flag_default = None
     pyf_optional = False
+    
+    cy_default_value = None
+    cy_check = ()
 
     # Set by mergepyf
     defer_init_to_body = False
@@ -219,13 +221,11 @@ class _CyArg(_CyArgBase):
     is_array = False
 
     def _update(self):
-        if self.defer_init_to_body:
+        if self.defer_init_to_body and not self.pyf_hide:
             self.intern_name = '%s_' % self.cy_name
         else:
             self.intern_name = self.cy_name
         self.cy_dtype_name = self._get_cy_dtype_name()
-        if self.pyf_optional and self.pyf_default_value is None:
-            raise RuntimeError('Default value not provided for argument ' + self.name)
 
     def _get_cy_dtype_name(self):
         return self.ktp
@@ -243,7 +243,7 @@ class _CyArg(_CyArgBase):
         """
         assert not self.pyf_hide and self.intent in ('in', 'inout', None)
         default = ('None' if self.defer_init_to_body else
-                   self.pyf_default_value)
+                   self.cy_default_value)
         typedecl = 'object' if self.defer_init_to_body else self.cy_dtype_name
         return [("%s %s" % (typedecl, self.cy_name), default)]
 
@@ -272,17 +272,17 @@ class _CyArg(_CyArgBase):
         # must be inserted here.
         lines = []
         if (self.pyf_hide and
-            self.pyf_default_value is not None):
-            lines.append("%s = %s" % (self.intern_name, self.pyf_default_value))
+            self.cy_default_value is not None):
+            lines.append("%s = %s" % (self.intern_name, self.cy_default_value))
         elif self.defer_init_to_body:
             lines.append("%s = %s if (%s is not None) else %s" %
                          (self.intern_name, self.cy_name, self.cy_name,
-                          self.pyf_default_value))
+                          self.cy_default_value))
         return lines
 
     def check_code(self, ctx):
         lines = []
-        for c in self.pyf_check:
+        for c in self.cy_check:
             lines.append("if not (%s):" % c)
             lines.append("    raise ValueError('Condition on arguments not satisfied: %s')" % c)
         return lines
@@ -532,15 +532,15 @@ class _CyArrayArg(_CyArgBase):
         if self.npy_enum is None:
             self.npy_enum = self.dtype.npy_enum
 
-        if (self.pyf_default_value is not None and
-            default_array_value_re.match(self.pyf_default_value) is None):
+        if (self.cy_default_value is not None and
+            default_array_value_re.match(self.cy_default_value) is None):
             raise NotImplementedError('Only support zero default array values for now, not: %s' %
-                                      self.pyf_default_value)
+                                      self.cy_default_value)
 
     def is_optional(self):
         return (self.pyf_optional or (self.is_explicit_shape and 
                 (self.intent == 'out' or
-                 self.pyf_default_value is not None)))
+                 self.cy_default_value is not None)))
 
     def set_extern_name(self, name):
         self.extern_name = name
@@ -828,7 +828,7 @@ class CyProcedure(AstNode):
     # The argument lists often contain the same argument nodes, but
     # may appear in only one of them, e.g., be automatically inferred
     # (only present in call_args) or have the contents participate in
-    # a pyf_default_value expression (only present in in_args), or
+    # a cy_default_value expression (only present in in_args), or
     # be purely present for temporary purposes (aux_args).
     
     mandatory = ('name', 'cy_name', 'fc_name', 'in_args',
