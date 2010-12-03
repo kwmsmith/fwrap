@@ -17,7 +17,7 @@ def test_expressions():
 
     def f(s, varmap=None):
         print s
-        r, vs = CToCython(variable_map).translate(s)
+        r, vs = CToCython(varmap).translate(s)
         vs = list(vs)
         vs.sort()
         return r, ','.join(vs)
@@ -46,5 +46,6 @@ def test_expressions():
          'a,b,c,trans,x,y'))
     # Variable sub:
     eq_(f('shape(x, 1)', {'x':'foo'}), ('np.PyArray_DIMS(foo)[1]', 'x'))
+    eq_(f('abs(x)', {'x':'foo'}), ('abs(foo)', 'x'))
 
 

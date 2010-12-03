@@ -230,10 +230,12 @@ class CToCython(object):
                 return 'np.PyArray_DIMS(%s)[0]' % expr[0]
             elif func == 'shape':
                 return 'np.PyArray_DIMS(%s)[%s]' % (expr[0], expr[1])
+            elif func in ('abs',):
+                return '%s(%s)' % (expr[0], ', '.join(expr[1:]))
 
         expr = prs.Forward()
 
-        func_call = (prs.oneOf('len shape') + prs.Suppress('(') + expr +
+        func_call = (prs.oneOf('len shape abs') + prs.Suppress('(') + expr +
                      prs.ZeroOrMore(prs.Suppress(',') + expr) + prs.Suppress(')'))
         func_call.setParseAction(handle_func)
         cast = prs.Suppress('(') + prs.oneOf('int float') + prs.Suppress(')')
