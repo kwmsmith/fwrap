@@ -5,6 +5,7 @@
 
 from cStringIO import StringIO
 from math import ceil, floor
+from textwrap import dedent
 
 INDENT = "  "
 LINE_LENGTH = 77 # leave room for two '&' characters
@@ -141,3 +142,138 @@ class CodeBufferFixedForm(CodeBuffer):
         self.sio.write('      %s\n' % lines[0])
         for line in lines[1:]:
             self.sio.write('     &%s\n' % line)
+
+
+#
+# CodeSnippet and related code
+#
+
+def as_code_snippet(x):
+    pass
+
+def _format(s, *args, **kw):
+    if len(args) > 0 and len(kw) > 0:
+        raise ValueError('Only args or kwargs allowed')
+    if len(args) > 0:
+        return s % args
+    elif len(kw) > 0:
+        return s % kw
+    else:
+        return s
+
+class CodeSnippet(object):
+    def __init__(self, provides, requires, code=None, *args, **kw):
+        self.provides = provides
+        if isinstance(requires, basestring):
+            raise ValueError('requires must be an iterable or set')
+        self.requires = frozenset(requires)
+        self.lines = []
+        if code is None:
+            pass
+        elif isinstance(code, basestring):
+            self.put(code, *args, **kw)
+        elif isinstance(code, list):
+            self.lines.extend(code)
+        else:
+            raise TypeError('code argument')
+
+    def putln(self, line, *args, **kw):
+        self.lines.append(_format(line, *args, **kw))
+
+    def put(self, block, *args, **kw):
+        block = dedent(block)
+        block = _format(block, *args, **kw)
+        self.lines.extend(block.split('\n'))
+
+    def __eq__(self, other):
+        if self is other:
+            return True
+        return (type(self) == type(other) and
+                self.provides == other.provides and
+                self.requires == other.requires and
+                self.lines == other.lines)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __repr__(self):
+        return '<CodeSnippet provides=%r requires=%r lines=%r>' % (
+            self.provides, self.requires, '\n'.join(self.lines))
+
+
+def merge_code_snippets(snippets):
+    """
+    ``snippets`` is a list of CodeSnippet instances, where it is
+    allowed that multiple code snippets has the same ``provides``
+    identifier. Any snippets with the same idenfifier are merged
+    into a single CodeSnippet instance and inserted in the location
+    of the first participating CodeSnippet (the other ones being
+    removed).
+    """
+    by_requires = {}
+    for s in snippets:
+        by_requires.setdefault(s.provides, []).append(s)
+    result = []
+    for s in snippets:
+        group = by_requires.get(s.provides)
+        if group is not None:
+            merged = CodeSnippet(provides=s.provides,
+                                 requires=frozenset.union(*[t.requires for t in group]),
+                                 code=sum([t.lines for t in group], []))
+            result.append(merged)
+            del by_requires[s.provides]
+    return result
+
+def emit_code_snippets(snippets, buf=None):
+    """
+    Emits the contents of the DAG described by ``snippets`` (a list of
+    CodeSnippet instances) to buf, in such a way that all requirements
+    are satisfied (a topological ordering). The sorting is stable; the
+    sense that order of the nodes given in the ``snippets`` list is
+    used when the order would otherwise be arbitrary. See also
+    ``merge_code_snippets``, which is performed initially.
+    """
+    if buf is None:
+        buf = CodeBuffer()
+    snippets = merge_code_snippets(snippets)
+    snippets = topological_sort(snippets)
+    for snippet in snippets:
+        buf.putlines(snippet.lines)
+    return buf
+
+# Algorithm
+#
+# Interface: Each node should have a unique provides attributes (a comparable
+# identifier) and a requires attribute (a frozenset of identifiers)
+def topological_sort(input_nodes):
+    result = []
+    been_visited = set()
+
+    def visit(node):
+        if node.provides not in been_visited:
+            been_visited.add(node.provides)
+            # Visit the requirements in the order given in the
+            # original input array (stable ordering).  This increases
+            # complexity, but we will only use this code for tens of
+            # nodes and readability is more important than coming up
+            # with something more clever.
+            for y in input_nodes:
+                if y.provides in node.requires:
+                    visit(y)
+            result.append(node)
+            
+
+    leafs = find_leafs(input_nodes)
+    for leaf in leafs:
+        visit(leaf)
+        
+    return result
+
+
+def find_leafs(nodes):
+    required = set()
+    for node in nodes:
+        required |= node.requires
+    return [node for node in nodes
+            if node.provides not in required]
+    
