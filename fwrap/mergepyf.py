@@ -5,7 +5,7 @@
 import re
 from fwrap import constants
 from fwrap.pyf_iface import _py_kw_mangler, py_kw_mangle_expression
-from fwrap.cy_wrap import _CyArg
+from fwrap.cy_wrap import _CyArg, CythonExpression
 import pyparsing as prs
 from warnings import warn
 
@@ -41,10 +41,7 @@ def mergepyf_proc(f_proc, pyf_proc):
     # possible, and leave the rest to the user.
     func_name = f_proc.name
     callstat = pyf_proc.pyf_callstatement
-    c_to_cython = CToCython(dict((arg.name, arg.cy_name)
-                                  for arg in (pyf_proc.in_args +
-                                              pyf_proc.aux_args +
-                                              pyf_proc.call_args)))
+    c_to_cython = CToCython()
 
     if callstat is None:
         # We can simply use the pyf argument list and be satisfied
@@ -107,19 +104,24 @@ def mergepyf_proc(f_proc, pyf_proc):
     # Translate C expressions to Cython
     for arg in set(in_args + out_args + aux_args + call_args):
         if arg.pyf_check is not None:
-            arg.update(cy_check=[c_to_cython.warn_translate(c, func_name)[0]
+            arg.update(cy_check=[c_to_cython.warn_translate(c, func_name)
                                  for c in arg.pyf_check],
                        pyf_check=None)
         if arg.pyf_default_value is not None:
             defval = arg.pyf_default_value
             if literal_re.match(defval) is not None:
                 defer = False
+                cy_default_value = CythonExpression(defval, ())
             else:
-                defval = c_to_cython.warn_translate(defval, func_name)[0]
                 defer = True
-            arg.update(cy_default_value=defval,
+                cy_default_value = c_to_cython.warn_translate(defval, func_name)
+            arg.update(cy_default_value=cy_default_value,
                        pyf_default_value=None,
                        defer_init_to_body=defer)
+        if arg.is_array and arg.is_explicit_shape:
+            dimexprs = [c_to_cython.warn_translate(dim.sizeexpr, func_name)
+                        for dim in arg.dimension]
+            arg.update(cy_explicit_shape_expressions=dimexprs)
 
     result = f_proc.copy_and_set(call_args=call_args,
                                  in_args=in_args,
@@ -152,7 +154,7 @@ def parse_callstatement_arg(arg_expr, f_arg, pyf_args, c_to_cython):
             return manual_arg(f_arg, arg_expr)
     else:
         try:
-            cy_expr, depends = c_to_cython.translate(arg_expr)
+            cy_expr = c_to_cython.translate(arg_expr)
         except ValueError:
             return manual_arg(f_arg, arg_expr)
         else:
@@ -162,9 +164,10 @@ def manual_arg(f_arg, expr):
     # OK, we do not understand the C code in the callstatement in this
     # argument position, but at least introduce a temporary variable
     # and put in a placeholder for user intervention
-    return auxiliary_arg(f_arg, '##TODO: %s' % expr)
+    return auxiliary_arg(f_arg, CythonExpression('##TODO: %s' % expr, ()))
 
 def auxiliary_arg(f_arg, expr):
+    assert isinstance(expr, CythonExpression)
     arg = f_arg.copy_and_set(
         cy_name='%s_f' % f_arg.name,
         name='%s_f' % f_arg.name,
@@ -198,7 +201,8 @@ def process_in_args(in_args, c_to_cython):
                        ktp='bint',
                        intent='in',
                        dtype=None,
-                       cy_default_value=repr(arg.pyf_overwrite_flag_default)))
+                       cy_default_value=CythonExpression(
+                           repr(arg.pyf_overwrite_flag_default), ())))
     in_args.extend(overwrite_args)
 
     # Return new set of in_args
@@ -206,17 +210,12 @@ def process_in_args(in_args, c_to_cython):
 
 
 class CToCython(object):
-    def __init__(self, variable_map=None):
-        self.variable_map = variable_map
+    def __init__(self):
 
         def handle_var(s, loc, tok):
             v = tok[0]
             self.encountered.add(v)
-            if self.variable_map is None:
-                return _py_kw_mangler(tok[0])
-            else:
-                return self.variable_map[tok[0]]
-            
+            return '%%(%s)s' % v
 
         # FollowedBy(NotAny): make sure variables and
         # function calls are not confused
@@ -283,7 +282,7 @@ class CToCython(object):
             raise ValueError('Referenced unknown symbol: %s (%s)' % (s, e))            
         if r[0] == '(' and r[-1] == ')':
             r = r[1:-1]
-        return r, self.encountered
+        return CythonExpression(r, self.encountered)
 
     def warn_translate(self, s, func_name):
         try:

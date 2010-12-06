@@ -5,7 +5,8 @@
 
 from fwrap import pyf_iface
 from fwrap import constants
-from fwrap.code import CodeBuffer
+from fwrap.code import CodeBuffer, CodeSnippet
+from fwrap import code
 from fwrap.pyf_iface import _py_kw_mangler
 from fwrap.astnode import AstNode
 
@@ -193,12 +194,15 @@ class _CyArgBase(AstNode):
     pyf_overwrite_flag_default = None
     pyf_optional = False
     
-    cy_default_value = None
+    cy_default_value = None # or CythonExpression
     cy_check = ()
 
     # Set by mergepyf
     defer_init_to_body = False
     overwrite_flag_cy_name = None
+
+    def _update(self):
+        self.intern_name = self.cy_name
 
     def equal_up_to_type(self, other_arg):
         type_a = type(self)
@@ -217,6 +221,9 @@ class _CyArgBase(AstNode):
     def is_optional(self):
         return self.pyf_default_value is not None
 
+    def get_code_snippets(self, ctx, fc_name_to_intern_name, fc_name_to_cy_name):
+        yield CodeSnippet(('init', self.intern_name))
+
 class _CyArg(_CyArgBase):
 
 
@@ -229,6 +236,8 @@ class _CyArg(_CyArgBase):
         else:
             self.intern_name = self.cy_name
         self.cy_dtype_name = self._get_cy_dtype_name()
+        if self.cy_default_value is not None:
+            assert isinstance(self.cy_default_value, CythonExpression)
 
     def _get_cy_dtype_name(self):
         return self.ktp
@@ -245,8 +254,13 @@ class _CyArg(_CyArgBase):
         either None or 'None')
         """
         assert not self.pyf_hide and self.intent in ('in', 'inout', None)
-        default = ('None' if self.defer_init_to_body else
-                   self.cy_default_value)
+        if self.cy_default_value is not None:
+            if self.defer_init_to_body:
+                default = 'None'
+            else:
+                default = self.cy_default_value.as_literal()
+        else:
+            default = None
         typedecl = 'object' if self.defer_init_to_body else self.cy_dtype_name
         return [("%s %s" % (typedecl, self.cy_name), default)]
 
@@ -254,7 +268,7 @@ class _CyArg(_CyArgBase):
         assert not self.pyf_hide and self.intent in ('in', 'inout', None)
         return [self.cy_name]
 
-    def intern_declarations(self, ctx, extern_decl_made):
+    def intern_declarations(self, ctx, extern_decl_made):        
         if self.defer_init_to_body or not extern_decl_made:
             return ["cdef %s %s" % (self.cy_dtype_name, self.intern_name)]
         else:
@@ -269,26 +283,33 @@ class _CyArg(_CyArgBase):
     def pre_call_code(self, ctx):
         return []
     
-    def init_code(self, ctx):
-        # When parsing pyf files, one can specify arbitrary initialization
-        # code (assumed to be in Cython). For hidden arguments, this
-        # must be inserted here.
-        lines = []
-        if (self.pyf_hide and
-            self.cy_default_value is not None):
-            lines.append("%s = %s" % (self.intern_name, self.cy_default_value))
-        elif self.defer_init_to_body:
-            lines.append("%s = %s if (%s is not None) else %s" %
-                         (self.intern_name, self.cy_name, self.cy_name,
-                          self.cy_default_value))
-        return lines
-
-    def check_code(self, ctx):
-        lines = []
-        for c in self.cy_check:
-            lines.append("if not (%s):" % c)
-            lines.append("    raise ValueError('Condition on arguments not satisfied: %s')" % c)
-        return lines
+    def get_code_snippets(self, ctx, fc_name_to_intern_name, fc_name_to_cy_name):
+        # Initialization code
+        initcs = CodeSnippet(('init', self.intern_name))
+        if self.cy_default_value is not None:
+            value, requires = self.cy_default_value.substitute(fc_name_to_intern_name)
+            initcs.add_requires(('init', r) for r in requires)
+            if self.pyf_hide:
+                initcs.put("%s = %s", self.intern_name, value)
+            elif self.defer_init_to_body:
+                initcs.put("%s = %s if (%s is not None) else %s",
+                           self.intern_name, self.cy_name, self.cy_name,
+                           value)
+            else:
+                pass
+        yield initcs
+        
+        # Check code
+        for check in self.cy_check:
+            execute_expr, requires = check.substitute(fc_name_to_intern_name)
+            doc_expr, _ = check.substitute(fc_name_to_cy_name)
+            cs = CodeSnippet(provides=('check', None),
+                             requires=[('init', r) for r in requires])
+            cs.put('''\
+                if not (%(ex)s):
+                    raise ValueError('Condition on arguments not satisfied: %(doc)s')''',
+                   ex=execute_expr, doc=doc_expr)
+            yield cs
 
     def return_tuple_list(self):
         assert self.cy_name != constants.ERR_NAME
@@ -460,15 +481,6 @@ class _CyErrStrArg(_CyArgBase):
     def return_tuple_list(self):
         return []
 
-    def init_code(self, ctx):
-        return []
-
-    def init_code(self, ctx):
-        return []
-
-    def check_code(self, ctx):
-        return []
-
     def pre_call_code(self, ctx):
         return []
 
@@ -509,6 +521,7 @@ class _CyArrayArg(_CyArgBase):
 
     # Optional
     mem_offset_code = None
+    cy_explicit_shape_expressions = None
 
     # Set from deduplicator
     npy_enum = None
@@ -535,10 +548,12 @@ class _CyArrayArg(_CyArgBase):
         if self.npy_enum is None:
             self.npy_enum = self.dtype.npy_enum
 
-        if (self.cy_default_value is not None and
-            default_array_value_re.match(self.cy_default_value) is None):
-            raise NotImplementedError('Only support zero default array values for now, not: %s' %
-                                      self.cy_default_value)
+        if self.cy_default_value is not None:
+            literal = self.cy_default_value.as_literal()
+            if default_array_value_re.match(literal) is None:
+                raise NotImplementedError(
+                    'Only support zero default array values for now, not: %s' %
+                    self.cy_default_value)
 
     def is_optional(self):
         return (self.pyf_optional or (self.is_explicit_shape and 
@@ -586,47 +601,40 @@ class _CyArrayArg(_CyArgBase):
                 '<%s*>np.PyArray_DATA(%s)%s' %
                 (self.ktp, self.intern_name, offset_code)]
 
-    def init_code(self, ctx):
-        # We do the init in pre_call_code instead
-        return []
-
-    def check_code(self, ctx):
-        return []
-
-    def pre_call_code(self, ctx):
-        # NOTE: we can support a STRICT macro that would disable the
-        # PyArray_ANYARRAY() call, forcing all incoming arrays to be already F
-        # contiguous.
-        ctx.use_utility_code(as_fortran_array_utility_code)
+    def get_code_snippets(self, ctx, fc_name_to_intern_name, fc_name_to_cy_name):
         d = {'intern' : self.intern_name,
              'extern' : self.cy_name,
              'dtenum' : self.npy_enum,
              'ndim' : self.ndims}
-        lines = []
-
         # Can we allocate the out-array ourselves? Currently this
         # involves trying to parse the size expression to see if it
         # is simple enough.
         # TODO: Move parsing of shapes to _fc.
         can_allocate = self.is_optional()
+        requires = set() # dependencies on other variables
         if can_allocate:
             # Parse size-exprs and generate d['shape']
-            sizeexprs = [dim.sizeexpr for dim in self.dimension]
-            if not ctx.language == 'pyf':
+            dimexprs = []
+            if self.cy_explicit_shape_expressions is not None:
+                for exprobj in self.cy_explicit_shape_expressions:
+                    dimexpr, dimrequires = exprobj.substitute(fc_name_to_intern_name)
+                    requires |= set(dimrequires)
+                    dimexprs.append(dimexpr)
+            else:
+                raise NotImplementedError()
                 # With .pyf, C expressions can be used directly
                 # Otherwise, only very simplest cases supported.
                 # TODO: Fix this up (compile Fortran-side function to give
                 # resulting shape?)
-                for i, expr in enumerate(sizeexprs):
+                for i, expr in enumerate([dim.sizeexpr for dim in self.dimension]):
                     m = plain_sizeexpr_re.match(expr)
                     if not m:
                         warn(
                             'Cannot automatically allocate explicit-shape intent(out) array '
                             'as expression is too complicated: %s' % expr)
-                        allocate_outs = False
-                        break
-                    sizeexprs[i] = _py_kw_mangler(m.group(1))
-            d['shape'] = ', '.join(sizeexprs)
+                        can_allocate = False
+                    dimexprs.append(_py_kw_mangler(m.group(1)))
+            d['shape'] = ', '.join(dimexprs)
 
         # Figure out the copy flag
         if self.pyf_overwrite_flag:
@@ -642,22 +650,29 @@ class _CyArrayArg(_CyArgBase):
             d['copy'] = 'False'
 
         # Generate call to convert or allocate array
+        cs = CodeSnippet(('init', self.intern_name),
+                         [('init', r) for r in requires])
         if can_allocate:
             ctx.use_utility_code(explicit_shape_array_utility_code)
-            lines.append('%(intern)s = fw_explicitshapearray(%(extern)s, %(dtenum)s, '
-                         '%(ndim)d, [%(shape)s], %(copy)s)' % d)
+            cs.putln('%(intern)s = fw_explicitshapearray(%(extern)s, %(dtenum)s, '
+                     '%(ndim)d, [%(shape)s], %(copy)s)' % d)
         else:
-            lines.append('%(intern)s = fw_asfortranarray(%(extern)s, %(dtenum)s, '
-                         '%(ndim)d, %(copy)s)' % d)
+            ctx.use_utility_code(as_fortran_array_utility_code) 
+            cs.putln('%(intern)s = fw_asfortranarray(%(extern)s, %(dtenum)s, '
+                     '%(ndim)d, %(copy)s)' % d)
 
         # May need to copy shape into new array as well
         if ctx.cfg.f77binding or self.mem_offset_code is not None:
             ctx.use_utility_code(copy_shape_utility_code)
-            lines.append('fw_copyshape(%s, np.PyArray_DIMS(%s), %d)' %
-                         (self.shape_var_name, self.intern_name, self.ndims))
+            cs.putln('fw_copyshape(%s, np.PyArray_DIMS(%s), %d)',
+                     self.shape_var_name, self.intern_name, self.ndims)
         if self.mem_offset_code is not None:
-            lines.append('%s[0] -= %s' % (self.shape_var_name, self.mem_offset_code))
-        return lines
+            cs.putln('%s[0] -= %s', self.shape_var_name, self.mem_offset_code)
+        return [cs]
+
+
+    def pre_call_code(self, ctx):
+        return []
 
     def post_call_code(self, ctx):
         return []
@@ -784,18 +799,6 @@ class CyArgManager(object):
         for arg in self.out_args:
             rtl.extend(arg.return_tuple_list())
         return rtl
-
-    def init_code(self, ctx):
-        cc = []
-        for arg in self.needs_init_args:
-            cc.extend(arg.init_code(ctx))
-        return cc
-
-    def check_code(self, ctx):
-        cc = []
-        for arg in self.needs_init_args:
-            cc.extend(arg.check_code(ctx))
-        return cc
 
     def pre_call_code(self, ctx):
         pcc = []
@@ -935,13 +938,36 @@ class CyProcedure(AstNode):
         if use_try:
             buf.dedent()
 
+
     def generate_wrapper(self, ctx, buf):
         buf.putln(self.proc_declaration())
         buf.indent()
         self.put_docstring(buf)
         self.temp_declarations(buf, ctx)
-        buf.putlines(self.arg_mgr.init_code(ctx))
-        buf.putlines(self.arg_mgr.check_code(ctx))
+
+        # TODO: Refactor args lists
+        args = self.in_args + self.call_args + self.aux_args + self.out_args
+
+        # Map Fortran argument names to names used in Cython wrapper
+        fc_name_to_intern_name = dict((arg.name, arg.intern_name) for arg in args)
+        fc_name_to_cy_name = dict((arg.name, arg.cy_name) for arg in args)
+        
+        visited_args = set() # TODO: This is now by id, unfortunately
+        snippets = []
+        # Fetch all code snippets
+        for arg in args:
+            if id(arg) in visited_args:
+                continue
+            visited_args.add(id(arg))
+            snippets.extend(arg.get_code_snippets(ctx, fc_name_to_intern_name,
+                                                  fc_name_to_cy_name))
+        # Now sort snippets by phase (for stylistic reasons -- all
+        # orderings will yield correctly executing results)
+        phases = ['init', 'check']
+        snippets.sort(key=lambda cs: phases.index(cs.provides[0]))
+        # Do a stable topological sort and emit code
+        code.emit_code_snippets(snippets, buf)
+        
         self.pre_call_code(ctx, buf)
         buf.putln(self.proc_call(ctx))
         self.post_try_finally(ctx, buf)
@@ -998,6 +1024,43 @@ class CyProcedure(AstNode):
 
         return dstring
 
+
+class CythonExpression(object):
+    """
+    Object used to store cy_default_value. Consists of a template
+    expression of the form "%(x)s + %(by)s", where the names correspond
+    to variable names used in Fortran; and a
+    list of dependencies (variables used in the expression).  To use,
+    call substitute with a map from Fortran name of
+    arguments/variables to the equivalent in generated Cython code.
+    """
+    def __init__(self, template, requires):
+        self.template = template
+        self.requires = requires
+
+    def substitute(self, variable_map):
+        return self.template % variable_map, [variable_map[x] for x in self.requires]
+
+    def as_literal(self):
+        try:
+            expr, requires = self.substitute({})
+        except KeyError:
+            raise ValueError('Is not a literal')
+        if len(requires) != 0:
+            raise ValueError('Is not a literal')
+        return expr
+
+    def __eq__(self, other):
+        if self is other: return True
+        return (type(self) == type(other) and
+                self.template == other.template and
+                self.requires == other.requires)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __repr__(self):
+        return "<CythonExpression %r (depends: %r)>" % (self.template, self.requires)
 
 
 copy_shape_utility_code = u"""

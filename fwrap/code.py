@@ -162,7 +162,7 @@ def _format(s, *args, **kw):
         return s
 
 class CodeSnippet(object):
-    def __init__(self, provides, requires, code=None, *args, **kw):
+    def __init__(self, provides, requires=(), code=None, *args, **kw):
         self.provides = provides
         if isinstance(requires, basestring):
             raise ValueError('requires must be an iterable or set')
@@ -176,6 +176,9 @@ class CodeSnippet(object):
             self.lines.extend(code)
         else:
             raise TypeError('code argument')
+
+    def add_requires(self, requires):
+        self.requires = self.requires | frozenset(requires)
 
     def putln(self, line, *args, **kw):
         self.lines.append(_format(line, *args, **kw))

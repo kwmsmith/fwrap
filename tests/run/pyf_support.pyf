@@ -52,12 +52,11 @@ python module pyf_support
         end function
 
         function aux_arg(a, b, c)
-          ! TODO Dependency resolution; for now, care about order
           integer :: a
           integer :: aux_arg
-          integer intent(hide) :: b = a + 1
-          integer intent(hide) :: c = b + 1
-          callstatement (*f2py_func)(&aux_arg, &c, (a>10)?"A":"B")
+          integer intent(in) :: c = a + 1
+          integer intent(hide) :: b = c + 1
+          callstatement (*f2py_func)(&aux_arg, &b, (b>10)?"A":"B")
         end function
 
 
