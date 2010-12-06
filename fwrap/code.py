@@ -245,6 +245,9 @@ def emit_code_snippets(snippets, buf=None):
 #
 # Interface: Each node should have a unique provides attributes (a comparable
 # identifier) and a requires attribute (a frozenset of identifiers)
+class DependencyException(Exception):
+    pass
+
 def topological_sort(input_nodes):
     result = []
     been_visited = set()
@@ -257,9 +260,14 @@ def topological_sort(input_nodes):
             # complexity, but we will only use this code for tens of
             # nodes and readability is more important than coming up
             # with something more clever.
+            requires = set(node.requires)
             for y in input_nodes:
-                if y.provides in node.requires:
+                if y.provides in requires:
+                    requires.remove(y.provides)
                     visit(y)
+            if len(requires) != 0:
+                raise DependencyException('Node(s) not present: %s' % ', '.join(
+                    repr(x) for x in requires))
             result.append(node)
             
 

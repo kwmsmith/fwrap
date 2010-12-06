@@ -10,7 +10,18 @@ from fwrap.code import *
 from pprint import pprint
 from textwrap import dedent
 
-from nose.tools import ok_, eq_, set_trace
+from nose.tools import ok_, eq_, set_trace, assert_raises
+
+def graph_closure():
+    nodes = []
+    def node(provides, requires):
+        cs = CodeSnippet(provides, requires)
+        if requires:
+            cs.putln('Put on %s (requires %s)' % (provides, ', '.join(requires)))
+        else:
+            cs.putln('Put on %s' % provides)
+        nodes.append(cs)
+    return nodes, node
 
 def test_merge():
     # Build a DAG
@@ -37,14 +48,7 @@ def test_merge():
 
 def test_basic():
     # Build a DAG
-    nodes = []
-    def node(provides, requires):
-        cs = CodeSnippet(provides, requires)
-        if requires:
-            cs.putln('Put on %s (requires %s)' % (provides, ', '.join(requires)))
-        else:
-            cs.putln('Put on %s' % provides)
-        nodes.append(cs)
+    nodes, node = graph_closure()
 
     node('space suit', ['sweater'])
     node('socks', [])
@@ -83,5 +87,7 @@ def test_basic():
 
     
     
-    
-
+def test_errors():
+    nodes, node = graph_closure()
+    node('a', ['b'])
+    assert_raises(DependencyException, topological_sort, nodes)
