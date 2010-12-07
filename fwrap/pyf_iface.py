@@ -319,7 +319,8 @@ del _InternCPtrType
 class CallbackType(Dtype):
 
     # FIXME: this and Dtype.__init__(...) should be refactored
-    def __init__(self):
+    def __init__(self, arg_dtypes):
+        self.arg_dtypes = arg_dtypes
         self.type = None
         self.lang = 'fortran'
         self.length = None

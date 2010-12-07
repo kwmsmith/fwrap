@@ -3,8 +3,10 @@
 # All rights reserved. See LICENSE.txt.
 #------------------------------------------------------------------------------
 
+import re
 from fwrap import pyf_iface as pyf
 from fparser import api
+from fparser import typedecl_statements
 
 def generate_ast(fsrcs):
     ast = []
@@ -84,16 +86,7 @@ def _get_arg(p_arg, language):
                     "a scalar or an array (derived type?)" % p_arg)
 
     if p_arg.is_external():
-        for stmt in p_arg.parent.content:
-            try:
-                cb_nm = stmt.designator
-            except AttributeError:
-                continue
-            if cb_nm != p_arg.name:
-                continue
-            dt = _get_callback_dtype(p_arg, stmt)
-            return pyf.Argument(name=p_arg.name,
-                                dtype=dt)
+        return callback_arg(p_arg)
 
     p_typedecl = p_arg.get_typedecl()
     dtype = _get_dtype(p_typedecl, language)
@@ -115,6 +108,39 @@ def _get_arg(p_arg, language):
                         intent=intent,
                         dimension=dimspec,
                         **pyf_annotations)
+
+def callback_arg(p_arg):
+    parent_proc = None
+    for p in reversed(p_arg.parents):
+        try:
+            bt = p.blocktype
+        except AttributeError:
+            continue
+        if bt in ('subroutine', 'function'):
+            parent_proc = p
+
+    # See if it's a call statement; test for a designator
+    for stmt in parent_proc.content:
+        try:
+            cb_nm = stmt.designator
+        except AttributeError:
+            pass
+        else:
+            if cb_nm == p_arg.name:
+                dt = _get_callback_dtype(p_arg, stmt)
+                return pyf.Argument(name=p_arg.name,
+                                    dtype=dt)
+
+    # Function call -- we need to find where it is called and parse the
+    # argument list
+    func_call_matcher = re.compile(r'\b%s\s*\(' % p_arg.name).search
+    for stmt in parent_proc.content:
+        if isinstance(stmt, typedecl_statements.TypeDeclarationStatement):
+            continue
+        source_line = stmt.item.get_line()
+        if func_call_matcher(source_line):
+            import pdb; pdb.set_trace()
+            raise NotImplementedError("finish here")
 
 def _get_args(proc, language):
     args = []
@@ -222,7 +248,12 @@ name2type = {
         }
 
 def _get_callback_dtype(p_arg, call_stmt):
-    return pyf.CallbackType()
+    arg_dtypes = []
+    for call_arg in call_stmt.items:
+        # TODO: handle call_args that are expressions
+        var = call_stmt.get_variable(call_arg)
+        arg_dtypes.append(_get_dtype(var.get_typedecl(), 'fortran'))
+    return pyf.CallbackType(arg_dtypes=arg_dtypes)
 
 def _get_dtype(typedecl, language):
     if not typedecl.is_intrinsic():
