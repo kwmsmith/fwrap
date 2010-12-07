@@ -120,7 +120,7 @@ class Dtype(object):
 
     def __ne__(self, other):
         return not self == other
-                
+
     def type_spec(self):
         return '%s(kind=%s)' % (self.type, self.fw_ktp)
 
@@ -314,6 +314,17 @@ c_ptr_type = _InternCPtrType()
 
 # we delete it from the module so others aren't tempted to instantiate the class.
 del _InternCPtrType
+
+# FIXME: Refactor this & the Dtype base class.
+class CallbackType(Dtype):
+
+    # FIXME: this and Dtype.__init__(...) should be refactored
+    def __init__(self):
+        self.type = None
+        self.lang = 'fortran'
+        self.length = None
+        self.kind = None
+        self.fw_ktp = None
 
 class _NamedType(object):
     '''

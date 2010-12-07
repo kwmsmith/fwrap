@@ -77,11 +77,23 @@ def _get_param(p_param, language):
     return pyf.Parameter(name=name, dtype=dtype, expr=p_param.init)
 
 def _get_arg(p_arg, language):
-    
+
     if not p_arg.is_scalar() and not p_arg.is_array():
         raise RuntimeError(
                 "argument %s is neither "
                     "a scalar or an array (derived type?)" % p_arg)
+
+    if p_arg.is_external():
+        for stmt in p_arg.parent.content:
+            try:
+                cb_nm = stmt.designator
+            except AttributeError:
+                continue
+            if cb_nm != p_arg.name:
+                continue
+            dt = _get_callback_dtype(p_arg, stmt)
+            return pyf.Argument(name=p_arg.name,
+                                dtype=dt)
 
     p_typedecl = p_arg.get_typedecl()
     dtype = _get_dtype(p_typedecl, language)
@@ -208,6 +220,9 @@ name2type = {
         'character' : pyf.CharacterType,
         'logical' : pyf.LogicalType,
         }
+
+def _get_callback_dtype(p_arg, call_stmt):
+    return pyf.CallbackType()
 
 def _get_dtype(typedecl, language):
     if not typedecl.is_intrinsic():
