@@ -15,6 +15,25 @@ from pyparsing_py2 import (Literal, CaselessLiteral, Word, Group, Optional,
 
 from visitor import TreeVisitor
 
+class ExpressionType(TreeVisitor):
+
+    def __init__(self, ctx):
+        super(ExpressionType, self).__init__()
+        self.ctx = ctx
+        self.stack = []
+
+    def visit_ExprNode(self, node):
+        if len(node.subexpr) > 1:
+            # FIXME: this obviously doesn't work right...
+            raise NotImplementedError("non-trivial expressions not currently supported")
+        return self.visit(node.subexpr[0])
+
+    def visit_ArgSpecNode(self, node):
+        return self.visit(node.arg)
+
+    def visit_NameNode(self, node):
+        return self.ctx[node.name]
+
 class ExtractNames(TreeVisitor):
 
     def __init__(self):
@@ -276,7 +295,7 @@ def get_fort_expr_bnf():
     arg = (expr | name)
     arg_spec = (Optional(name + Literal("="))
                         + arg).setParseAction(ArgSpecNode)
-    arg_spec_list = (arg_spec + ZeroOrMore(comma + arg_spec))
+    arg_spec_list = (arg_spec + ZeroOrMore(comma.suppress() + arg_spec))
     function_reference = (name + lpar + Optional(arg_spec_list)
                                     + rpar).setParseAction(FuncRefNode)
 

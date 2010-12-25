@@ -119,28 +119,48 @@ def callback_arg(p_arg):
         if bt in ('subroutine', 'function'):
             parent_proc = p
 
-    # See if it's a call statement; test for a designator
+    # Subroutine call -- test for 'designator' attribute
     for stmt in parent_proc.content:
         try:
-            cb_nm = stmt.designator
+            cb_name = stmt.designator
         except AttributeError:
             pass
         else:
-            if cb_nm == p_arg.name:
-                dt = _get_callback_dtype(p_arg, stmt)
-                return pyf.Argument(name=p_arg.name,
-                                    dtype=dt)
+            if cb_name == p_arg.name:
+                dt = _get_callback_dtype(parent_proc, p_arg, cb_name, stmt.items)
+                return pyf.Argument(name=p_arg.name, dtype=dt)
 
-    # Function call -- we need to find where it is called and parse the
-    # argument list
+    # Function call -- find where in procedure body func is called
     func_call_matcher = re.compile(r'\b%s\s*\(' % p_arg.name).search
     for stmt in parent_proc.content:
         if isinstance(stmt, typedecl_statements.TypeDeclarationStatement):
             continue
         source_line = stmt.item.get_line()
         if func_call_matcher(source_line):
-            import pdb; pdb.set_trace()
-            raise NotImplementedError("finish here")
+            assert len(stmt.item.strlinemap) == 1
+            cb_name = p_arg.name
+            arg_lst = stmt.item.strlinemap.values()[0]
+            dt = _get_callback_dtype(parent_proc, p_arg, cb_name, arg_lst)
+            return pyf.Argument(name=p_arg.name, dtype=dt)
+
+def _get_callback_dtype(parent_proc, p_arg, proc_name, arg_lst):
+    from fort_expr import parse, ExpressionType
+    if isinstance(arg_lst, list):
+        arg_lst = ', '.join(arg_lst)
+    proc_call = '%s(%s)' % (proc_name, arg_lst)
+    proc_ref = parse(proc_call).subexpr[0]
+    args = proc_ref.arg_spec_list
+    type_ctx = {}
+    for vname in parent_proc.a.variables:
+        if vname == proc_name:
+            continue
+        type_ctx[vname] = parent_proc.a.variables[vname].get_typedecl()
+    type_visitor = ExpressionType(type_ctx)
+    arg_dtypes = []
+    for arg in args:
+        arg_dt = _get_dtype(type_visitor.visit(arg), 'fortran')
+        arg_dtypes.append(arg_dt)
+    return pyf.CallbackType(arg_dtypes=arg_dtypes)
 
 def _get_args(proc, language):
     args = []
@@ -246,14 +266,6 @@ name2type = {
         'character' : pyf.CharacterType,
         'logical' : pyf.LogicalType,
         }
-
-def _get_callback_dtype(p_arg, call_stmt):
-    arg_dtypes = []
-    for call_arg in call_stmt.items:
-        # TODO: handle call_args that are expressions
-        var = call_stmt.get_variable(call_arg)
-        arg_dtypes.append(_get_dtype(var.get_typedecl(), 'fortran'))
-    return pyf.CallbackType(arg_dtypes=arg_dtypes)
 
 def _get_dtype(typedecl, language):
     if not typedecl.is_intrinsic():
