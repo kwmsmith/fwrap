@@ -307,19 +307,18 @@ def get_fort_expr_bnf():
 
     #R704 - R709
     mult_operand = Forward()
-    mult_operand << (level1_expr + Optional((power_op + mult_operand)))
-    add_operand = (mult_operand + ZeroOrMore(mult_op + mult_operand))
+    mult_operand << (level1_expr + Optional((power_op + mult_operand))).setParseAction(PowerExpr)
+    add_operand = (mult_operand + ZeroOrMore(mult_op + mult_operand)).setParseAction(MultExpr)
     level2_expr = (ZeroOrMore(sign) +
-                        add_operand + ZeroOrMore(add_op + add_operand))
+                        add_operand + ZeroOrMore(add_op + add_operand)).setParseAction(AddExpr)
 
     #R710 - R711
-    level3_expr = (level2_expr + ZeroOrMore(concat_op + level2_expr))
+    level3_expr = (level2_expr + ZeroOrMore(concat_op + level2_expr)).setParseAction(StringExpr)
 
     # We skip level 4 and level 5 expressions, since they aren't valid in a
     # dimension or ktp context.
 
-    # expr << (Literal('*').setParseAction(AssumedShapeSpec) | level3_expr.setParseAction(ExprNode))
-    expr << ( level3_expr.setParseAction(ExprNode)
+    expr << ( level3_expr
             | Literal('*').setParseAction(AssumedShapeSpec)
             | Empty().setParseAction(ExprNode))
 
