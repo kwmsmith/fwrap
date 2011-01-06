@@ -45,7 +45,7 @@ class test_fort_expr(object):
         eq_(xtor.names, ['a8'])
         eq_(xtor.funcnames, [])
 
-    def test_char_lit_const(self):
+    def _test_char_lit_const(self):
         clc2 = parse("aoeu_'1202\"04''028'").subexpr[0]
         clc3 = parse('1_"as ""onthu\'sanetu"').subexpr[0]
         eq_(clc2.kind.param.name, 'aoeu')

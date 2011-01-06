@@ -15,6 +15,20 @@ from pyparsing_py2 import (Literal, CaselessLiteral, Word, Group, Optional,
 
 from visitor import TreeVisitor
 
+tp2ord = {
+    "TP_MIN" : -1000,
+    "integer" : 0,
+    "real"    : 1,
+    "complex" : 2
+}
+TP_MIN = "TP_MIN"
+def resolve_number_cast(types):
+    max_tp = TP_MIN
+    for tp in types:
+        if tp_cast[tp] > tp_cast[max_tp]:
+            max_tp = tp
+    return max_tp
+
 class ExpressionType(TreeVisitor):
 
     def __init__(self, ctx):
@@ -23,10 +37,36 @@ class ExpressionType(TreeVisitor):
         self.stack = []
 
     def visit_ExprNode(self, node):
-        if len(node.subexpr) > 1:
-            # FIXME: this obviously doesn't work right...
-            raise NotImplementedError("non-trivial expressions not currently supported")
-        return self.visit(node.subexpr[0])
+        pass
+        # if len(node.subexpr) > 1:
+            # # FIXME: this obviously doesn't work right...
+            # raise NotImplementedError("non-trivial expressions not currently supported")
+        # return self.visit(node.subexpr[0])
+
+    def visit_FuncRefNode(self, node):
+        pass
+
+    def _generic_composite_expr_resolve(self, node):
+        arg_types = [self.visit(arg) for arg in node.args]
+        return resolve_number_cast(arg_types)
+
+    visit_AddExpr = _generic_composite_expr_resolve
+    visit_MultExpr = _generic_composite_expr_resolve
+    visit_PowerExpr = _generic_composite_expr_resolve
+    visit_ConcatExpr = _generic_composite_expr_resolve
+
+    # def visit_AddExpr(self, node):
+        # arg_types = [self.visit(arg) for arg in node.args]
+        # return resolve_number_cast(arg_types)
+
+    def visit_MultExpr(self, node):
+        pass
+
+    def visit_PowerExpr(self, node):
+        pass
+
+    def visit_ConcatExpr(self, node):
+        pass
 
     def visit_ArgSpecNode(self, node):
         return self.visit(node.arg)
@@ -65,15 +105,24 @@ class ExtractNames(TreeVisitor):
     funcnames = property(_get_funcnames)
 
 
-class ExprNode(object):
 
-    child_attrs = ["subexpr"]
+class ExprNode(object):
+    '''
+    abstract base class.
+    '''
+    child_attrs = []
+
+class EmptyNode(ExprNode):
+
+    child_attrs = []
 
     def __init__(self, s, loc, toks):
-        self.subexpr = toks.asList()[:]
+        pass
 
+class AtomNode(ExprNode):
+    pass
 
-class AssumedShapeSpec(ExprNode):
+class AssumedShapeSpec(AtomNode):
 
     child_attrs = []
 
@@ -81,8 +130,7 @@ class AssumedShapeSpec(ExprNode):
         self.star, = toks.asList()
         assert self.star == '*'
 
-
-class CharLiteralConst(ExprNode):
+class CharLiteralConst(AtomNode):
 
     child_attrs = ["kind"]
 
@@ -101,8 +149,7 @@ class CharLiteralConst(ExprNode):
         else:
             raise ValueError("wrong number of tokens %s" % toks)
 
-
-class RealLitConst(ExprNode):
+class RealLitConst(AtomNode):
 
     child_attrs = ["sign", "real", "kind"]
 
@@ -130,7 +177,7 @@ class FuncRefNode(ExprNode):
 class ArgSpecNode(ExprNode):
 
     child_attrs = ["kw", "arg"]
-     
+
     def __init__(self, s, loc, toks):
         self.kw = None
         if len(toks) == 3:
@@ -170,7 +217,7 @@ class LogicalLitConst(ExprNode):
             raise ValueError("wrong number of tokens")
 
 
-class NameNode(ExprNode):
+class NameNode(AtomNode):
 
     child_attrs = []
 
@@ -178,7 +225,7 @@ class NameNode(ExprNode):
         self.name = toks.asList()[0]
 
 
-class SignNode(ExprNode):
+class SignNode(AtomNode):
 
     child_attrs = []
 
@@ -189,7 +236,7 @@ class SignNode(ExprNode):
         return str(self.sign)
 
 
-class DigitStringNode(ExprNode):
+class DigitStringNode(AtomNode):
 
     child_attrs = []
 
@@ -199,7 +246,7 @@ class DigitStringNode(ExprNode):
     def __str__(self):
         return str(self.digit_string)
 
-class LiteralNode(ExprNode):
+class LiteralNode(AtomNode):
 
     child_attrs = []
 
@@ -208,6 +255,67 @@ class LiteralNode(ExprNode):
 
     def __str__(self):
         return str(self.val)
+
+class PowerExpr(ExprNode):
+
+    child_attrs = ["args"]
+
+    def __new__(cls, s, loc, toks):
+        if len(toks) == 1:
+            # this is an unnecessary wrapper, so just return toks[0]
+            return toks[0]
+        else:
+            return super(PowerExpr, cls).__new__(cls)
+
+    def __init__(self, s, loc, toks):
+        self.args = [tok for tok in toks if not isinstance(tok, LiteralNode)]
+        self.ops =  [tok for tok in toks if isinstance(tok, LiteralNode)]
+
+class MultExpr(ExprNode):
+
+    child_attrs = ["args"]
+
+    def __new__(cls, s, loc, toks):
+        if len(toks) == 1:
+            # this is an unnecessary wrapper, so just return toks[0]
+            return toks[0]
+        else:
+            return super(MultExpr, cls).__new__(cls)
+
+    def __init__(self, s, loc, toks):
+        self.args = [tok for tok in toks if isinstance(tok, PowerExpr)]
+        self.ops =  [tok for tok in toks if not isinstance(tok, PowerExpr)]
+
+class AddExpr(ExprNode):
+
+    child_attrs = ["args"]
+
+    def __new__(cls, s, loc, toks):
+        if len(toks) == 1:
+            # this is an unnecessary wrapper, so just return toks[0]
+            return toks[0]
+        else:
+            return super(AddExpr, cls).__new__(cls)
+
+    def __init__(self, s, loc, toks):
+        self.args = [tok for tok in toks if isinstance(tok, MultExpr)]
+        self.ops =  [tok for tok in toks if not isinstance(tok, MultExpr)]
+
+class ConcatExpr(ExprNode):
+
+    child_attrs = ["args"]
+
+    def __new__(cls, s, loc, toks):
+        if len(toks) == 1:
+            # this is an unnecessary wrapper, so just return toks[0]
+            return toks[0]
+        else:
+            return super(ConcatExpr, cls).__new__(cls)
+
+    def __init__(self, s, loc, toks):
+        self.args = [tok for tok in toks if isinstance(tok, AddExpr)]
+        self.ops =  [tok for tok in toks if not isinstance(tok, AddExpr)]
+
 
 fort_expr_bnf = None
 def get_fort_expr_bnf():
@@ -313,14 +421,14 @@ def get_fort_expr_bnf():
                         add_operand + ZeroOrMore(add_op + add_operand)).setParseAction(AddExpr)
 
     #R710 - R711
-    level3_expr = (level2_expr + ZeroOrMore(concat_op + level2_expr)).setParseAction(StringExpr)
+    level3_expr = (level2_expr + ZeroOrMore(concat_op + level2_expr)).setParseAction(ConcatExpr)
 
     # We skip level 4 and level 5 expressions, since they aren't valid in a
     # dimension or ktp context.
 
     expr << ( level3_expr
             | Literal('*').setParseAction(AssumedShapeSpec)
-            | Empty().setParseAction(ExprNode))
+            | Empty().setParseAction(EmptyNode))
 
     fort_expr_bnf = expr
     return fort_expr_bnf

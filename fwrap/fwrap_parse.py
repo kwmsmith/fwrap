@@ -148,7 +148,7 @@ def _get_callback_dtype(parent_proc, p_arg, proc_name, arg_lst):
     if isinstance(arg_lst, list):
         arg_lst = ', '.join(arg_lst)
     proc_call = '%s(%s)' % (proc_name, arg_lst)
-    proc_ref = parse(proc_call).subexpr[0]
+    proc_ref = parse(proc_call)
     args = proc_ref.arg_spec_list
     type_ctx = {}
     for vname in parent_proc.a.variables:
